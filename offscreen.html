@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LLSS Offscreen Document</title>
+</head>
+<body>
+  <!--
+    Offscreen Document for Loose Lips Sink Ships.
+
+    MV3 service workers cannot access Canvas or DOM APIs.
+    This document provides:
+      1. PDF page rendering (pdf.js → Canvas)
+      2. OCR text extraction (Tesseract.js → WASM)
+      3. Pixel-level redaction (Canvas black rectangles)
+      4. PDF reconstruction (flattened images → new PDF)
+
+    Communication: chrome.runtime.onMessage ↔ background.js
+    Lifecycle: created on-demand, destroyed after idle timeout.
+  -->
+
+  <!-- Vendor libraries -->
+  <script src="vendor/pdf.min.mjs" type="module"></script>
+  <script src="vendor/tesseract/tesseract.min.js"></script>
+
+  <!-- LLSS document processing modules -->
+  <script src="lib/documents/pdf-renderer.js"></script>
+  <script src="lib/documents/ocr-processor.js"></script>
+  <script src="lib/documents/pixel-redactor.js"></script>
+
+  <!-- Offscreen message handler -->
+  <script src="offscreen.js"></script>
+</body>
+</html>

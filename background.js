@@ -74,6 +74,71 @@ async function initProviders() {
   console.log("[LLSS] Providers initialised:", registry.getAll().map(p => `${p.id}(${p.tier})`).join(", "));
 }
 
+// ── Offscreen Document Management ────────────────────────────────────────────
+
+let offscreenReady = false;
+
+async function ensureOffscreenDocument() {
+  if (offscreenReady) return;
+
+  // Check if an offscreen document already exists
+  if (chrome.offscreen) {
+    try {
+      const contexts = await chrome.runtime.getContexts?.({
+        contextTypes: ['OFFSCREEN_DOCUMENT'],
+      });
+      if (contexts && contexts.length > 0) {
+        offscreenReady = true;
+        return;
+      }
+    } catch {
+      // getContexts not available — try creating and catch if exists
+    }
+
+    try {
+      await chrome.offscreen.createDocument({
+        url: 'offscreen.html',
+        reasons: ['DOM_PARSER', 'WORKERS'],
+        justification: 'PDF rendering (Canvas) and OCR (WASM) for PII redaction',
+      });
+      offscreenReady = true;
+    } catch (err) {
+      if (err.message?.includes('already exists') || err.message?.includes('Only a single')) {
+        offscreenReady = true;
+      } else {
+        throw err;
+      }
+    }
+  }
+}
+
+async function sendToOffscreen(type, data = {}) {
+  await ensureOffscreenDocument();
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(
+      { target: 'offscreen', type, ...data },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else if (response?.error) {
+          reject(new Error(response.error));
+        } else {
+          resolve(response);
+        }
+      }
+    );
+  });
+}
+
+/**
+ * Offscreen processor interface — passed to the pipeline so it can
+ * delegate Canvas/WASM work without knowing about Chrome's offscreen API.
+ */
+const offscreenProcessor = {
+  renderAndOcr: (data) => sendToOffscreen('RENDER_AND_OCR', data),
+  applyRedactions: (data) => sendToOffscreen('APPLY_REDACTIONS', data),
+};
+
 // ── Idle timer ──────────────────────────────────────────────────────────────
 
 let idleTimer = null;
@@ -128,6 +193,7 @@ async function handleRedactDocument(fileData, fileName, mimeType, options = {}) 
     settings,
     forceProvider: options.forceProvider,
     forceTier: options.forceTier,
+    offscreenProcessor,
   });
 
   // Record statistics
@@ -205,6 +271,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             matchCount: result.matches?.length || 0,
             pipelineSteps: result.pipelineSteps,
             metadata: result.metadata,
+            redactedFile: result.redactedFile || null,
+            redactedFileFormat: result.redactedFileFormat || null,
           })
         )
         .catch((err) =>

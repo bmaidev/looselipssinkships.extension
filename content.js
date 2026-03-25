@@ -182,20 +182,44 @@
     actions.className = "llss-result-actions";
 
     const copyBtn = document.createElement("button");
-    copyBtn.textContent = "Copy";
+    copyBtn.textContent = "Copy Text";
     copyBtn.className = "llss-result-btn";
     copyBtn.addEventListener("click", () => {
       navigator.clipboard.writeText(response.redacted);
       copyBtn.textContent = "Copied!";
-      setTimeout(() => { copyBtn.textContent = "Copy"; }, 2000);
+      setTimeout(() => { copyBtn.textContent = "Copy Text"; }, 2000);
     });
+
+    actions.appendChild(copyBtn);
+
+    // If a redacted file is available (PDF/image), offer download
+    if (response.redactedFile && response.redactedFile.length > 0) {
+      const downloadBtn = document.createElement("button");
+      downloadBtn.textContent = "Download Redacted File";
+      downloadBtn.className = "llss-result-btn";
+      downloadBtn.addEventListener("click", () => {
+        const bytes = new Uint8Array(response.redactedFile);
+        const format = response.redactedFileFormat || "application/pdf";
+        const blob = new Blob([bytes], { type: format });
+        const url = URL.createObjectURL(blob);
+        const ext = format.includes("pdf") ? ".pdf" : format.includes("png") ? ".png" : "";
+        const baseName = fileName.replace(/\.[^.]+$/, "");
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${baseName}_redacted${ext}`;
+        a.click();
+        URL.revokeObjectURL(url);
+        downloadBtn.textContent = "Downloaded!";
+        setTimeout(() => { downloadBtn.textContent = "Download Redacted File"; }, 2000);
+      });
+      actions.appendChild(downloadBtn);
+    }
 
     const closeBtn = document.createElement("button");
     closeBtn.textContent = "Close";
     closeBtn.className = "llss-result-btn llss-result-btn-close";
     closeBtn.addEventListener("click", () => overlay.remove());
 
-    actions.appendChild(copyBtn);
     actions.appendChild(closeBtn);
     overlay.appendChild(header);
     overlay.appendChild(content);

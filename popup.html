@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loose Lips Sink Ships</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 320px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f7f8fa;
+      color: #1a1a2e;
+      padding: 20px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .header h1 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1a3a5c;
+      letter-spacing: 0.3px;
+    }
+
+    .header p {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    .status-card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .status-dot.ready       { background: #22c55e; }
+    .status-dot.downloading { background: #f59e0b; animation: pulse 1.2s infinite; }
+    .status-dot.unavailable { background: #ef4444; }
+    .status-dot.checking    { background: #9ca3af; animation: pulse 1.2s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0.4; }
+    }
+
+    .status-label {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .status-detail {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 6px;
+    }
+
+    .info {
+      font-size: 11px;
+      color: #6b7280;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .info strong {
+      color: #1a3a5c;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Loose Lips Sink Ships</h1>
+    <p>On-device PII redaction</p>
+  </div>
+
+  <div class="status-card">
+    <div class="status-row">
+      <span id="status-dot" class="status-dot checking"></span>
+      <span id="status-label" class="status-label">Checking model status…</span>
+    </div>
+    <div id="status-detail" class="status-detail"></div>
+  </div>
+
+  <p class="info">
+    All processing is performed <strong>locally</strong> using Chrome's
+    built-in Gemini Nano model. No data ever leaves your device.
+  </p>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -7,17 +7,29 @@ Enterprise-grade PII redaction for Chrome with local-first processing. Designed 
 **Progressive Processing Pipeline: Local → Hosted → Cloud**
 
 ```
-Content Input (text / document)
+Content Input (text / document / upload)
        │
        ▼
-┌─────────────────────────────────────────────┐
-│  Pipeline Router (lib/pipeline.js)          │
-│  Selects best provider based on:            │
-│  - Content type (text, docx, image...)      │
-│  - Provider availability                    │
-│  - Tier preference (local first)            │
-│  - User configuration                       │
-└─────────┬───────────┬───────────┬───────────┘
+┌──────────────────────────────────────────────────┐
+│  Site Filter (lib/site-filter.js)                │
+│  Whitelist / Blacklist / All sites               │
+│  AI Chat Service auto-detection (30+ services)   │
+└──────────┬───────────────────────────────────────┘
+           │
+           ▼
+┌──────────────────────────────────────────────────┐
+│  Content Guards (content.js)                     │
+│  - Auto-redact on type/paste                     │
+│  - Submit interception (Enter, forms, buttons)   │
+│  - Upload interception (file inputs, drag-drop)  │
+└──────────┬───────────────────────────────────────┘
+           │
+           ▼
+┌──────────────────────────────────────────────────┐
+│  Pipeline Router (lib/pipeline.js)               │
+│  Selects best provider based on content type,    │
+│  availability, tier preference, user config      │
+└─────────┬───────────┬───────────┬────────────────┘
           │           │           │
     ┌─────▼─────┐ ┌──▼──────┐ ┌─▼──────────┐
     │  LOCAL     │ │ HOSTED  │ │  CLOUD      │
@@ -34,6 +46,39 @@ Content Input (text / document)
 ```
 
 ## Features
+
+### AI Chat Guard
+Automatically protects against PII being submitted to AI chat services.
+- **Auto-detects 30+ services** — ChatGPT, Claude, Gemini (all interfaces), Copilot, Grok, DeepSeek, Perplexity, Mistral, Poe, Character.AI, HuggingChat, Meta AI, and more.
+- **Custom AI domains** — Add internal or self-hosted AI services (e.g. `internal-ai.agency.gov.au`).
+- **Protection banner** — Visual indicator when active on an AI chat site.
+- **Respects site filtering** — Blacklisted sites are fully excluded, even if they're AI services.
+
+### Site Filtering
+- **All sites** (default) — Extension active everywhere.
+- **Whitelist mode** — Only active on listed sites (e.g. `*.gov.au`, `internal.agency.gov.au`).
+- **Blacklist mode** — Active everywhere except listed sites.
+- **Pattern support** — Exact domains, wildcard subdomains (`*.example.com`), dot-suffix (`.gov.au`), full URL prefixes (`https://portal.agency.gov.au/*`).
+
+### Auto-Redact
+Automatically redact PII as users type or paste, without requiring a button click.
+- **Debounced typing detection** — Waits for a pause (configurable 500ms–5s) before redacting.
+- **Immediate paste redaction** — Redacts pasted content right away.
+- **AI-site-only default** — Only activates on detected AI chat services unless globally enabled.
+
+### Submit Interception
+Intercepts form submissions and send actions to ensure redaction is complete.
+- **Enter key interception** — Catches Enter-to-send in chat UIs.
+- **Form submit interception** — Blocks form submission, redacts all text fields, then resubmits.
+- **Send button detection** — Heuristic detection of send/submit buttons (text content, `aria-label`, SVG icons, `data-testid`, `type=submit`).
+- **In-flight protection** — Blocks submission while any redaction is still processing.
+
+### Upload Interception
+Intercepts file uploads to check documents for PII before they leave the page.
+- **File input monitoring** — Catches `<input type="file">` changes.
+- **Drag-and-drop detection** — Monitors drop events for document files.
+- **Confirmation dialog** — "Check & Redact" or "Skip (Upload as-is)".
+- **Supports** — DOCX, XLSX, PDF, HTML, Markdown, TXT, CSV files.
 
 ### Detection Engines
 - **Gemini Nano (Local AI)** — Chrome's built-in on-device model. Zero network calls.
@@ -68,7 +113,7 @@ Content Input (text / document)
 - **Belt-and-suspenders mode** — Run regex after AI for extra safety.
 - **Custom PII rules** — Add organisation-specific patterns via the settings page.
 - **Provider health monitoring** — Real-time status of all configured providers.
-- **Statistics tracking** — Redaction counts by engine, tier, document type, and PII category.
+- **Statistics tracking** — Redaction counts by engine, tier, document type, PII category, submits intercepted, uploads checked, and auto-redactions.
 
 ## Installation
 
@@ -86,7 +131,26 @@ Content Input (text / document)
 ## Configuration
 
 ### Quick Start (Local Only)
-Works out of the box. Gemini Nano + regex fallback requires no configuration.
+Works out of the box. Gemini Nano + regex fallback requires no configuration. AI Chat Guard is enabled by default.
+
+### Site Filtering
+1. Open **Settings** → **Site Filtering**.
+2. Choose **Whitelist** to restrict to specific sites (e.g. `*.gov.au`), or **Blacklist** to exclude sites.
+3. Enter one pattern per line.
+
+### AI Chat Guard
+Enabled by default. On any detected AI service, the extension will:
+- Show a protection banner.
+- Auto-redact text before submission.
+- Intercept Enter/send to ensure redaction completes.
+- Check uploaded files for PII.
+
+To add internal AI services, go to **Settings** → **AI Chat Guard** → **Additional AI domains**.
+
+### Auto-Redact
+Off globally by default. Auto-activates on AI chat sites when AI Chat Guard is enabled.
+- To enable globally: **Settings** → **Auto-Redact** → uncheck "Only auto-redact on AI chat sites".
+- Adjust debounce timing to balance responsiveness vs. processing load.
 
 ### Enterprise Setup
 1. Click the extension icon → **Settings**.
@@ -104,17 +168,18 @@ Enable "Redact File" buttons in settings to upload documents directly from any t
 
 ```
 ├── manifest.json                    # Chrome extension manifest v3
-├── background.js                    # Service worker — thin orchestrator
-├── content.js                       # Injected UI (buttons, file upload, overlays)
-├── content.css                      # Injected styles
-├── popup.html / popup.js            # Toolbar popup (status, stats)
+├── background.js                    # Service worker — message routing + providers
+├── content.js                       # Content script — UI, guards, interception
+├── content.css                      # Injected styles (buttons, banners, overlays)
+├── popup.html / popup.js            # Toolbar popup (status, stats, providers)
 ├── options.html / options.js / .css # Full settings page
 ├── lib/
+│   ├── site-filter.js               # URL matching, AI service detection
 │   ├── pii-types.js                 # 17 default PII type definitions
 │   ├── regex-engine.js              # Pattern-based redaction with overlap resolution
 │   ├── vector-engine.js             # Heuristic name detection (trigram similarity)
-│   ├── redaction-engine.js          # Legacy orchestrator (AI/regex/vector routing)
-│   ├── settings.js                  # Storage abstraction + migration
+│   ├── redaction-engine.js          # AI/regex/vector routing (legacy compat)
+│   ├── settings.js                  # Storage, migration (v1→v2→v3)
 │   ├── pipeline.js                  # Progressive processing pipeline
 │   ├── providers/
 │   │   ├── base-provider.js         # Abstract provider interface
@@ -127,6 +192,7 @@ Enable "Redact File" buttons in settings to upload documents directly from any t
 │   └── documents/
 │       └── document-processor.js    # File parsing (DOCX, XLSX, HTML, MD)
 ├── tests/
+│   ├── site-filter.test.js          # URL matching, AI detection, protection status
 │   ├── provider-registry.test.js
 │   ├── document-processor.test.js
 │   ├── pipeline.test.js
@@ -141,7 +207,7 @@ Enable "Redact File" buttons in settings to upload documents directly from any t
 
 ```bash
 npm install
-npm test              # Run all 132 tests
+npm test              # Run all 173 tests
 npm run test:watch    # Watch mode
 npm run test:coverage # Coverage report
 ```
@@ -170,6 +236,20 @@ Via the Settings page, or programmatically:
 }
 ```
 
+### Adding AI Chat Service Domains
+
+To detect a new AI service, add its domain to `AI_CHAT_DOMAINS` in `lib/site-filter.js`. Users can also add custom domains via the settings page without code changes.
+
+## Settings Schema
+
+Settings are stored in `chrome.storage.local` with automatic migration across versions.
+
+| Version | Changes |
+|---------|---------|
+| v1 | Initial: detection mode, vector fallback, PII overrides |
+| v2 | Added: provider configuration, document upload |
+| v3 | Added: site filter, AI chat guard, auto-redact, submit/upload guard |
+
 ## Privacy & Security
 
 - **Local-first by default.** Gemini Nano and regex run entirely on-device.
@@ -177,6 +257,8 @@ Via the Settings page, or programmatically:
 - **Enterprise providers are opt-in.** Azure, Purview, and hosted model connections only activate when explicitly configured.
 - **Credentials stored locally.** API keys are saved in `chrome.storage.local` (not synced).
 - **Document processing is local.** DOCX, XLSX, HTML, and Markdown are parsed in the browser using built-in APIs. Only images and PDFs require a provider with those capabilities.
+- **AI Chat Guard protects outbound data.** Redaction happens before text leaves the text field, not after.
+- **Submit interception is pre-send.** The extension blocks the submit action, redacts, then re-dispatches — content is never sent unredacted.
 
 ## License
 

@@ -19,12 +19,100 @@
   let isAiSite = false;
   let pendingRedactions = new Set(); // Track in-flight redactions
 
+  // ── Direct Nano (LanguageModel) support ──────────────────────────────
+  // Content scripts run in the page's top-level window context where the
+  // LanguageModel global IS available.  Using it directly avoids the
+  // round-trip through the service worker (which can't access it anyway).
+
+  const nanoSession = (typeof LLSS_NanoSession !== "undefined")
+    ? new LLSS_NanoSession()
+    : null;
+  let nanoAvailable = null; // null = unchecked, true/false after first probe
+
+  /**
+   * Try to redact text directly via Nano.  Returns null if Nano is
+   * unavailable so the caller can fall back to background messaging.
+   */
+  async function tryNanoRedact(text) {
+    const dbg = typeof LLSS_debug !== "undefined" ? LLSS_debug : null;
+
+    // Fast exit if we already know Nano is absent
+    if (nanoAvailable === false || !nanoSession) return null;
+
+    // First call — probe availability
+    if (nanoAvailable === null) {
+      try {
+        const avail = await nanoSession.checkAvailability();
+        nanoAvailable = avail.available;
+        if (dbg) dbg.log("nano", "Content script Nano probe:", avail.status, avail.detail);
+        if (!nanoAvailable) return null;
+      } catch (err) {
+        if (dbg) dbg.warn("nano", "Content script Nano probe failed:", err);
+        nanoAvailable = false;
+        return null;
+      }
+    }
+
+    // Build merged PII types from defaults + user overrides
+    const defaultTypes = (typeof LLSS_PII_TYPES !== "undefined") ? LLSS_PII_TYPES : [];
+    const getMerged = (typeof LLSS_getMergedPiiTypes !== "undefined") ? LLSS_getMergedPiiTypes : null;
+    if (!getMerged || defaultTypes.length === 0) return null;
+    const piiTypes = getMerged(defaultTypes, cachedSettings).filter(t => t.enabled);
+    if (piiTypes.length === 0) return null;
+
+    try {
+      const done = dbg ? dbg.time("nano", `direct redact (${text.length} chars)`) : () => {};
+      const result = await nanoSession.redact(text, piiTypes);
+      done();
+      return {
+        success: true,
+        redacted: result.redacted,
+        engine: result.engine,
+        tier: "local",
+        matchCount: result.matches?.length || 0,
+      };
+    } catch (err) {
+      if (dbg) dbg.warn("nano", "Direct Nano redact failed, falling back:", err);
+      return null;
+    }
+  }
+
+  /**
+   * Redact text using the best available path:
+   *   1. Direct Nano (LanguageModel in content script) — fastest, no IPC
+   *   2. Background service worker (pipeline with offscreen proxy)
+   */
+  async function redactText(text) {
+    const dbg = typeof LLSS_debug !== "undefined" ? LLSS_debug : null;
+    // Try direct Nano first (only if mode allows AI and belt-and-suspenders
+    // is off — when regexAfterAi is on we need the full background pipeline).
+    const mode = cachedSettings.detectionMode || "auto";
+    if (mode !== "regex_only" && !cachedSettings.regexAfterAi) {
+      const nanoResult = await tryNanoRedact(text);
+      if (nanoResult) {
+        if (dbg) dbg.log("redact", "Used direct Nano path (no IPC)");
+        return nanoResult;
+      }
+    }
+
+    // Fall back to background pipeline (handles regex fallback, belt-and-
+    // suspenders, hosted/cloud escalation, and stats recording).
+    if (dbg) dbg.log("redact", "Falling back to background pipeline", { mode, regexAfterAi: !!cachedSettings.regexAfterAi });
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({ type: "REDACT", text }, resolve);
+    });
+  }
+
   // ── Settings ─────────────────────────────────────────────────────────────
 
   function refreshSettings() {
     chrome.runtime.sendMessage({ type: "GET_SETTINGS" }, (response) => {
       if (!response?.settings) return;
       cachedSettings = response.settings;
+      // Activate debug logging from settings
+      if (typeof LLSS_debug !== "undefined" && cachedSettings.debugMode) {
+        LLSS_debug.setEnabled(true);
+      }
       updatePageProtection();
     });
   }
@@ -90,17 +178,8 @@
   function createRedactButton() {
     const btn = document.createElement("button");
     btn.className = BUTTON_CLASS;
-    btn.innerHTML = '<span class="llss-btn-icon">&#x1f6e1;</span> Redact PII';
-    btn.title = "Redact personally identifiable information";
-    btn.type = "button";
-    return btn;
-  }
-
-  function createUploadButton() {
-    const btn = document.createElement("button");
-    btn.className = `${BUTTON_CLASS} ${UPLOAD_CLASS}`;
-    btn.innerHTML = '<span class="llss-btn-icon">&#x1f4c4;</span> Redact File';
-    btn.title = "Upload a document for PII redaction (Word, Excel, HTML, Markdown, Image)";
+    btn.innerHTML = '<svg class="llss-btn-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 1.2a5.8 5.8 0 0 1 3.36 10.53L4.27 5.64A5.78 5.78 0 0 1 8 2.2Zm0 11.6a5.8 5.8 0 0 1-3.36-10.53l7.09 7.09A5.78 5.78 0 0 1 8 13.8Z"/></svg>';
+    btn.title = "Redact PII";
     btn.type = "button";
     return btn;
   }
@@ -262,17 +341,6 @@
         btn
       )
     );
-
-    if (cachedSettings.enableDocumentUpload) {
-      const uploadBtn = createUploadButton();
-      wrapper.appendChild(uploadBtn);
-      uploadBtn.addEventListener("click", () =>
-        triggerFileUpload((val) => {
-          textarea.value = val;
-          textarea.dispatchEvent(new Event("input", { bubbles: true }));
-        }, uploadBtn)
-      );
-    }
   }
 
   // ── Attach to contenteditable ────────────────────────────────────────────
@@ -305,18 +373,6 @@
         btn
       )
     );
-
-    if (cachedSettings.enableDocumentUpload) {
-      const uploadBtn = createUploadButton();
-      uploadBtn.classList.add("llss-ce-btn");
-      wrapper.appendChild(uploadBtn);
-      uploadBtn.addEventListener("click", () =>
-        triggerFileUpload((val) => {
-          el.innerText = val;
-          el.dispatchEvent(new Event("input", { bubbles: true }));
-        }, uploadBtn)
-      );
-    }
   }
 
   // ── Manual redaction handler ──────────────────────────────────────────────
@@ -331,7 +387,7 @@
     btn.classList.add(SPINNER_CLASS);
 
     try {
-      const response = await chrome.runtime.sendMessage({ type: "REDACT", text });
+      const response = await redactText(text);
 
       if (response && response.success) {
         setText(response.redacted);
@@ -350,8 +406,11 @@
 
   // ── Auto-Redact Mode ──────────────────────────────────────────────────────
   // Automatically redacts PII as the user types or pastes into text fields.
+  // Designed to be non-disruptive: waits for a meaningful pause in typing,
+  // tracks what was already scanned, and requires minimum content length.
 
   const autoRedactTimers = new WeakMap();
+  const autoRedactLastText = new WeakMap(); // Last text we processed for this element
 
   function setupAutoRedact() {
     const config = cachedSettings.autoRedact || {};
@@ -369,7 +428,7 @@
     if (el.dataset.llssAutoRedacting === "true") return;
 
     const config = cachedSettings.autoRedact || {};
-    const debounce = config.debounceMs || 1500;
+    const debounce = config.debounceMs || 2500;
 
     // Clear existing timer
     const existing = autoRedactTimers.get(el);
@@ -389,22 +448,36 @@
     const config = cachedSettings.autoRedact || {};
     if (!config.onPaste) return;
 
-    // Short delay to let paste complete
-    setTimeout(() => autoRedactElement(el), 100);
+    // Short delay to let paste complete, then redact
+    setTimeout(() => autoRedactElement(el), 300);
   }
 
   async function autoRedactElement(el) {
     const text = getElementText(el).trim();
-    if (!text || text.length < 5) return;
+
+    // Need meaningful content (short fragments are likely still being composed)
+    if (!text || text.length < 12) return;
+
+    // Skip if the text hasn't changed since we last processed this element
+    const lastProcessed = autoRedactLastText.get(el);
+    if (lastProcessed === text) return;
+
+    // Skip if the text has changed while we were waiting (user still typing)
+    // — snapshot now, check again after a micro-delay
+    await new Promise(r => setTimeout(r, 150));
+    const currentText = getElementText(el).trim();
+    if (currentText !== text) return; // User typed more — bail out
 
     el.dataset.llssAutoRedacting = "true";
+    autoRedactLastText.set(el, text); // Mark as processed before async work
     const redactId = Symbol();
     pendingRedactions.add(redactId);
 
     try {
-      const response = await chrome.runtime.sendMessage({ type: "REDACT", text });
+      const response = await redactText(text);
       if (response?.success && response.redacted !== text) {
         setElementText(el, response.redacted);
+        autoRedactLastText.set(el, response.redacted); // Track the redacted version too
 
         // Brief visual indicator
         el.style.outline = "2px solid #22c55e";
@@ -479,7 +552,7 @@
     const indicator = showSubmitIndicator(el);
 
     try {
-      const response = await chrome.runtime.sendMessage({ type: "REDACT", text });
+      const response = await redactText(text);
       if (response?.success) {
         if (response.redacted !== text) {
           setElementText(el, response.redacted);
@@ -549,7 +622,7 @@
       if (!text) return;
 
       try {
-        const response = await chrome.runtime.sendMessage({ type: "REDACT", text });
+        const response = await redactText(text);
         if (response?.success && response.redacted !== text) {
           setElementText(field, response.redacted);
         }
@@ -591,7 +664,7 @@
 
     const indicator = showSubmitIndicator(textInput);
 
-    chrome.runtime.sendMessage({ type: "REDACT", text }, (response) => {
+    redactText(text).then((response) => {
       removeSubmitIndicator(indicator);
       if (response?.success && response.redacted !== text) {
         setElementText(textInput, response.redacted);

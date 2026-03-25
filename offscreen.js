@@ -30,6 +30,15 @@
 (() => {
   'use strict';
 
+  // ── Nano (LanguageModel) session — proxied from service worker ──────────
+  // The service worker cannot access LanguageModel (it's a Worker context).
+  // This offscreen document CAN, so it hosts the Nano session on behalf of
+  // the background script.
+
+  const nanoSession = (typeof LLSS_NanoSession !== 'undefined')
+    ? new LLSS_NanoSession()
+    : null;
+
   // Cache the raw file data (NOT rendered canvases) between phases.
   // Re-render only the pages that need redaction — much more memory-efficient.
   let cachedFileData = null;
@@ -88,6 +97,43 @@
           .then(sendResponse)
           .catch((err) => sendResponse({ error: err.message }));
         return true;
+
+      // ── Nano proxy messages (from service worker) ─────────────────────
+      case 'NANO_CHECK_AVAILABILITY': {
+        const dbg = typeof LLSS_debug !== 'undefined' ? LLSS_debug : null;
+        (nanoSession
+          ? nanoSession.checkAvailability()
+          : Promise.resolve({ available: false, status: 'no', detail: 'NanoSession not loaded' })
+        ).then((result) => {
+          if (dbg) dbg.log('offscreen', 'NANO_CHECK_AVAILABILITY →', result.status, result.detail);
+          sendResponse(result);
+        }).catch((err) => {
+          if (dbg) dbg.error('offscreen', 'NANO_CHECK_AVAILABILITY error:', err.message);
+          sendResponse({ available: false, status: 'no', detail: err.message });
+        });
+        return true;
+      }
+
+      case 'NANO_REDACT': {
+        const dbg = typeof LLSS_debug !== 'undefined' ? LLSS_debug : null;
+        if (dbg) dbg.log('offscreen', 'NANO_REDACT received', { textLen: message.text?.length });
+        (nanoSession
+          ? nanoSession.redact(message.text, message.piiTypes)
+          : Promise.reject(new Error('NanoSession not loaded'))
+        ).then((result) => {
+          if (dbg) dbg.log('offscreen', 'NANO_REDACT complete', { engine: result.engine });
+          sendResponse(result);
+        }).catch((err) => {
+          if (dbg) dbg.error('offscreen', 'NANO_REDACT error:', err.message);
+          sendResponse({ error: err.message });
+        });
+        return true;
+      }
+
+      case 'NANO_DESTROY':
+        if (nanoSession) nanoSession.destroy();
+        sendResponse({ success: true });
+        return false;
 
       default:
         return false;

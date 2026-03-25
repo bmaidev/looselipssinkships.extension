@@ -3,6 +3,7 @@
 // Architecture: LOCAL (Gemini Nano + Regex) → HOSTED (org models) → CLOUD (Azure/Purview)
 
 importScripts(
+  "lib/debug.js",
   "lib/pii-types.js",
   "lib/regex-engine.js",
   "lib/vector-engine.js",
@@ -33,11 +34,35 @@ async function initProviders() {
   const settings = await LLSS_loadSettings();
   const providerConfig = settings.providers || {};
 
-  // Local AI (Gemini Nano) — always registered, enabled by default
-  registry.register(new LLSS_LocalAiProvider({
+  // Activate debug mode from settings
+  if (settings.debugMode) LLSS_debug.setEnabled(true);
+  LLSS_debug.log("init", "Initialising providers", { debugMode: settings.debugMode });
+
+  // Local AI (Gemini Nano) — always registered, enabled by default.
+  // Service workers cannot access LanguageModel, so install a proxy that
+  // routes availability checks and redaction calls through the offscreen
+  // document (which has a full document context).
+  const localAiProvider = new LLSS_LocalAiProvider({
     enabled: providerConfig.local_ai?.enabled !== false,
     settings: { sessionTimeoutMinutes: settings.sessionTimeoutMinutes },
-  }));
+  });
+  localAiProvider.setProxy(async (msg) => {
+    switch (msg.action) {
+      case 'checkAvailability':
+        return sendToOffscreen('NANO_CHECK_AVAILABILITY');
+      case 'redactText':
+        return sendToOffscreen('NANO_REDACT', {
+          text: msg.text,
+          piiTypes: msg.piiTypes,
+          settings: msg.settings,
+        });
+      case 'destroy':
+        return sendToOffscreen('NANO_DESTROY');
+      default:
+        throw new Error(`Unknown Nano proxy action: ${msg.action}`);
+    }
+  });
+  registry.register(localAiProvider);
 
   // Regex — always registered, always enabled (ultimate fallback)
   registry.register(new LLSS_RegexProvider({
@@ -71,7 +96,7 @@ async function initProviders() {
     }
   }
 
-  console.log("[LLSS] Providers initialised:", registry.getAll().map(p => `${p.id}(${p.tier})`).join(", "));
+  LLSS_debug.log("init", "Providers initialised:", registry.getAll().map(p => `${p.id}(${p.tier})`).join(", "));
 }
 
 // ── Offscreen Document Management ────────────────────────────────────────────
@@ -216,6 +241,7 @@ async function handleRedactDocument(fileData, fileName, mimeType, options = {}) 
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   resetIdleTimer();
+  LLSS_debug.log("msg", `← ${message.type}`, message.target ? `(target: ${message.target})` : "");
 
   switch (message.type) {
     case "CHECK_STATUS": {
@@ -224,12 +250,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           const settings = await LLSS_loadSettings();
           const statusSummary = await registry.getStatusSummary();
           const localAi = statusSummary.find(p => p.id === "local_ai");
+          LLSS_debug.log("status", "local_ai status:", localAi?.status, localAi?.detail);
           sendResponse({
             status: localAi?.status || "no",
             detectionMode: settings.detectionMode,
             providers: statusSummary,
           });
         } catch (err) {
+          LLSS_debug.error("status", "CHECK_STATUS failed:", err.message);
           sendResponse({ status: "no", error: err.message });
         }
       })();
@@ -237,11 +265,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     case "REDACT": {
+      const redactDone = LLSS_debug.time("redact", `text (${message.text?.length || 0} chars)`);
       handleRedactText(message.text, {
         forceProvider: message.forceProvider,
         forceTier: message.forceTier,
       })
-        .then((result) =>
+        .then((result) => {
+          redactDone();
+          LLSS_debug.log("redact", `engine=${result.engine} tier=${result.tier} matches=${result.matches?.length || 0} steps=[${result.pipelineSteps?.join("→")}]`);
           sendResponse({
             success: true,
             redacted: result.redacted,
@@ -250,11 +281,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             matchCount: result.matches?.length || 0,
             pipelineSteps: result.pipelineSteps,
             escalated: result.escalated,
-          })
-        )
-        .catch((err) =>
-          sendResponse({ success: false, error: err.message })
-        );
+          });
+        })
+        .catch((err) => {
+          redactDone();
+          LLSS_debug.error("redact", "REDACT failed:", err.message);
+          sendResponse({ success: false, error: err.message });
+        });
       return true;
     }
 

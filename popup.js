@@ -1,5 +1,6 @@
-// popup.js — Queries the background worker for provider status, current
-// detection mode, and redaction statistics.
+// popup.js — Queries provider status, checks Nano availability directly
+// (popup runs in a document context where LanguageModel is available),
+// and shows redaction statistics.
 
 const dot = document.getElementById("status-dot");
 const label = document.getElementById("status-label");
@@ -10,27 +11,18 @@ const statRedactions = document.getElementById("stat-redactions");
 const statMatches = document.getElementById("stat-matches");
 const statDocs = document.getElementById("stat-docs");
 
+// Handles both old API values (readily, after-download) and new API values
+// (available, downloadable, downloading, unavailable).
 const STATUS_MAP = {
-  readily: {
-    dotClass: "ready",
-    label: "AI Model Ready",
-    detail: "Local Gemini Nano model is loaded and ready.",
-  },
-  "after-download": {
-    dotClass: "downloading",
-    label: "Downloading Model...",
-    detail: "The model is being downloaded. This is a one-time setup.",
-  },
-  downloadable: {
-    dotClass: "downloading",
-    label: "Downloading Model...",
-    detail: "The model is being downloaded. This is a one-time setup.",
-  },
-  no: {
-    dotClass: "unavailable",
-    label: "Local AI Unavailable",
-    detail: "Using regex fallback and configured providers.",
-  },
+  // New Prompt API values
+  available:    { dotClass: "ready",       label: "AI Model Ready",         detail: "Local Gemini Nano model is loaded and ready." },
+  downloadable: { dotClass: "downloading", label: "Downloading Model...",   detail: "The model is being downloaded. This is a one-time setup." },
+  downloading:  { dotClass: "downloading", label: "Downloading Model...",   detail: "The model is being downloaded. This is a one-time setup." },
+  unavailable:  { dotClass: "unavailable", label: "Local AI Unavailable",   detail: "Using regex fallback and configured providers." },
+  // Legacy values (older Chrome builds)
+  readily:          { dotClass: "ready",       label: "AI Model Ready",       detail: "Local Gemini Nano model is loaded and ready." },
+  "after-download": { dotClass: "downloading", label: "Downloading Model...", detail: "The model is being downloaded. This is a one-time setup." },
+  no:               { dotClass: "unavailable", label: "Local AI Unavailable", detail: "Using regex fallback and configured providers." },
 };
 
 const MODE_LABELS = {
@@ -41,14 +33,43 @@ const MODE_LABELS = {
 
 const TIER_LABELS = { local: "Local", hosted: "Hosted", cloud: "Cloud" };
 
-// Fetch status from background.
-chrome.runtime.sendMessage({ type: "CHECK_STATUS" }, (response) => {
-  const status = response?.status || "no";
+// ── Check Nano availability directly (popup is a document context) ────────
+
+async function checkNanoDirectly() {
+  if (typeof LanguageModel === "undefined") return "no";
+  try {
+    return await LanguageModel.availability({
+      expectedInputs: [{ type: "text", languages: ["en"] }],
+      expectedOutputs: [{ type: "text", languages: ["en"] }],
+    });
+  } catch {
+    return "no";
+  }
+}
+
+// ── Main status fetch ─────────────────────────────────────────────────────
+
+(async () => {
+  // Run Nano check and background status fetch in parallel
+  const [nanoStatus, bgResponse] = await Promise.all([
+    checkNanoDirectly(),
+    new Promise((resolve) => {
+      chrome.runtime.sendMessage({ type: "CHECK_STATUS" }, resolve);
+    }),
+  ]);
+
+  // Use direct Nano check for local_ai status (authoritative — we're in
+  // a document context), but keep the background response for everything else.
+  const response = bgResponse || {};
+  const status = nanoStatus || "no";
   const info = STATUS_MAP[status] || STATUS_MAP["no"];
 
-  if (status === "no") {
+  const isNanoAvailable = status === "available" || status === "readily"
+                       || status === "downloadable" || status === "after-download";
+
+  if (!isNanoAvailable) {
     // Check if any other providers are available
-    const providers = response?.providers || [];
+    const providers = response.providers || [];
     const anyAvailable = providers.some(p => p.available && p.id !== "regex");
     if (anyAvailable) {
       dot.className = "status-dot ready";
@@ -66,15 +87,21 @@ chrome.runtime.sendMessage({ type: "CHECK_STATUS" }, (response) => {
   }
 
   // Show current detection mode badge.
-  const mode = response?.detectionMode || "auto";
+  const mode = response.detectionMode || "auto";
   const modeInfo = MODE_LABELS[mode] || MODE_LABELS.auto;
   const badge = document.createElement("span");
   badge.className = `mode-badge ${modeInfo.cls}`;
   badge.textContent = modeInfo.text;
   badgeContainer.appendChild(badge);
 
-  // Show provider list
-  const providers = response?.providers || [];
+  // Show provider list — override local_ai status with our direct check
+  const providers = (response.providers || []).map(p => {
+    if (p.id === "local_ai") {
+      return { ...p, available: isNanoAvailable, status: nanoStatus };
+    }
+    return p;
+  });
+
   if (providers.length > 0) {
     providersList.innerHTML = providers.map(p => {
       const dotCls = p.available ? "on" : "off";
@@ -86,7 +113,7 @@ chrome.runtime.sendMessage({ type: "CHECK_STATUS" }, (response) => {
       </div>`;
     }).join("");
   }
-});
+})();
 
 // Fetch stats.
 chrome.runtime.sendMessage({ type: "GET_STATS" }, (response) => {

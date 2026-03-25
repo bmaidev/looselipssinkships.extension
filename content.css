@@ -6,63 +6,67 @@
 
 .llss-redact-btn {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  bottom: 6px;
+  right: 6px;
   z-index: 10000;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-weight: 600;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
   color: #fff;
   background: #1a3a5c;
   border: 1px solid #0f2a44;
-  border-radius: 4px;
+  border-radius: 50%;
   cursor: pointer;
-  opacity: 0.85;
-  transition: opacity 0.15s, background 0.15s;
-  line-height: 1.4;
-  white-space: nowrap;
+  opacity: 0.7;
+  transition: opacity 0.15s, background 0.15s, transform 0.15s;
+  line-height: 1;
 }
 
-.llss-btn-icon {
-  font-size: 13px;
+.llss-btn-svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 
 .llss-redact-btn:hover {
   opacity: 1;
   background: #244e78;
+  transform: scale(1.1);
 }
 
 .llss-redact-btn:disabled {
   cursor: wait;
-  opacity: 0.6;
+  opacity: 0.4;
 }
 
 /* contenteditable button positioning */
 .llss-ce-btn {
-  top: -28px;
-  right: 0;
+  bottom: 6px;
+  right: 6px;
 }
 
 /* Spinner animation shown while the model is processing. */
 .llss-spinner {
-  min-width: 60px;
-  min-height: 22px;
+  min-width: 26px;
+  min-height: 26px;
+}
+
+.llss-spinner .llss-btn-svg {
+  display: none;
 }
 
 .llss-spinner::after {
   content: "";
   display: inline-block;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: #fff;
   border-radius: 50%;
   animation: llss-spin 0.6s linear infinite;
-  vertical-align: middle;
 }
 
 @keyframes llss-spin {
@@ -72,8 +76,8 @@
 /* Engine badge — shows briefly after redaction. */
 .llss-badge {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  bottom: 6px;
+  right: 38px;
   z-index: 10001;
   padding: 3px 8px;
   font-size: 10px;
@@ -114,19 +118,14 @@
   100%    { opacity: 0; }
 }
 
-/* Upload button — positioned next to the redact button */
+/* Upload button (used in standalone upload contexts, not text fields) */
 .llss-upload-btn {
-  right: 110px;
   background: #2c5f3f;
   border-color: #1a3a28;
 }
 
 .llss-upload-btn:hover {
   background: #387a50;
-}
-
-.llss-upload-btn.llss-ce-btn {
-  right: 106px;
 }
 
 /* Document result overlay */

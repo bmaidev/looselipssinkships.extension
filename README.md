@@ -19,13 +19,15 @@ Content Input (text / document / upload)
            ▼
 ┌──────────────────────────────────────────────────┐
 │  Content Guards (content.js)                     │
+│  - Direct Nano redaction (LanguageModel API)     │
 │  - Auto-redact on type/paste                     │
 │  - Submit interception (Enter, forms, buttons)   │
 │  - Upload interception (file inputs, drag-drop)  │
 │  - Security Handshake (Shadow DOM overlay)       │
-└──────────┬───────────────────────────────────────┘
-           │
-           ▼
+└──────┬───────────────────────────────────────────┘
+       │  text fields: direct Nano (no IPC)
+       │  documents / fallback: background pipeline
+       ▼
 ┌──────────────────────────────────────────────────┐
 │  Pipeline Router (lib/pipeline.js)               │
 │  Selects best provider based on content type,    │
@@ -37,13 +39,15 @@ Content Input (text / document / upload)
     │           │ │         │ │             │
     │ Gemini    │ │ Org LLM │ │ Azure PII   │
     │ Nano      │ │ (vLLM,  │ │ Detection   │
-    │           │ │ Ollama, │ │             │
-    │ Regex     │ │ TGI,    │ │ Microsoft   │
-    │ Engine    │ │ custom) │ │ Purview DLP │
+    │ (via      │ │ Ollama, │ │             │
+    │ offscreen)│ │ TGI,    │ │ Microsoft   │
+    │           │ │ custom) │ │ Purview DLP │
+    │ Regex     │ │         │ │             │
+    │ Engine    │ │ OCR     │ │             │
+    │           │ │ Extract │ │             │
+    │ Vector    │ │ Server  │ │             │
+    │ Names     │ │         │ │             │
     │           │ │         │ │             │
-    │ Vector    │ │ OCR     │ │             │
-    │ Names     │ │ Extract │ │             │
-    │           │ │ Server  │ │             │
     │ PDF/Image │ │         │ │             │
     │ OCR       │ │         │ │             │
     └───────────┘ └─────────┘ └─────────────┘
@@ -108,7 +112,7 @@ Intercepts file uploads to redact documents before they leave the page.
 - **Supports** — DOCX, XLSX, PDF, HTML, Markdown, TXT, CSV, PNG, JPG, GIF, WebP, BMP, TIFF.
 
 ### Detection Engines
-- **Gemini Nano (Local AI)** — Chrome's built-in on-device model. Zero network calls.
+- **Gemini Nano (Local AI)** — Chrome's built-in on-device model via the [Prompt API](https://developer.chrome.com/docs/ai/prompt-api) (`LanguageModel` global). Zero network calls. Runs directly in the content script for text fields (no IPC overhead) and via the offscreen document for background pipeline processing. The Prompt API is not available in service workers, so the extension uses context-appropriate execution: content scripts and the offscreen document both have direct access to `LanguageModel`.
 - **Regex Engine** — 17 built-in Australian PII patterns. Always available as fallback.
 - **Vector Name Detection** — Heuristic name detection using trigram similarity.
 - **Azure AI Language** — Microsoft's PII detection API with Australian entity support.
@@ -176,7 +180,9 @@ Then in extension settings: **Hosted Providers** → Add new → **API Mode: OCR
 The container only extracts text + bounding boxes. All PII detection and redaction stays in the browser.
 
 **Requirements:**
-- Chrome 128+ (for Gemini Nano, Chrome 136+ recommended)
+- Chrome 128+ (for Gemini Nano via the Prompt API; Chrome 136+ recommended for stability)
+- `chrome://flags/#optimization-guide-on-device-model` — Enabled
+- `chrome://flags/#prompt-api-for-gemini-nano` — Enabled
 - For PDF/image: run `vendor/setup.sh` (or configure hosted/cloud OCR)
 - For Azure/Purview: valid Azure subscription and credentials
 - For hosted models: network access to your organisation's endpoint
@@ -184,7 +190,7 @@ The container only extracts text + bounding boxes. All PII detection and redacti
 ## Configuration
 
 ### Quick Start (Local Only)
-Works out of the box. Gemini Nano + regex fallback requires no configuration. AI Chat Guard is enabled by default.
+Works out of the box. Gemini Nano (via Chrome's Prompt API) + regex fallback requires no configuration beyond enabling the Chrome flags listed in Requirements. The green status dot in the popup confirms Nano is available. AI Chat Guard is enabled by default.
 
 ### Site Filtering
 1. Open **Settings** → **Site Filtering**.
@@ -222,12 +228,13 @@ Enable "Redact File" buttons in settings to upload documents directly from any t
 ```
 ├── manifest.json                    # Chrome extension manifest v3
 ├── background.js                    # Service worker — message routing, providers, offscreen mgmt
-├── content.js                       # Content script — UI, guards, interception, Shadow DOM overlay
+├── content.js                       # Content script — UI, guards, interception, direct Nano redaction
 ├── content.css                      # Injected styles (buttons, banners, overlays)
-├── offscreen.html / offscreen.js    # Offscreen Document — Canvas/WASM for PDF/image processing
-├── popup.html / popup.js            # Toolbar popup (status, stats, providers)
+├── offscreen.html / offscreen.js    # Offscreen Document — Canvas/WASM, Nano proxy for service worker
+├── popup.html / popup.js            # Toolbar popup (status via direct LanguageModel check, stats)
 ├── options.html / options.js / .css # Full settings page
 ├── lib/
+│   ├── nano-session.js              # LanguageModel (Prompt API) session manager — shared by content script + offscreen
 │   ├── site-filter.js               # URL matching, AI service detection
 │   ├── pii-types.js                 # 17 default PII type definitions
 │   ├── regex-engine.js              # Pattern-based redaction with overlap resolution
@@ -238,7 +245,7 @@ Enable "Redact File" buttons in settings to upload documents directly from any t
 │   ├── providers/
 │   │   ├── base-provider.js         # Abstract provider interface
 │   │   ├── provider-registry.js     # Provider lifecycle + capability routing
-│   │   ├── local-ai-provider.js     # Gemini Nano (on-device)
+│   │   ├── local-ai-provider.js     # Gemini Nano — direct or proxy mode (LanguageModel API)
 │   │   ├── regex-provider.js        # Regex + vector (always available)
 │   │   ├── azure-pii-provider.js    # Azure AI Language PII Detection
 │   │   ├── purview-provider.js      # Microsoft Purview DLP
@@ -322,7 +329,7 @@ Settings are stored in `chrome.storage.local` with automatic migration across ve
 
 ## Privacy & Security
 
-- **Local-first by default.** Gemini Nano and regex run entirely on-device.
+- **Local-first by default.** Gemini Nano and regex run entirely on-device. Text field redaction via Nano happens directly in the content script — text never leaves the page context.
 - **No telemetry.** The extension collects no analytics and phones home to nowhere.
 - **Enterprise providers are opt-in.** Azure, Purview, and hosted model connections only activate when explicitly configured.
 - **Credentials stored locally.** API keys are saved in `chrome.storage.local` (not synced).
@@ -331,6 +338,7 @@ Settings are stored in `chrome.storage.local` with automatic migration across ve
 - **AI Chat Guard protects outbound data.** Redaction happens before text leaves the text field, not after.
 - **Submit interception is pre-send.** The extension blocks the submit action, redacts, then re-dispatches — content is never sent unredacted.
 - **Upload interception is pre-upload.** Files are intercepted, redacted, and replaced before the target site's handlers run. The original unredacted file never reaches the site's JavaScript.
+- **Context-appropriate execution.** The Prompt API (`LanguageModel`) is not available in MV3 service workers. The extension runs Nano in the correct contexts: content scripts for text fields (direct, zero IPC), offscreen document for pipeline/document processing, and popup for status checks.
 
 ## License
 

@@ -39,6 +39,7 @@ function populateUI() {
   document.getElementById("showRedactButton").checked = s.showRedactButton !== false;
   document.getElementById("enableContentEditable").checked = s.enableContentEditable !== false;
   document.getElementById("enableDocumentUpload").checked = s.enableDocumentUpload !== false;
+  document.getElementById("debugMode").checked = !!s.debugMode;
 
   // Sliders.
   const thresholdSlider = document.getElementById("vectorThreshold");
@@ -116,24 +117,61 @@ function populateUI() {
 
 // ── Provider Status ──────────────────────────────────────────────────────────
 
-function loadProviderStatus() {
-  chrome.runtime.sendMessage({ type: "GET_PROVIDERS" }, (response) => {
-    const providers = response?.providers || [];
-    const container = document.getElementById("provider-status");
-    if (providers.length === 0) {
-      container.innerHTML = '<div class="help">No provider status available.</div>';
-      return;
+/**
+ * Check Nano availability directly from the options page (document context).
+ * The options page is an extension page where LanguageModel IS available.
+ */
+async function checkNanoDirectly() {
+  if (typeof LanguageModel === "undefined") return { available: false, status: "no", detail: "LanguageModel API not present" };
+  try {
+    const status = await LanguageModel.availability({
+      expectedInputs: [{ type: "text", languages: ["en"] }],
+      expectedOutputs: [{ type: "text", languages: ["en"] }],
+    });
+    const available = status === "available" || status === "downloadable"
+                   || status === "readily"   || status === "after-download";
+    const detailMap = {
+      available: "Model ready", readily: "Model ready",
+      downloadable: "Model available after download", "after-download": "Model available after download",
+      downloading: "Model is downloading",
+    };
+    return { available, status, detail: detailMap[status] || "Model not available" };
+  } catch (err) {
+    return { available: false, status: "no", detail: err.message };
+  }
+}
+
+async function loadProviderStatus() {
+  // Run direct Nano check and background provider list in parallel
+  const [nanoResult, bgResponse] = await Promise.all([
+    checkNanoDirectly(),
+    new Promise((resolve) => {
+      chrome.runtime.sendMessage({ type: "GET_PROVIDERS" }, resolve);
+    }),
+  ]);
+
+  // Override local_ai status with our direct check (authoritative)
+  const providers = (bgResponse?.providers || []).map(p => {
+    if (p.id === "local_ai") {
+      return { ...p, available: nanoResult.available, status: nanoResult.status, detail: nanoResult.detail };
     }
-    container.innerHTML = providers.map(p => {
-      const dot = p.available ? "green" : (p.status === "disabled" ? "gray" : "red");
-      const tierIcon = p.tier === "local" ? "🏠" : p.tier === "hosted" ? "🏢" : "☁️";
-      return `<div class="provider-status-item">
-        <span class="status-dot status-${dot}"></span>
-        <span>${tierIcon} <strong>${escapeHtml(p.name)}</strong></span>
-        <span class="provider-status-detail">${escapeHtml(p.detail || p.status)}</span>
-      </div>`;
-    }).join("");
+    return p;
   });
+
+  const container = document.getElementById("provider-status");
+  if (providers.length === 0) {
+    container.innerHTML = '<div class="help">No provider status available.</div>';
+    return;
+  }
+  container.innerHTML = providers.map(p => {
+    const dot = p.available ? "green" : (p.status === "disabled" ? "gray" : "red");
+    const tierIcon = p.tier === "local" ? "🏠" : p.tier === "hosted" ? "🏢" : "☁️";
+    return `<div class="provider-status-item">
+      <span class="status-dot status-${dot}"></span>
+      <span>${tierIcon} <strong>${escapeHtml(p.name)}</strong></span>
+      <span class="provider-status-detail">${escapeHtml(p.detail || p.status)}</span>
+    </div>`;
+  }).join("");
 }
 
 // ── Hosted Providers ────────────────────────────────────────────────────────
@@ -569,6 +607,7 @@ function saveSettings() {
   currentSettings.showRedactButton = document.getElementById("showRedactButton").checked;
   currentSettings.enableContentEditable = document.getElementById("enableContentEditable").checked;
   currentSettings.enableDocumentUpload = document.getElementById("enableDocumentUpload").checked;
+  currentSettings.debugMode = document.getElementById("debugMode").checked;
   currentSettings.vectorThreshold = parseFloat(document.getElementById("vectorThreshold").value);
   currentSettings.sessionTimeoutMinutes = parseInt(document.getElementById("sessionTimeout").value, 10);
 

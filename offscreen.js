@@ -4,11 +4,15 @@
  * Coordinates PDF rendering, OCR, and pixel redaction inside the offscreen
  * document (which has Canvas + WASM access that MV3 service workers lack).
  *
+ * Memory-efficient: renders pages in chunks, releases canvases after OCR,
+ * and re-renders only pages that need redaction.
+ *
  * Protocol (all messages have target: 'offscreen'):
  *
  *   RENDER_AND_OCR
  *     Input:  { fileData: number[], fileName, contentType }
  *     Output: { pages: [{pageNumber, text, blocks, width, height}], fullText }
+ *     Side:   sends OCR_PROGRESS messages to background during processing
  *
  *   APPLY_REDACTIONS
  *     Input:  { pageRedactions: [{pageNumber, regions: [{x,y,w,h}]}], outputFormat }
@@ -26,16 +30,33 @@
 (() => {
   'use strict';
 
-  // Cache rendered page canvases between RENDER_AND_OCR and APPLY_REDACTIONS
-  let cachedPageCanvases = null;
+  // Cache the raw file data (NOT rendered canvases) between phases.
+  // Re-render only the pages that need redaction — much more memory-efficient.
+  let cachedFileData = null;
+  let cachedContentType = null;
+  let cachedPageMeta = null; // [{pageNumber, width, height}] — no canvas data
   let cacheTimeout = null;
-  const CACHE_TTL = 60000; // 1 minute
+  const CACHE_TTL = 120000; // 2 minutes (large docs take time)
+  const RENDER_CHUNK_SIZE = 5; // Render 5 pages at a time to limit memory
 
   function resetCacheTimer() {
     if (cacheTimeout) clearTimeout(cacheTimeout);
     cacheTimeout = setTimeout(() => {
-      cachedPageCanvases = null;
+      cachedFileData = null;
+      cachedContentType = null;
+      cachedPageMeta = null;
     }, CACHE_TTL);
+  }
+
+  function sendProgress(data) {
+    try {
+      chrome.runtime.sendMessage({
+        type: 'OCR_PROGRESS',
+        ...data,
+      });
+    } catch (_) {
+      // Background may not be listening; ignore
+    }
   }
 
   // ── Message handler ──────────────────────────────────────────────────────
@@ -74,119 +95,299 @@
   });
 
   // ── RENDER_AND_OCR ─────────────────────────────────────────────────────────
+  // Renders pages in chunks, OCRs each chunk, then releases the canvas.
+  // Only OCR results (text + bboxes) are kept in memory.
 
   async function handleRenderAndOcr(message) {
     const { fileData, contentType } = message;
     const buffer = new Uint8Array(fileData).buffer;
 
-    let pageImages;
-
-    if (contentType === 'pdf') {
-      // Render PDF pages to canvas images
-      const renderPdf = globalThis.LLSS_renderPdfPages;
-      if (!renderPdf) throw new Error('PDF renderer not available');
-
-      const result = await renderPdf(buffer);
-      pageImages = result.pages;
-    } else {
-      // Single image — load onto canvas
-      const canvas = await loadImageToCanvas(buffer, contentType);
-      pageImages = [{
-        pageNumber: 1,
-        width: canvas.width,
-        height: canvas.height,
-        canvas,
-        imageData: canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height),
-      }];
-    }
-
-    // Cache canvases for the APPLY_REDACTIONS step
-    cachedPageCanvases = pageImages;
+    // Cache raw data for APPLY_REDACTIONS phase
+    cachedFileData = buffer;
+    cachedContentType = contentType;
     resetCacheTimer();
 
-    // OCR each page
+    const ocrAdaptive = globalThis.LLSS_ocrPagesAdaptive;
     const ocrPages = globalThis.LLSS_ocrPages;
-    if (!ocrPages) throw new Error('OCR processor not available');
+    const ocrFn = ocrAdaptive || ocrPages;
+    if (!ocrFn) throw new Error('OCR processor not available');
 
-    const ocrResults = await ocrPages(pageImages);
+    let allOcrResults;
 
-    // Build combined full text with page separators
-    const fullText = ocrResults.map((r) => r.text).join('\n');
+    if (contentType === 'pdf') {
+      allOcrResults = await renderAndOcrPdf(buffer, ocrFn);
+    } else {
+      allOcrResults = await renderAndOcrImage(buffer, contentType, ocrFn);
+    }
 
-    // Build page boundary map so background can split matches by page
+    // Build page meta cache (for re-rendering in APPLY_REDACTIONS)
+    cachedPageMeta = allOcrResults.map((r) => ({
+      pageNumber: r.pageNumber,
+      width: r.width,
+      height: r.height,
+    }));
+
+    // Build combined text with page boundaries
+    const fullText = allOcrResults.map((r) => r.text).join('\n');
     let offset = 0;
-    const pages = ocrResults.map((r) => {
+    const pages = allOcrResults.map((r) => {
       const page = {
         pageNumber: r.pageNumber,
         text: r.text,
         blocks: r.blocks,
-        width: pageImages.find((p) => p.pageNumber === r.pageNumber)?.width || 0,
-        height: pageImages.find((p) => p.pageNumber === r.pageNumber)?.height || 0,
+        width: r.width,
+        height: r.height,
         charStart: offset,
         charEnd: offset + r.text.length,
       };
-      offset += r.text.length + 1; // +1 for the \n separator
+      offset += r.text.length + 1;
       return page;
+    });
+
+    sendProgress({
+      phase: 'ocr_complete',
+      totalPages: pages.length,
     });
 
     return { pages, fullText };
   }
 
+  /**
+   * PDF: render pages in chunks, OCR each chunk, release canvases.
+   */
+  async function renderAndOcrPdf(buffer, ocrFn) {
+    const renderPdf = globalThis.LLSS_renderPdfPages;
+    if (!renderPdf) throw new Error('PDF renderer not available');
+
+    // First, get total page count without rendering
+    const pdfjsLib = globalThis.pdfjsLib;
+    if (pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+    }
+    const pdfDoc = await pdfjsLib.getDocument({ data: buffer }).promise;
+    const totalPages = Math.min(pdfDoc.numPages, 50);
+
+    sendProgress({ phase: 'render_start', totalPages });
+
+    const allResults = [];
+    const scale = 2.0;
+
+    // Process pages in chunks to limit memory usage
+    for (let start = 0; start < totalPages; start += RENDER_CHUNK_SIZE) {
+      const end = Math.min(start + RENDER_CHUNK_SIZE, totalPages);
+      const chunkPages = [];
+
+      // Render this chunk
+      for (let i = start; i < end; i++) {
+        const page = await pdfDoc.getPage(i + 1);
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        const ctx = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        chunkPages.push({
+          pageNumber: i + 1,
+          width: canvas.width,
+          height: canvas.height,
+          canvas,
+          imageData: ctx.getImageData(0, 0, canvas.width, canvas.height),
+        });
+        page.cleanup();
+
+        sendProgress({
+          phase: 'rendering',
+          currentPage: i + 1,
+          totalPages,
+        });
+      }
+
+      // OCR this chunk
+      const ocrResults = await ocrFn(chunkPages, (progress) => {
+        sendProgress({
+          phase: 'ocr',
+          currentPage: start + progress.completed,
+          totalPages,
+          completed: start + progress.completed,
+        });
+      });
+
+      // Merge results and release canvases
+      for (let j = 0; j < chunkPages.length; j++) {
+        allResults.push({
+          ...ocrResults[j],
+          width: chunkPages[j].width,
+          height: chunkPages[j].height,
+        });
+        // Release canvas memory
+        chunkPages[j].canvas.width = 0;
+        chunkPages[j].canvas.height = 0;
+        chunkPages[j].canvas = null;
+        chunkPages[j].imageData = null;
+      }
+    }
+
+    pdfDoc.destroy();
+    return allResults;
+  }
+
+  /**
+   * Image: load, OCR, release.
+   */
+  async function renderAndOcrImage(buffer, contentType, ocrFn) {
+    const canvas = await loadImageToCanvas(buffer, contentType);
+    const imageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+
+    sendProgress({ phase: 'ocr', currentPage: 1, totalPages: 1 });
+
+    const ocrResults = await ocrFn(
+      [{ pageNumber: 1, imageData, canvas }],
+      (progress) => {
+        sendProgress({ phase: 'ocr', currentPage: 1, totalPages: 1, completed: 1 });
+      }
+    );
+
+    const result = {
+      ...ocrResults[0],
+      width: canvas.width,
+      height: canvas.height,
+    };
+
+    // Release canvas
+    canvas.width = 0;
+    canvas.height = 0;
+
+    return [result];
+  }
+
   // ── APPLY_REDACTIONS ───────────────────────────────────────────────────────
+  // Re-renders ONLY pages that have redactions, applies black rects, assembles.
 
   async function handleApplyRedactions(message) {
     const { pageRedactions, outputFormat = 'pdf' } = message;
 
-    if (!cachedPageCanvases) {
-      throw new Error('No cached pages. Call RENDER_AND_OCR first.');
+    if (!cachedFileData || !cachedPageMeta) {
+      throw new Error('No cached file data. Call RENDER_AND_OCR first.');
     }
 
-    const redactPages = globalThis.LLSS_redactPages;
-    if (!redactPages) throw new Error('Pixel redactor not available');
+    const redactCanvasRegions = globalThis.LLSS_redactCanvasRegions;
+    const assemblePdf = globalThis.LLSS_assemblePdf;
+    if (!redactCanvasRegions) throw new Error('Pixel redactor not available');
 
-    // Build page data array matching cached canvases with their redaction regions
-    const pageData = cachedPageCanvases.map((cachedPage) => {
-      const redactionEntry = pageRedactions.find(
-        (r) => r.pageNumber === cachedPage.pageNumber
-      );
-      return {
-        canvas: cachedPage.canvas,
-        regions: redactionEntry?.regions || [],
-      };
-    });
+    sendProgress({ phase: 'redacting', totalPages: cachedPageMeta.length });
 
-    const result = await redactPages(pageData, outputFormat);
+    // Determine which pages need redaction
+    const redactionMap = new Map();
+    for (const pr of pageRedactions) {
+      if (pr.regions && pr.regions.length > 0) {
+        redactionMap.set(pr.pageNumber, pr.regions);
+      }
+    }
 
-    // Convert output to transferable array
+    let redactedCanvases;
+
+    if (cachedContentType === 'pdf') {
+      redactedCanvases = await reRenderAndRedactPdf(redactionMap);
+    } else {
+      redactedCanvases = await reRenderAndRedactImage(redactionMap);
+    }
+
+    // Build output
     let fileArray;
-    if (result.file instanceof Uint8Array) {
-      fileArray = Array.from(result.file);
-    } else if (result.file instanceof Blob) {
-      const buf = await result.file.arrayBuffer();
+    if (outputFormat === 'pdf' && assemblePdf) {
+      const pdfBytes = await assemblePdf(redactedCanvases);
+      fileArray = Array.from(pdfBytes);
+    } else {
+      // Single image output
+      const canvas = redactedCanvases[0];
+      const blob = await new Promise((r) => canvas.toBlob(r, outputFormat === 'pdf' ? 'image/png' : outputFormat));
+      const buf = await blob.arrayBuffer();
       fileArray = Array.from(new Uint8Array(buf));
     }
 
-    // Clear cache after redaction is complete
-    cachedPageCanvases = null;
+    // Release canvases
+    for (const c of redactedCanvases) {
+      c.width = 0;
+      c.height = 0;
+    }
+
+    // Clear cache
+    cachedFileData = null;
+    cachedContentType = null;
+    cachedPageMeta = null;
     if (cacheTimeout) clearTimeout(cacheTimeout);
+
+    sendProgress({ phase: 'complete' });
 
     return {
       file: fileArray,
-      format: result.format,
-      pageCount: result.pageCount,
+      format: outputFormat === 'pdf' ? 'application/pdf' : outputFormat,
+      pageCount: redactedCanvases.length,
     };
   }
 
-  // ── OCR_IMAGE (standalone, for single image without PDF context) ──────────
+  /**
+   * Re-render PDF pages and apply redaction rectangles.
+   * Pages without redactions are rendered clean (still flattened to image for security).
+   */
+  async function reRenderAndRedactPdf(redactionMap) {
+    const pdfjsLib = globalThis.pdfjsLib;
+    const redactFn = globalThis.LLSS_redactCanvasRegions;
+    const scale = 2.0;
+
+    const pdfDoc = await pdfjsLib.getDocument({ data: cachedFileData }).promise;
+    const canvases = [];
+
+    for (const meta of cachedPageMeta) {
+      const page = await pdfDoc.getPage(meta.pageNumber);
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      const ctx = canvas.getContext('2d');
+      await page.render({ canvasContext: ctx, viewport }).promise;
+
+      // Apply redactions if any
+      const regions = redactionMap.get(meta.pageNumber);
+      if (regions && regions.length > 0) {
+        redactFn(canvas, regions);
+      }
+
+      canvases.push(canvas);
+      page.cleanup();
+
+      sendProgress({
+        phase: 'redacting',
+        currentPage: meta.pageNumber,
+        totalPages: cachedPageMeta.length,
+      });
+    }
+
+    pdfDoc.destroy();
+    return canvases;
+  }
+
+  /**
+   * Re-render an image and apply redaction rectangles.
+   */
+  async function reRenderAndRedactImage(redactionMap) {
+    const redactFn = globalThis.LLSS_redactCanvasRegions;
+    const canvas = await loadImageToCanvas(cachedFileData, cachedContentType);
+
+    const regions = redactionMap.get(1);
+    if (regions && regions.length > 0) {
+      redactFn(canvas, regions);
+    }
+
+    return [canvas];
+  }
+
+  // ── OCR_IMAGE (standalone) ─────────────────────────────────────────────────
 
   async function handleOcrImage(message) {
     const { imageData, width, height } = message;
-
-    const imgData = new ImageData(
-      new Uint8ClampedArray(imageData),
-      width,
-      height
-    );
+    const imgData = new ImageData(new Uint8ClampedArray(imageData), width, height);
 
     const ocrImage = globalThis.LLSS_ocrImage;
     if (!ocrImage) throw new Error('OCR processor not available');
@@ -197,31 +398,27 @@
   // ── CLEANUP ────────────────────────────────────────────────────────────────
 
   async function handleCleanup() {
-    cachedPageCanvases = null;
+    cachedFileData = null;
+    cachedContentType = null;
+    cachedPageMeta = null;
     if (cacheTimeout) clearTimeout(cacheTimeout);
 
+    const destroyAll = globalThis.LLSS_destroyAll;
     const destroyOcr = globalThis.LLSS_destroyOcrWorker;
-    if (destroyOcr) await destroyOcr();
+    if (destroyAll) await destroyAll();
+    else if (destroyOcr) await destroyOcr();
 
     return { success: true };
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
-  /**
-   * Load raw image bytes onto a canvas.
-   */
   function loadImageToCanvas(buffer, contentType) {
     return new Promise((resolve, reject) => {
       const mimeMap = {
-        image: 'image/png',
-        png: 'image/png',
-        jpeg: 'image/jpeg',
-        jpg: 'image/jpeg',
-        gif: 'image/gif',
-        webp: 'image/webp',
-        bmp: 'image/bmp',
-        tiff: 'image/tiff',
+        image: 'image/png', png: 'image/png', jpeg: 'image/jpeg',
+        jpg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp',
+        bmp: 'image/bmp', tiff: 'image/tiff',
       };
       const mime = mimeMap[contentType] || 'image/png';
       const blob = new Blob([buffer], { type: mime });

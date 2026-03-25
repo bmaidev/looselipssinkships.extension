@@ -663,9 +663,19 @@
   }, true);
 
   // ── Upload Interception ───────────────────────────────────────────────────
-  // Intercepts file input changes to redact documents before they're uploaded.
+  // "Security Handshake" — intercepts file uploads, redacts PII at the pixel
+  // level, then replaces the original file with the secured version before
+  // the target site ever sees it.
+  //
+  // Features:
+  //   - Shadow DOM security overlay with scanning animation
+  //   - stopImmediatePropagation blocks the site's handlers until redaction is done
+  //   - File replacement: creates a new File object with redacted content
+  //   - AsyncQueue limits concurrency for multi-file drops (max 2 active)
+  //   - Progress reporting from background → content for large documents
 
   let uploadGuardActive = false;
+  let isRedactedDispatch = false; // Prevents re-intercepting our own dispatched events
 
   function setupUploadGuard() {
     const config = cachedSettings.uploadGuard || {};
@@ -674,111 +684,478 @@
     if (uploadGuardActive) return;
     uploadGuardActive = true;
 
-    // Intercept all file input changes
+    // Capture phase ensures we run BEFORE the target site's listeners
     document.addEventListener("change", onFileInputChange, true);
-
-    // Intercept drag-and-drop uploads
     document.addEventListener("drop", onFileDrop, true);
+
+    // Listen for progress updates from background (forwarded from offscreen OCR)
+    chrome.runtime.onMessage.addListener((msg) => {
+      if (msg.type === "REDACT_PROGRESS" && activeOverlay) {
+        activeOverlay.updateProgress(msg);
+      }
+    });
   }
+
+  // ── Security overlay (Shadow DOM) ─────────────────────────────────────────
+
+  let activeOverlay = null;
+
+  function createSecurityOverlay(fileNames) {
+    const host = document.createElement("div");
+    host.setAttribute("data-llss-overlay", "true");
+    host.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;z-index:2147483647;pointer-events:all;";
+
+    const shadow = host.attachShadow({ mode: "closed" });
+    shadow.innerHTML = `
+      <style>
+        :host { all: initial; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        .backdrop {
+          position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+          background: rgba(15, 23, 42, 0.65);
+          display: flex; align-items: center; justify-content: center;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        }
+
+        .card {
+          background: #fff; border-radius: 16px; padding: 32px 40px;
+          width: 400px; max-width: 90vw;
+          box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+          text-align: center;
+        }
+
+        .icon-container {
+          position: relative; width: 80px; height: 100px;
+          margin: 0 auto 20px; overflow: hidden;
+        }
+
+        .doc-icon {
+          width: 80px; height: 100px;
+          fill: #e2e8f0; stroke: #64748b; stroke-width: 1.5;
+        }
+
+        .scanner-line {
+          position: absolute; left: 8px; right: 8px; height: 3px;
+          background: linear-gradient(90deg, transparent, #3b82f6, #60a5fa, #3b82f6, transparent);
+          border-radius: 2px;
+          animation: scan 1.8s ease-in-out infinite;
+          box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+        }
+
+        @keyframes scan {
+          0%, 100% { top: 12px; opacity: 0.4; }
+          50% { top: 85px; opacity: 1; }
+        }
+
+        .title {
+          font-size: 18px; font-weight: 700; color: #1e293b;
+          margin-bottom: 4px;
+        }
+
+        .subtitle {
+          font-size: 13px; color: #64748b; margin-bottom: 20px;
+        }
+
+        .file-list {
+          list-style: none; text-align: left; margin-bottom: 16px;
+          max-height: 120px; overflow-y: auto;
+        }
+        .file-list li {
+          font-size: 12px; color: #475569; padding: 4px 8px;
+          border-radius: 4px; margin-bottom: 2px;
+          background: #f8fafc; white-space: nowrap;
+          overflow: hidden; text-overflow: ellipsis;
+        }
+        .file-list li.active { background: #dbeafe; color: #1e40af; font-weight: 500; }
+        .file-list li.done { color: #16a34a; }
+        .file-list li.done::before { content: "\\2713 "; }
+
+        .progress-track {
+          width: 100%; height: 6px; background: #e2e8f0;
+          border-radius: 3px; overflow: hidden; margin-bottom: 8px;
+        }
+        .progress-fill {
+          height: 100%; width: 0%; border-radius: 3px;
+          background: linear-gradient(90deg, #3b82f6, #60a5fa);
+          transition: width 0.3s ease;
+        }
+
+        .status-text {
+          font-size: 12px; color: #64748b; min-height: 18px;
+        }
+
+        .complete .scanner-line { display: none; }
+        .complete .doc-icon { fill: #d1fae5; stroke: #16a34a; }
+        .complete .title { color: #16a34a; }
+        .complete .progress-fill { width: 100% !important; background: #16a34a; }
+
+        .skip-btn {
+          margin-top: 12px; padding: 6px 16px;
+          font-size: 12px; color: #64748b; background: none;
+          border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer;
+        }
+        .skip-btn:hover { background: #f8fafc; }
+      </style>
+
+      <div class="backdrop">
+        <div class="card">
+          <div class="icon-container">
+            <svg class="doc-icon" viewBox="0 0 80 100">
+              <path d="M10 5 h40 l20 20 v70 a5 5 0 0 1 -5 5 H15 a5 5 0 0 1 -5 -5 V10 a5 5 0 0 1 5 -5z" />
+              <path d="M50 5 v15 a5 5 0 0 0 5 5 h15" fill="none" />
+              <line x1="22" y1="45" x2="58" y2="45" stroke-width="2" opacity="0.3" />
+              <line x1="22" y1="55" x2="52" y2="55" stroke-width="2" opacity="0.3" />
+              <line x1="22" y1="65" x2="45" y2="65" stroke-width="2" opacity="0.3" />
+              <line x1="22" y1="75" x2="55" y2="75" stroke-width="2" opacity="0.3" />
+            </svg>
+            <div class="scanner-line"></div>
+          </div>
+          <div class="title">Securing Documents</div>
+          <div class="subtitle">Scanning for personal information...</div>
+          <ul class="file-list">
+            ${fileNames.map((n) => `<li data-file="${n}">${n}</li>`).join("")}
+          </ul>
+          <div class="progress-track"><div class="progress-fill"></div></div>
+          <div class="status-text">Preparing...</div>
+          <button class="skip-btn">Skip &mdash; upload without redaction</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(host);
+
+    const card = shadow.querySelector(".card");
+    const progressFill = shadow.querySelector(".progress-fill");
+    const statusText = shadow.querySelector(".status-text");
+    const titleEl = shadow.querySelector(".title");
+    const subtitleEl = shadow.querySelector(".subtitle");
+    const skipBtn = shadow.querySelector(".skip-btn");
+    let skipped = false;
+    let _onSkip = null;
+
+    const api = {
+      /** Update progress from OCR_PROGRESS messages */
+      updateProgress(msg) {
+        if (!msg) return;
+        const { phase, currentPage, totalPages, completed } = msg;
+
+        if (phase === "rendering" && totalPages) {
+          const pct = Math.round((currentPage / totalPages) * 30); // Render = 0-30%
+          progressFill.style.width = pct + "%";
+          statusText.textContent = `Rendering page ${currentPage} of ${totalPages}...`;
+        } else if (phase === "ocr" && totalPages) {
+          const pct = 30 + Math.round(((completed || currentPage) / totalPages) * 50); // OCR = 30-80%
+          progressFill.style.width = pct + "%";
+          statusText.textContent = `OCR: page ${completed || currentPage} of ${totalPages}...`;
+        } else if (phase === "redacting" && totalPages) {
+          const pct = 80 + Math.round((currentPage / totalPages) * 15); // Redact = 80-95%
+          progressFill.style.width = pct + "%";
+          statusText.textContent = `Redacting page ${currentPage} of ${totalPages}...`;
+        } else if (phase === "ocr_complete" || phase === "complete") {
+          progressFill.style.width = "95%";
+          statusText.textContent = "Finalising...";
+        }
+      },
+
+      /** Update for multi-file queue progress */
+      updateFileProgress(fileName, fileIndex, totalFiles) {
+        statusText.textContent = `Processing ${fileName} (${fileIndex + 1}/${totalFiles})...`;
+        // Mark previous files as done
+        const items = shadow.querySelectorAll(".file-list li");
+        items.forEach((li, i) => {
+          li.classList.remove("active");
+          if (i < fileIndex) li.classList.add("done");
+          if (i === fileIndex) li.classList.add("active");
+        });
+        // Overall file-level progress
+        const basePct = Math.round((fileIndex / totalFiles) * 100);
+        progressFill.style.width = basePct + "%";
+      },
+
+      /** Mark a single file as done in the list */
+      markFileDone(fileName) {
+        const li = shadow.querySelector(`[data-file="${fileName}"]`);
+        if (li) { li.classList.remove("active"); li.classList.add("done"); }
+      },
+
+      /** Transition to "complete" state */
+      complete(matchCount) {
+        card.classList.add("complete");
+        titleEl.textContent = "Documents Secured";
+        subtitleEl.textContent = matchCount
+          ? `${matchCount} PII item(s) redacted`
+          : "No PII detected — files are clean";
+        progressFill.style.width = "100%";
+        statusText.textContent = "";
+        skipBtn.style.display = "none";
+
+        // Mark all files done
+        shadow.querySelectorAll(".file-list li").forEach((li) => li.classList.add("done"));
+
+        // Auto-dismiss after 1.5s
+        setTimeout(() => api.remove(), 1500);
+      },
+
+      /** Register skip callback */
+      onSkip(fn) { _onSkip = fn; },
+
+      /** Whether the user clicked skip */
+      get wasSkipped() { return skipped; },
+
+      /** Remove the overlay */
+      remove() { host.remove(); activeOverlay = null; },
+    };
+
+    skipBtn.addEventListener("click", () => {
+      skipped = true;
+      if (_onSkip) _onSkip();
+      api.remove();
+    });
+
+    activeOverlay = api;
+    return api;
+  }
+
+  // ── File input interception ───────────────────────────────────────────────
 
   async function onFileInputChange(e) {
     const input = e.target;
     if (input.type !== "file") return;
-    // Skip our own file inputs
     if (input.dataset.llssOwn === "true") return;
+    if (isRedactedDispatch) return; // Don't re-intercept our own dispatch
 
-    const files = input.files;
-    if (!files || files.length === 0) return;
+    const files = Array.from(input.files || []);
+    if (files.length === 0) return;
 
     const config = cachedSettings.uploadGuard || {};
-
-    // Check if any files are document types we can redact
-    const redactableFiles = Array.from(files).filter((f) => isRedactableFile(f));
+    const redactableFiles = files.filter((f) => isRedactableFile(f));
     if (redactableFiles.length === 0) return;
 
-    if (config.confirmBeforeUpload) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
+    // Block the event from reaching the target site's listeners
+    e.stopImmediatePropagation();
+    e.stopPropagation();
 
-      // Show confirmation
+    if (config.confirmBeforeUpload) {
       const confirmed = await showUploadConfirmation(redactableFiles);
       if (!confirmed) {
-        // Clear the input
-        input.value = "";
+        // User chose "Skip" — release the original files to the site
+        releaseFileInput(input, files);
         return;
       }
-
-      // Redact each file and show results
-      for (const file of redactableFiles) {
-        try {
-          const buffer = await file.arrayBuffer();
-          const data = Array.from(new Uint8Array(buffer));
-
-          const response = await chrome.runtime.sendMessage({
-            type: "REDACT_DOCUMENT",
-            fileData: data,
-            fileName: file.name,
-            mimeType: file.type,
-          });
-
-          if (response?.success) {
-            showResultOverlay(document.body, response, file.name);
-            chrome.runtime.sendMessage({ type: "RECORD_UPLOAD_INTERCEPT" });
-          }
-        } catch {
-          showToast(document.body, `Could not redact ${file.name}`);
-        }
-      }
-
-      // Clear the upload since we've intercepted it
-      input.value = "";
     }
+
+    // Show security overlay
+    const overlay = createSecurityOverlay(redactableFiles.map((f) => f.name));
+    let totalMatches = 0;
+    let skipRequested = false;
+    overlay.onSkip(() => { skipRequested = true; });
+
+    // Process files through the queue (max 2 concurrent)
+    const redactedFiles = [];
+    const nonRedactable = files.filter((f) => !isRedactableFile(f));
+
+    for (let i = 0; i < redactableFiles.length; i++) {
+      if (skipRequested) break;
+      const file = redactableFiles[i];
+      overlay.updateFileProgress(file.name, i, redactableFiles.length);
+
+      try {
+        const result = await processFileForRedaction(file);
+        if (result.redactedFile) {
+          redactedFiles.push(result.redactedFile);
+          totalMatches += result.matchCount || 0;
+        } else {
+          // No pixel redaction available — keep original
+          redactedFiles.push(file);
+        }
+        overlay.markFileDone(file.name);
+        chrome.runtime.sendMessage({ type: "RECORD_UPLOAD_INTERCEPT" });
+      } catch {
+        // On error, keep the original file
+        redactedFiles.push(file);
+        overlay.markFileDone(file.name);
+      }
+    }
+
+    if (skipRequested) {
+      // User skipped — release originals
+      releaseFileInput(input, files);
+      return;
+    }
+
+    overlay.complete(totalMatches);
+
+    // Replace the input's files with the redacted versions + any non-redactable files
+    const allFiles = [...redactedFiles, ...nonRedactable];
+    replaceFileInput(input, allFiles);
   }
+
+  // ── Drag-and-drop interception ────────────────────────────────────────────
 
   async function onFileDrop(e) {
     const config = cachedSettings.uploadGuard || {};
     if (!config.enabled) return;
     if (config.onlyOnAiSites && !isAiSite) return;
+    if (isRedactedDispatch) return;
 
-    const files = e.dataTransfer?.files;
-    if (!files || files.length === 0) return;
+    const files = Array.from(e.dataTransfer?.files || []);
+    if (files.length === 0) return;
 
-    const redactableFiles = Array.from(files).filter((f) => isRedactableFile(f));
+    const redactableFiles = files.filter((f) => isRedactableFile(f));
     if (redactableFiles.length === 0) return;
 
-    // Show warning toast
-    showToast(document.body, `${redactableFiles.length} file(s) detected — checking for PII...`);
+    // Block the drop — we'll re-dispatch with redacted files
+    e.stopImmediatePropagation();
+    e.stopPropagation();
+    e.preventDefault();
 
-    for (const file of redactableFiles) {
+    const overlay = createSecurityOverlay(redactableFiles.map((f) => f.name));
+    let totalMatches = 0;
+    let skipRequested = false;
+    overlay.onSkip(() => { skipRequested = true; });
+
+    const redactedFiles = [];
+    const nonRedactable = files.filter((f) => !isRedactableFile(f));
+
+    for (let i = 0; i < redactableFiles.length; i++) {
+      if (skipRequested) break;
+      const file = redactableFiles[i];
+      overlay.updateFileProgress(file.name, i, redactableFiles.length);
+
       try {
-        const buffer = await file.arrayBuffer();
-        const data = Array.from(new Uint8Array(buffer));
-
-        const response = await chrome.runtime.sendMessage({
-          type: "REDACT_DOCUMENT",
-          fileData: data,
-          fileName: file.name,
-          mimeType: file.type,
-        });
-
-        if (response?.success && response.matchCount > 0) {
-          showResultOverlay(document.body, response, file.name);
-          chrome.runtime.sendMessage({ type: "RECORD_UPLOAD_INTERCEPT" });
+        const result = await processFileForRedaction(file);
+        if (result.redactedFile) {
+          redactedFiles.push(result.redactedFile);
+          totalMatches += result.matchCount || 0;
+        } else {
+          redactedFiles.push(file);
         }
+        overlay.markFileDone(file.name);
+        chrome.runtime.sendMessage({ type: "RECORD_UPLOAD_INTERCEPT" });
       } catch {
-        // Don't block the drop, just warn
+        redactedFiles.push(file);
+        overlay.markFileDone(file.name);
       }
     }
+
+    if (skipRequested) {
+      // Re-dispatch the original drop
+      reDispatchDrop(e.target, files);
+      return;
+    }
+
+    overlay.complete(totalMatches);
+
+    // Re-dispatch the drop event with redacted files
+    const allFiles = [...redactedFiles, ...nonRedactable];
+    reDispatchDrop(e.target, allFiles);
   }
+
+  // ── File processing ───────────────────────────────────────────────────────
+
+  async function processFileForRedaction(file) {
+    const buffer = await file.arrayBuffer();
+    const data = Array.from(new Uint8Array(buffer));
+
+    const response = await chrome.runtime.sendMessage({
+      type: "REDACT_DOCUMENT",
+      fileData: data,
+      fileName: file.name,
+      mimeType: file.type,
+    });
+
+    if (!response?.success) {
+      throw new Error(response?.error || "Redaction failed");
+    }
+
+    let redactedFile = null;
+    if (response.redactedFile && response.redactedFile.length > 0) {
+      // Build a new File from the redacted bytes
+      const bytes = new Uint8Array(response.redactedFile);
+      const format = response.redactedFileFormat || file.type;
+      const ext = format.includes("pdf") ? ".pdf" : format.includes("png") ? ".png" : "";
+      const baseName = file.name.replace(/\.[^.]+$/, "");
+      redactedFile = new File([bytes], `${baseName}_secured${ext}`, { type: format });
+    }
+
+    return {
+      redactedFile,
+      matchCount: response.matchCount || 0,
+      response,
+    };
+  }
+
+  // ── File replacement ──────────────────────────────────────────────────────
+
+  /**
+   * Replace a file input's files with new File objects, then re-dispatch
+   * the change event so the target site's handler processes the secured files.
+   */
+  function replaceFileInput(input, files) {
+    try {
+      const dt = new DataTransfer();
+      for (const f of files) {
+        dt.items.add(f);
+      }
+      input.files = dt.files;
+
+      // Re-dispatch change event — our listener will see isRedactedDispatch=true and skip
+      isRedactedDispatch = true;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      // Small delay to ensure all synchronous handlers run before we reset
+      setTimeout(() => { isRedactedDispatch = false; }, 0);
+    } catch {
+      // DataTransfer not supported — show result overlay instead
+      showToast(document.body, "Files redacted. Download from the overlay.");
+    }
+  }
+
+  /**
+   * Release the original files to the target site (user chose "skip").
+   */
+  function releaseFileInput(input, files) {
+    isRedactedDispatch = true;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    setTimeout(() => { isRedactedDispatch = false; }, 0);
+  }
+
+  /**
+   * Re-dispatch a drop event with new files.
+   */
+  function reDispatchDrop(target, files) {
+    try {
+      const dt = new DataTransfer();
+      for (const f of files) {
+        dt.items.add(f);
+      }
+      isRedactedDispatch = true;
+      const newEvent = new DragEvent("drop", {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: dt,
+      });
+      target.dispatchEvent(newEvent);
+      setTimeout(() => { isRedactedDispatch = false; }, 0);
+    } catch {
+      // DragEvent construction not supported — show toast
+      showToast(document.body, "Files redacted. Drag again to upload the secured versions.");
+    }
+  }
+
+  // ── File type detection ───────────────────────────────────────────────────
 
   function isRedactableFile(file) {
     const ext = "." + (file.name || "").split(".").pop().toLowerCase();
     const redactableExts = [
       ".docx", ".doc", ".xlsx", ".xls", ".pdf", ".html", ".htm",
       ".md", ".markdown", ".txt", ".csv",
+      ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".tif",
     ];
     return redactableExts.includes(ext);
   }
+
+  // ── Upload confirmation dialog ────────────────────────────────────────────
 
   function showUploadConfirmation(files) {
     return new Promise((resolve) => {

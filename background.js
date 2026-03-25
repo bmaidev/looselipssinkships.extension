@@ -139,6 +139,12 @@ const offscreenProcessor = {
   applyRedactions: (data) => sendToOffscreen('APPLY_REDACTIONS', data),
 };
 
+// ── Progress forwarding ─────────────────────────────────────────────────────
+// Track which tab is currently processing, so we can forward OCR_PROGRESS
+// messages from the offscreen document to the right content script.
+
+let processingTabId = null;
+
 // ── Idle timer ──────────────────────────────────────────────────────────────
 
 let idleTimer = null;
@@ -258,11 +264,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         ? message.fileData
         : new Uint8Array(message.fileData).buffer;
 
+      // Track the requesting tab so OCR_PROGRESS messages can be forwarded
+      processingTabId = sender.tab?.id || null;
+
       handleRedactDocument(buffer, message.fileName, message.mimeType, {
         forceProvider: message.forceProvider,
         forceTier: message.forceTier,
       })
-        .then((result) =>
+        .then((result) => {
+          processingTabId = null;
           sendResponse({
             success: true,
             redacted: result.redacted,
@@ -273,12 +283,27 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             metadata: result.metadata,
             redactedFile: result.redactedFile || null,
             redactedFileFormat: result.redactedFileFormat || null,
-          })
-        )
-        .catch((err) =>
-          sendResponse({ success: false, error: err.message })
-        );
+          });
+        })
+        .catch((err) => {
+          processingTabId = null;
+          sendResponse({ success: false, error: err.message });
+        });
       return true;
+    }
+
+    case "OCR_PROGRESS": {
+      // Forwarded from offscreen document → content script
+      if (processingTabId) {
+        chrome.tabs.sendMessage(processingTabId, {
+          type: "REDACT_PROGRESS",
+          phase: message.phase,
+          currentPage: message.currentPage,
+          totalPages: message.totalPages,
+          completed: message.completed,
+        }).catch(() => {}); // Tab may have closed
+      }
+      return false;
     }
 
     case "GET_SETTINGS": {

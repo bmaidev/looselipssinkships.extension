@@ -22,6 +22,7 @@ Content Input (text / document / upload)
 │  - Auto-redact on type/paste                     │
 │  - Submit interception (Enter, forms, buttons)   │
 │  - Upload interception (file inputs, drag-drop)  │
+│  - Security Handshake (Shadow DOM overlay)       │
 └──────────┬───────────────────────────────────────┘
            │
            ▼
@@ -40,12 +41,37 @@ Content Input (text / document / upload)
     │ Regex     │ │ TGI,    │ │ Microsoft   │
     │ Engine    │ │ custom) │ │ Purview DLP │
     │           │ │         │ │             │
-    │ Vector    │ │         │ │             │
-    │ Names     │ │         │ │             │
+    │ Vector    │ │ OCR     │ │             │
+    │ Names     │ │ Extract │ │             │
+    │           │ │ Server  │ │             │
+    │ PDF/Image │ │         │ │             │
+    │ OCR       │ │         │ │             │
     └───────────┘ └─────────┘ └─────────────┘
 ```
 
 ## Features
+
+### PDF & Image Redaction (Provably Secure)
+Local OCR-based redaction for PDFs and images. Uses image-based flattening — there is **no hidden text layer** in the output, so copy-paste / select-all cannot recover redacted content.
+
+- **PDF rendering** — pdf.js renders each page to a canvas image at 2× scale.
+- **OCR extraction** — Tesseract.js extracts text + word-level bounding boxes.
+- **PII detection** — Existing pipeline (Gemini Nano / regex / hosted) finds PII in the extracted text.
+- **Pixel redaction** — Black rectangles drawn at the bounding box coordinates on the canvas.
+- **PDF reconstruction** — Redacted page images assembled into a new image-only PDF.
+- **Worker pool** — 4 parallel Tesseract.js workers for documents with 4+ pages (~4× speedup).
+- **Chunked rendering** — Pages rendered in groups of 5, canvases released after OCR, re-rendered only for redaction (memory-efficient for 50-page PDFs).
+- **Optional OCR container** — Self-hosted FastAPI + Tesseract 5 + Poppler for server-grade accuracy (see [OCR Container Setup](#ocr-container-setup)).
+
+### Security Handshake (Visual Interception)
+When a user uploads a file, the extension performs a "Security Handshake" — intercepting the upload before the target site sees it.
+
+- **Shadow DOM overlay** — Closed shadow root prevents style leakage. Shows a document icon with scanning laser-line animation.
+- **Event blocking** — `stopImmediatePropagation()` in capture phase blocks the site's change/drop handlers.
+- **File replacement** — After redaction, a new `File` object is created from the redacted bytes and injected into the original input via `DataTransfer` API. The target site receives the secured file transparently.
+- **Progress reporting** — Real-time render %, OCR %, and redaction % per page.
+- **Skip button** — Users can bypass redaction at any time.
+- **Multi-file queue** — `AsyncQueue` with bounded concurrency (max 2 active files) prevents CPU pegging on bulk drops.
 
 ### AI Chat Guard
 Automatically protects against PII being submitted to AI chat services.
@@ -74,11 +100,12 @@ Intercepts form submissions and send actions to ensure redaction is complete.
 - **In-flight protection** — Blocks submission while any redaction is still processing.
 
 ### Upload Interception
-Intercepts file uploads to check documents for PII before they leave the page.
-- **File input monitoring** — Catches `<input type="file">` changes.
-- **Drag-and-drop detection** — Monitors drop events for document files.
+Intercepts file uploads to redact documents before they leave the page.
+- **File input monitoring** — Catches `<input type="file">` changes and blocks propagation.
+- **Drag-and-drop interception** — Captures drop events with `preventDefault()` and `stopImmediatePropagation()`.
+- **File replacement** — Secured files injected into the original input via `DataTransfer`, then the event is re-dispatched.
 - **Confirmation dialog** — "Check & Redact" or "Skip (Upload as-is)".
-- **Supports** — DOCX, XLSX, PDF, HTML, Markdown, TXT, CSV files.
+- **Supports** — DOCX, XLSX, PDF, HTML, Markdown, TXT, CSV, PNG, JPG, GIF, WebP, BMP, TIFF.
 
 ### Detection Engines
 - **Gemini Nano (Local AI)** — Chrome's built-in on-device model. Zero network calls.
@@ -93,8 +120,8 @@ Intercepts file uploads to check documents for PII before they leave the page.
 - **Excel (.xlsx)** — Local spreadsheet parsing with shared strings support.
 - **HTML** — DOM-based text extraction with script/style stripping.
 - **Markdown** — Formatting-aware text extraction.
-- **Images** — Routes to hosted/cloud providers with OCR capability.
-- **PDF** — Routes to hosted/cloud providers for extraction.
+- **PDF** — Local OCR via pdf.js + Tesseract.js in Offscreen Document. Image-based flattening for provably secure redaction.
+- **Images** — Local OCR via Tesseract.js. Pixel-level redaction on canvas.
 
 ### 17 Built-in PII Types (Australian Focus)
 | Category | Types |
@@ -108,6 +135,7 @@ Intercepts file uploads to check documents for PII before they leave the page.
 ### Enterprise Features
 - **Provider hierarchy** — Local → Hosted → Cloud with automatic fallback.
 - **Multiple hosted providers** — Connect several organisation-hosted models simultaneously.
+- **OCR Extract server** — Optional containerised Tesseract 5 + Poppler for high-accuracy OCR.
 - **Azure PII** — Full Azure AI Language integration with Australian entity categories.
 - **Purview DLP** — Microsoft 365 sensitive information type detection.
 - **Belt-and-suspenders mode** — Run regex after AI for extra safety.
@@ -123,8 +151,33 @@ Intercepts file uploads to check documents for PII before they leave the page.
 4. Click **Load unpacked** and select the extension directory.
 5. The shield icon appears in the toolbar.
 
+### Vendor Dependencies (PDF/Image Support)
+
+PDF and image redaction require pdf.js and Tesseract.js. Install them with:
+
+```bash
+chmod +x vendor/setup.sh
+./vendor/setup.sh
+```
+
+This downloads ~15MB of vendor files (pdf.js, Tesseract.js WASM core, and English OCR trained data). The extension works without these files — PDF/image processing falls back to hosted/cloud providers.
+
+### OCR Container Setup
+
+For agencies wanting server-grade OCR accuracy or batch processing:
+
+```bash
+cd server/
+docker-compose up -d
+```
+
+Then in extension settings: **Hosted Providers** → Add new → **API Mode: OCR Extract Server** → Endpoint: `http://localhost:8000`.
+
+The container only extracts text + bounding boxes. All PII detection and redaction stays in the browser.
+
 **Requirements:**
 - Chrome 128+ (for Gemini Nano, Chrome 136+ recommended)
+- For PDF/image: run `vendor/setup.sh` (or configure hosted/cloud OCR)
 - For Azure/Purview: valid Azure subscription and credentials
 - For hosted models: network access to your organisation's endpoint
 
@@ -157,20 +210,21 @@ Off globally by default. Auto-activates on AI chat sites when AI Chat Guard is e
 2. Under **Processing Providers**, configure your providers:
    - Enable/configure **Azure AI Language PII Detection** with your endpoint and API key.
    - Enable/configure **Microsoft Purview DLP** with your tenant ID and app registration.
-   - Add **Hosted Providers** for organisation-hosted models (supports OpenAI-compatible APIs and custom PII detection APIs).
+   - Add **Hosted Providers** for organisation-hosted models (supports OpenAI-compatible APIs, custom PII detection APIs, and OCR Extract servers).
 3. Set **Detection Mode** to "Auto" for progressive local-first routing.
 4. Save settings. Providers reinitialise automatically.
 
 ### Document Upload
-Enable "Redact File" buttons in settings to upload documents directly from any text field on any webpage. Extracted text is redacted through the same pipeline.
+Enable "Redact File" buttons in settings to upload documents directly from any text field on any webpage. Extracted text is redacted through the same pipeline. PDFs and images are processed via local OCR (requires vendor setup) or hosted/cloud providers.
 
 ## File Structure
 
 ```
 ├── manifest.json                    # Chrome extension manifest v3
-├── background.js                    # Service worker — message routing + providers
-├── content.js                       # Content script — UI, guards, interception
+├── background.js                    # Service worker — message routing, providers, offscreen mgmt
+├── content.js                       # Content script — UI, guards, interception, Shadow DOM overlay
 ├── content.css                      # Injected styles (buttons, banners, overlays)
+├── offscreen.html / offscreen.js    # Offscreen Document — Canvas/WASM for PDF/image processing
 ├── popup.html / popup.js            # Toolbar popup (status, stats, providers)
 ├── options.html / options.js / .css # Full settings page
 ├── lib/
@@ -188,18 +242,34 @@ Enable "Redact File" buttons in settings to upload documents directly from any t
 │   │   ├── regex-provider.js        # Regex + vector (always available)
 │   │   ├── azure-pii-provider.js    # Azure AI Language PII Detection
 │   │   ├── purview-provider.js      # Microsoft Purview DLP
-│   │   └── hosted-model-provider.js # Organisation-hosted models
+│   │   └── hosted-model-provider.js # Org-hosted models + OCR Extract
 │   └── documents/
-│       └── document-processor.js    # File parsing (DOCX, XLSX, HTML, MD)
+│       ├── document-processor.js    # File parsing (DOCX, XLSX, HTML, MD)
+│       ├── pdf-renderer.js          # pdf.js wrapper — PDF pages to canvas
+│       ├── ocr-processor.js         # Tesseract.js — OCR with worker pool
+│       ├── pixel-redactor.js        # Canvas redaction + PDF reconstruction
+│       └── async-queue.js           # FIFO task queue with concurrency control
+├── vendor/
+│   ├── setup.sh                     # Downloads pdf.js + Tesseract.js
+│   └── tesseract/                   # Tesseract.js WASM + trained data
+├── server/
+│   ├── Dockerfile                   # OCR container (Tesseract 5 + Poppler)
+│   ├── main.py                      # FastAPI — POST /extract endpoint
+│   ├── docker-compose.yml           # One-command deployment
+│   └── requirements.txt             # Python dependencies
 ├── tests/
-│   ├── site-filter.test.js          # URL matching, AI detection, protection status
+│   ├── site-filter.test.js
 │   ├── provider-registry.test.js
 │   ├── document-processor.test.js
 │   ├── pipeline.test.js
 │   ├── regex-engine.test.js
 │   ├── vector-engine.test.js
 │   ├── pii-types.test.js
-│   └── settings.test.js
+│   ├── settings.test.js
+│   ├── pixel-redactor.test.js       # PII→bbox mapping, PDF builder
+│   ├── pdf-renderer.test.js
+│   ├── ocr-processor.test.js        # Worker pool exports
+│   └── async-queue.test.js          # Concurrency, FIFO, callbacks
 └── icons/
 ```
 
@@ -207,7 +277,7 @@ Enable "Redact File" buttons in settings to upload documents directly from any t
 
 ```bash
 npm install
-npm test              # Run all 173 tests
+npm test              # Run all 203 tests
 npm run test:watch    # Watch mode
 npm run test:coverage # Coverage report
 ```
@@ -256,9 +326,11 @@ Settings are stored in `chrome.storage.local` with automatic migration across ve
 - **No telemetry.** The extension collects no analytics and phones home to nowhere.
 - **Enterprise providers are opt-in.** Azure, Purview, and hosted model connections only activate when explicitly configured.
 - **Credentials stored locally.** API keys are saved in `chrome.storage.local` (not synced).
-- **Document processing is local.** DOCX, XLSX, HTML, and Markdown are parsed in the browser using built-in APIs. Only images and PDFs require a provider with those capabilities.
+- **Document processing is local.** DOCX, XLSX, HTML, Markdown, PDF, and images are all processed in the browser. PDF/image OCR runs in an Offscreen Document using WASM — no document content leaves the browser unless a hosted/cloud provider is explicitly configured.
+- **Provably secure redaction.** PDF/image output uses image-based flattening — there is no hidden text layer. The `pdf-lib` overlay approach (which 65% of government "redacted" PDFs use) is deliberately avoided.
 - **AI Chat Guard protects outbound data.** Redaction happens before text leaves the text field, not after.
 - **Submit interception is pre-send.** The extension blocks the submit action, redacts, then re-dispatches — content is never sent unredacted.
+- **Upload interception is pre-upload.** Files are intercepted, redacted, and replaced before the target site's handlers run. The original unredacted file never reaches the site's JavaScript.
 
 ## License
 

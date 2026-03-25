@@ -8,7 +8,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      width: 340px;
+      width: 360px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: #f7f8fa;
       color: #1a1a2e;
@@ -27,6 +27,15 @@
       margin-bottom: 10px;
     }
 
+    .card-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #9ca3af;
+      margin-bottom: 8px;
+    }
+
     .status-row { display: flex; align-items: center; gap: 10px; }
 
     .status-dot {
@@ -43,12 +52,38 @@
     .status-label { font-size: 13px; font-weight: 600; }
     .status-detail { font-size: 11px; color: #6b7280; margin-top: 6px; }
 
+    .providers-list {
+      margin-top: 8px;
+      font-size: 11px;
+    }
+
+    .provider-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 0;
+    }
+
+    .provider-dot {
+      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+    }
+
+    .provider-dot.on { background: #22c55e; }
+    .provider-dot.off { background: #d1d5db; }
+
+    .provider-name { color: #374151; }
+    .provider-tier {
+      font-size: 9px;
+      color: #9ca3af;
+      margin-left: auto;
+    }
+
     .stats-grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 4px;
     }
     .stat-item { text-align: center; }
-    .stat-value { font-size: 18px; font-weight: 700; color: #1a3a5c; }
-    .stat-label { font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 16px; font-weight: 700; color: #1a3a5c; }
+    .stat-label { font-size: 9px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.4px; }
 
     .mode-badge {
       display: inline-block; padding: 2px 8px; font-size: 10px; font-weight: 600;
@@ -78,19 +113,21 @@
 <body>
   <div class="header">
     <h1>Loose Lips Sink Ships</h1>
-    <p>On-device PII redaction</p>
+    <p>Enterprise PII redaction — local first</p>
   </div>
 
   <div class="card">
     <div class="status-row">
       <span id="status-dot" class="status-dot checking"></span>
-      <span id="status-label" class="status-label">Checking model status...</span>
+      <span id="status-label" class="status-label">Checking providers...</span>
     </div>
     <div id="status-detail" class="status-detail"></div>
     <div id="mode-badge-container"></div>
+    <div id="providers-list" class="providers-list"></div>
   </div>
 
   <div class="card">
+    <div class="card-title">Activity</div>
     <div class="stats-grid">
       <div class="stat-item">
         <div id="stat-redactions" class="stat-value">-</div>
@@ -99,6 +136,10 @@
       <div class="stat-item">
         <div id="stat-matches" class="stat-value">-</div>
         <div class="stat-label">PII Found</div>
+      </div>
+      <div class="stat-item">
+        <div id="stat-docs" class="stat-value">-</div>
+        <div class="stat-label">Documents</div>
       </div>
     </div>
   </div>
@@ -109,7 +150,7 @@
   </div>
 
   <p class="info">
-    All processing is performed locally. No data ever leaves your device.
+    Local-first processing. Enterprise providers route through your organisation's infrastructure.
   </p>
 
   <script src="popup.js"></script>

@@ -33,6 +33,103 @@
       </div>
     </section>
 
+    <!-- Provider Configuration -->
+    <section class="card">
+      <h2>Processing Providers</h2>
+      <p class="help">Configure where PII redaction is processed. Local providers are used first — hosted and cloud providers are used for advanced processing or when local is unavailable.</p>
+
+      <div class="provider-tier">
+        <div class="tier-label">Local (On-Device)</div>
+        <div class="provider-item">
+          <label class="checkbox-label">
+            <input type="checkbox" id="provider-local-ai">
+            <span><strong>Gemini Nano (Chrome AI)</strong> — on-device AI model, zero network calls</span>
+          </label>
+        </div>
+        <div class="provider-item">
+          <div class="provider-info-row">
+            <span class="provider-always-on">Regex Engine — always active as fallback</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="provider-tier">
+        <div class="tier-label">Hosted (Organisation Infrastructure)</div>
+        <div id="hosted-providers-list"></div>
+        <button id="btn-add-hosted" class="btn secondary">+ Add Hosted Provider</button>
+      </div>
+
+      <div class="provider-tier">
+        <div class="tier-label">Cloud (Azure / Microsoft 365)</div>
+        <div class="provider-item">
+          <label class="checkbox-label">
+            <input type="checkbox" id="provider-azure-pii">
+            <span><strong>Azure AI Language PII Detection</strong></span>
+          </label>
+          <div class="provider-config" id="azure-config">
+            <div class="form-group">
+              <label>Endpoint URL</label>
+              <input type="text" id="azure-endpoint" class="input" placeholder="https://yourinstance.cognitiveservices.azure.com">
+            </div>
+            <div class="form-group">
+              <label>API Key</label>
+              <input type="password" id="azure-apikey" class="input" placeholder="Subscription key">
+            </div>
+            <div class="form-row">
+              <div class="form-group" style="flex:1">
+                <label>Language</label>
+                <input type="text" id="azure-language" class="input input-sm" value="en">
+              </div>
+              <div class="form-group" style="flex:1">
+                <label>Domain</label>
+                <select id="azure-domain" class="input">
+                  <option value="none">General</option>
+                  <option value="phi">Protected Health Info</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn secondary btn-sm" id="btn-test-azure">Test Connection</button>
+            <span id="azure-test-result" class="test-inline-result"></span>
+          </div>
+        </div>
+
+        <div class="provider-item">
+          <label class="checkbox-label">
+            <input type="checkbox" id="provider-purview">
+            <span><strong>Microsoft Purview DLP</strong> — M365 sensitive information types</span>
+          </label>
+          <div class="provider-config" id="purview-config">
+            <div class="form-group">
+              <label>Tenant ID</label>
+              <input type="text" id="purview-tenant" class="input" placeholder="Azure AD tenant GUID">
+            </div>
+            <div class="form-group">
+              <label>Client ID (App Registration)</label>
+              <input type="text" id="purview-clientid" class="input" placeholder="Application (client) ID">
+            </div>
+            <div class="form-group">
+              <label>Client Secret</label>
+              <input type="password" id="purview-secret" class="input" placeholder="Client secret value">
+            </div>
+            <button class="btn secondary btn-sm" id="btn-test-purview">Test Connection</button>
+            <span id="purview-test-result" class="test-inline-result"></span>
+          </div>
+        </div>
+      </div>
+
+      <div id="provider-status" class="provider-status"></div>
+    </section>
+
+    <!-- Document Upload -->
+    <section class="card">
+      <h2>Document Processing</h2>
+      <p class="help">Enable file upload buttons alongside text redaction. Supports Word (.docx), Excel (.xlsx), HTML, Markdown, and images (requires hosted/cloud provider for OCR).</p>
+      <label class="checkbox-label">
+        <input type="checkbox" id="enableDocumentUpload">
+        <span>Show "Redact File" upload button on text fields</span>
+      </label>
+    </section>
+
     <!-- Fallback Options -->
     <section class="card">
       <h2>Fallback Options</h2>
@@ -134,6 +231,64 @@
       <div class="modal-actions">
         <button id="modal-cancel" class="btn secondary">Cancel</button>
         <button id="modal-save" class="btn primary">Save Rule</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for hosted provider configuration -->
+  <div id="hosted-modal-overlay" class="modal-overlay hidden">
+    <div class="modal modal-wide">
+      <h3 id="hosted-modal-title">Add Hosted Provider</h3>
+      <div class="form-group">
+        <label>Display Name</label>
+        <input type="text" id="hosted-name" class="input" placeholder="e.g. Agency LLM (On-Prem)">
+      </div>
+      <div class="form-group">
+        <label>Endpoint URL</label>
+        <input type="text" id="hosted-endpoint" class="input" placeholder="https://internal-llm.agency.gov.au/v1">
+      </div>
+      <div class="form-group">
+        <label>API Key / Token</label>
+        <input type="password" id="hosted-apikey" class="input" placeholder="Bearer token or API key">
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label>API Mode</label>
+          <select id="hosted-apimode" class="input">
+            <option value="openai">OpenAI-Compatible (vLLM, TGI, Ollama, Azure OpenAI)</option>
+            <option value="pii_api">Custom PII Detection API</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>Model Name</label>
+          <input type="text" id="hosted-model" class="input" placeholder="e.g. llama-3-70b">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label>Timeout (ms)</label>
+          <input type="number" id="hosted-timeout" class="input input-sm" value="30000">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>Priority (lower = preferred)</label>
+          <input type="number" id="hosted-priority" class="input input-sm" value="30">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Capabilities</label>
+        <div class="checkbox-group-inline">
+          <label class="checkbox-label"><input type="checkbox" id="hosted-cap-text" checked> Text</label>
+          <label class="checkbox-label"><input type="checkbox" id="hosted-cap-docx"> Documents (DOCX)</label>
+          <label class="checkbox-label"><input type="checkbox" id="hosted-cap-xlsx"> Spreadsheets (XLSX)</label>
+          <label class="checkbox-label"><input type="checkbox" id="hosted-cap-image"> Images (OCR)</label>
+          <label class="checkbox-label"><input type="checkbox" id="hosted-cap-pdf"> PDF</label>
+        </div>
+      </div>
+      <div id="hosted-modal-errors" class="error-text"></div>
+      <div class="modal-actions">
+        <button id="hosted-modal-cancel" class="btn secondary">Cancel</button>
+        <button id="hosted-modal-test" class="btn secondary">Test Connection</button>
+        <button id="hosted-modal-save" class="btn primary">Save Provider</button>
       </div>
     </div>
   </div>

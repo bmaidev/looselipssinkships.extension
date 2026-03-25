@@ -113,3 +113,100 @@
   0%, 80% { opacity: 1; }
   100%    { opacity: 0; }
 }
+
+/* Upload button — positioned next to the redact button */
+.llss-upload-btn {
+  right: 110px;
+  background: #2c5f3f;
+  border-color: #1a3a28;
+}
+
+.llss-upload-btn:hover {
+  background: #387a50;
+}
+
+.llss-upload-btn.llss-ce-btn {
+  right: 106px;
+}
+
+/* Document result overlay */
+.llss-result-overlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100000;
+  width: 90vw;
+  max-width: 700px;
+  max-height: 80vh;
+  background: #fff;
+  border: 2px solid #1a3a5c;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.llss-result-header {
+  padding: 12px 16px;
+  background: #1a3a5c;
+  color: #fff;
+  border-radius: 6px 6px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.llss-result-meta {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.llss-result-content {
+  flex: 1;
+  padding: 16px;
+  margin: 0;
+  overflow: auto;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #333;
+  background: #f9fafb;
+  max-height: 60vh;
+}
+
+.llss-result-actions {
+  padding: 10px 16px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  border-top: 1px solid #e5e7eb;
+}
+
+.llss-result-btn {
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #fff;
+  color: #1a3a5c;
+}
+
+.llss-result-btn:hover {
+  background: #f3f4f6;
+}
+
+.llss-result-btn-close {
+  background: #1a3a5c;
+  color: #fff;
+  border-color: #0f2a44;
+}
+
+.llss-result-btn-close:hover {
+  background: #244e78;
+}

@@ -12,7 +12,7 @@ describe("DEFAULT_SETTINGS", () => {
     expect(DEFAULT_SETTINGS.vectorThreshold).toBe(0.45);
     expect(DEFAULT_SETTINGS.showRedactButton).toBe(true);
     expect(DEFAULT_SETTINGS.sessionTimeoutMinutes).toBe(5);
-    expect(DEFAULT_SETTINGS.schemaVersion).toBe(1);
+    expect(DEFAULT_SETTINGS.schemaVersion).toBe(2);
   });
 
   test("customPiiTypes defaults to empty array", () => {

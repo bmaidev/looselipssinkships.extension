@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Loose Lips Sink Ships",
-  "version": "2.0.0",
-  "description": "Local-only PII redaction powered by Chrome's built-in Gemini Nano. Regex and heuristic fallback when AI is unavailable. No data ever leaves your device.",
+  "version": "3.0.0",
+  "description": "Enterprise PII redaction with local-first processing. Supports Chrome Gemini Nano, regex fallback, Azure AI Language, Microsoft Purview, and organisation-hosted models. Document processing for Word, Excel, HTML, Markdown, and images.",
   "permissions": [
     "storage",
     "activeTab",

@@ -1,10 +1,11 @@
 // options.js — Settings page logic for managing PII types, detection mode,
-// fallback options, and viewing statistics.
+// provider configuration, fallback options, and viewing statistics.
 
 // PII_CATEGORIES and DEFAULT_PII_TYPES are loaded from lib/pii-types.js via <script> tag.
 
 let currentSettings = null;
 let editingCustomIndex = -1; // -1 = adding new, >= 0 = editing existing
+let editingHostedIndex = -1;
 
 // ── Load settings and populate UI ──────────────────────────────────────────
 
@@ -12,8 +13,12 @@ async function init() {
   return new Promise((resolve) => {
     chrome.runtime.sendMessage({ type: "GET_SETTINGS" }, (response) => {
       currentSettings = response?.settings || {};
+      // Ensure providers object exists
+      if (!currentSettings.providers) currentSettings.providers = {};
+      if (!currentSettings.providers.hosted) currentSettings.providers.hosted = [];
       populateUI();
       loadStats();
+      loadProviderStatus();
       resolve();
     });
   });
@@ -33,6 +38,7 @@ function populateUI() {
   document.getElementById("regexAfterAi").checked = !!s.regexAfterAi;
   document.getElementById("showRedactButton").checked = s.showRedactButton !== false;
   document.getElementById("enableContentEditable").checked = s.enableContentEditable !== false;
+  document.getElementById("enableDocumentUpload").checked = s.enableDocumentUpload !== false;
 
   // Sliders.
   const thresholdSlider = document.getElementById("vectorThreshold");
@@ -43,8 +49,197 @@ function populateUI() {
   timeoutSlider.value = s.sessionTimeoutMinutes || 5;
   document.getElementById("timeoutValue").textContent = `${timeoutSlider.value} min`;
 
+  // Provider configuration.
+  const providers = s.providers || {};
+  document.getElementById("provider-local-ai").checked = providers.local_ai?.enabled !== false;
+
+  // Azure PII
+  document.getElementById("provider-azure-pii").checked = providers.azure_pii?.enabled || false;
+  document.getElementById("azure-endpoint").value = providers.azure_pii?.endpoint || "";
+  document.getElementById("azure-apikey").value = providers.azure_pii?.apiKey || "";
+  document.getElementById("azure-language").value = providers.azure_pii?.language || "en";
+  const azureDomain = document.getElementById("azure-domain");
+  if (azureDomain) azureDomain.value = providers.azure_pii?.domain || "none";
+
+  // Purview
+  document.getElementById("provider-purview").checked = providers.purview?.enabled || false;
+  document.getElementById("purview-tenant").value = providers.purview?.tenantId || "";
+  document.getElementById("purview-clientid").value = providers.purview?.clientId || "";
+  document.getElementById("purview-secret").value = providers.purview?.clientSecret || "";
+
+  // Hosted providers list.
+  renderHostedProviders();
+
   // PII types list.
   renderPiiTypes();
+}
+
+// ── Provider Status ──────────────────────────────────────────────────────────
+
+function loadProviderStatus() {
+  chrome.runtime.sendMessage({ type: "GET_PROVIDERS" }, (response) => {
+    const providers = response?.providers || [];
+    const container = document.getElementById("provider-status");
+    if (providers.length === 0) {
+      container.innerHTML = '<div class="help">No provider status available.</div>';
+      return;
+    }
+    container.innerHTML = providers.map(p => {
+      const dot = p.available ? "green" : (p.status === "disabled" ? "gray" : "red");
+      const tierIcon = p.tier === "local" ? "🏠" : p.tier === "hosted" ? "🏢" : "☁️";
+      return `<div class="provider-status-item">
+        <span class="status-dot status-${dot}"></span>
+        <span>${tierIcon} <strong>${escapeHtml(p.name)}</strong></span>
+        <span class="provider-status-detail">${escapeHtml(p.detail || p.status)}</span>
+      </div>`;
+    }).join("");
+  });
+}
+
+// ── Hosted Providers ────────────────────────────────────────────────────────
+
+function renderHostedProviders() {
+  const container = document.getElementById("hosted-providers-list");
+  const hostedList = currentSettings.providers?.hosted || [];
+  container.innerHTML = "";
+
+  if (hostedList.length === 0) {
+    container.innerHTML = '<div class="help">No hosted providers configured. Add one to connect to your organisation\'s infrastructure.</div>';
+    return;
+  }
+
+  for (let i = 0; i < hostedList.length; i++) {
+    const h = hostedList[i];
+    const item = document.createElement("div");
+    item.className = "hosted-provider-item";
+    item.innerHTML = `
+      <label class="checkbox-label">
+        <input type="checkbox" class="hosted-toggle" data-index="${i}" ${h.enabled ? "checked" : ""}>
+        <span>
+          <strong>${escapeHtml(h.displayName || h.providerId)}</strong>
+          <span class="hosted-detail">${escapeHtml(h.endpoint || "")} · ${h.apiMode || "openai"}</span>
+        </span>
+      </label>
+      <div class="pii-type-actions">
+        <button class="hosted-edit" data-index="${i}">Edit</button>
+        <button class="hosted-delete delete" data-index="${i}">Delete</button>
+      </div>
+    `;
+    container.appendChild(item);
+  }
+
+  // Event delegation
+  container.querySelectorAll(".hosted-toggle").forEach(el => {
+    el.addEventListener("change", (e) => {
+      const idx = parseInt(e.target.dataset.index);
+      currentSettings.providers.hosted[idx].enabled = e.target.checked;
+    });
+  });
+  container.querySelectorAll(".hosted-edit").forEach(el => {
+    el.addEventListener("click", (e) => {
+      openHostedModal(parseInt(e.target.dataset.index));
+    });
+  });
+  container.querySelectorAll(".hosted-delete").forEach(el => {
+    el.addEventListener("click", (e) => {
+      currentSettings.providers.hosted.splice(parseInt(e.target.dataset.index), 1);
+      renderHostedProviders();
+    });
+  });
+}
+
+function openHostedModal(index) {
+  editingHostedIndex = index === undefined ? -1 : index;
+  const overlay = document.getElementById("hosted-modal-overlay");
+  const title = document.getElementById("hosted-modal-title");
+
+  if (editingHostedIndex >= 0) {
+    title.textContent = "Edit Hosted Provider";
+    const h = currentSettings.providers.hosted[editingHostedIndex];
+    document.getElementById("hosted-name").value = h.displayName || "";
+    document.getElementById("hosted-endpoint").value = h.endpoint || "";
+    document.getElementById("hosted-apikey").value = h.apiKey || "";
+    document.getElementById("hosted-apimode").value = h.apiMode || "openai";
+    document.getElementById("hosted-model").value = h.model || "";
+    document.getElementById("hosted-timeout").value = h.timeout || 30000;
+    document.getElementById("hosted-priority").value = h.priority || 30;
+    const caps = h.capabilities || ["text"];
+    document.getElementById("hosted-cap-text").checked = caps.includes("text");
+    document.getElementById("hosted-cap-docx").checked = caps.includes("docx");
+    document.getElementById("hosted-cap-xlsx").checked = caps.includes("xlsx");
+    document.getElementById("hosted-cap-image").checked = caps.includes("image");
+    document.getElementById("hosted-cap-pdf").checked = caps.includes("pdf");
+  } else {
+    title.textContent = "Add Hosted Provider";
+    document.getElementById("hosted-name").value = "";
+    document.getElementById("hosted-endpoint").value = "";
+    document.getElementById("hosted-apikey").value = "";
+    document.getElementById("hosted-apimode").value = "openai";
+    document.getElementById("hosted-model").value = "";
+    document.getElementById("hosted-timeout").value = "30000";
+    document.getElementById("hosted-priority").value = "30";
+    document.getElementById("hosted-cap-text").checked = true;
+    document.getElementById("hosted-cap-docx").checked = false;
+    document.getElementById("hosted-cap-xlsx").checked = false;
+    document.getElementById("hosted-cap-image").checked = false;
+    document.getElementById("hosted-cap-pdf").checked = false;
+  }
+
+  document.getElementById("hosted-modal-errors").textContent = "";
+  overlay.classList.remove("hidden");
+}
+
+function closeHostedModal() {
+  document.getElementById("hosted-modal-overlay").classList.add("hidden");
+  editingHostedIndex = -1;
+}
+
+function saveHostedModal() {
+  const name = document.getElementById("hosted-name").value.trim();
+  const endpoint = document.getElementById("hosted-endpoint").value.trim();
+
+  if (!name) {
+    document.getElementById("hosted-modal-errors").textContent = "Display name is required.";
+    return;
+  }
+  if (!endpoint) {
+    document.getElementById("hosted-modal-errors").textContent = "Endpoint URL is required.";
+    return;
+  }
+
+  const capabilities = [];
+  if (document.getElementById("hosted-cap-text").checked) capabilities.push("text");
+  if (document.getElementById("hosted-cap-docx").checked) capabilities.push("docx");
+  if (document.getElementById("hosted-cap-xlsx").checked) capabilities.push("xlsx");
+  if (document.getElementById("hosted-cap-image").checked) capabilities.push("image");
+  if (document.getElementById("hosted-cap-pdf").checked) capabilities.push("pdf");
+
+  const provider = {
+    enabled: true,
+    providerId: editingHostedIndex >= 0
+      ? currentSettings.providers.hosted[editingHostedIndex].providerId
+      : "hosted_" + name.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
+    displayName: name,
+    endpoint,
+    apiKey: document.getElementById("hosted-apikey").value,
+    apiMode: document.getElementById("hosted-apimode").value,
+    model: document.getElementById("hosted-model").value.trim(),
+    timeout: parseInt(document.getElementById("hosted-timeout").value) || 30000,
+    priority: parseInt(document.getElementById("hosted-priority").value) || 30,
+    capabilities,
+    customHeaders: {},
+  };
+
+  if (!currentSettings.providers.hosted) currentSettings.providers.hosted = [];
+
+  if (editingHostedIndex >= 0) {
+    currentSettings.providers.hosted[editingHostedIndex] = provider;
+  } else {
+    currentSettings.providers.hosted.push(provider);
+  }
+
+  closeHostedModal();
+  renderHostedProviders();
 }
 
 // ── PII Types Rendering ────────────────────────────────────────────────────
@@ -244,12 +439,56 @@ function testRegex() {
   );
 }
 
+// ── Provider connection tests ────────────────────────────────────────────────
+
+function testAzureConnection() {
+  const result = document.getElementById("azure-test-result");
+  result.textContent = "Testing...";
+  result.className = "test-inline-result";
+
+  chrome.runtime.sendMessage(
+    { type: "CHECK_PROVIDER", providerId: "azure_pii" },
+    (response) => {
+      if (response?.available) {
+        result.textContent = "Connected";
+        result.className = "test-inline-result test-success";
+      } else {
+        result.textContent = response?.detail || "Failed";
+        result.className = "test-inline-result test-fail";
+      }
+    }
+  );
+}
+
+function testPurviewConnection() {
+  const result = document.getElementById("purview-test-result");
+  result.textContent = "Testing...";
+  result.className = "test-inline-result";
+
+  chrome.runtime.sendMessage(
+    { type: "CHECK_PROVIDER", providerId: "purview" },
+    (response) => {
+      if (response?.available) {
+        result.textContent = "Connected";
+        result.className = "test-inline-result test-success";
+      } else {
+        result.textContent = response?.detail || "Failed";
+        result.className = "test-inline-result test-fail";
+      }
+    }
+  );
+}
+
 // ── Statistics ─────────────────────────────────────────────────────────────
 
 function loadStats() {
   chrome.runtime.sendMessage({ type: "GET_STATS" }, (response) => {
     const stats = response?.stats || {};
     const container = document.getElementById("stats-display");
+
+    const tierUsage = stats.tierUsage || {};
+    const docsProcessed = stats.documentsProcessed || 0;
+
     container.innerHTML = `
       <div class="stat-card">
         <div class="value">${stats.totalRedactions || 0}</div>
@@ -260,8 +499,20 @@ function loadStats() {
         <div class="label">PII Items Found</div>
       </div>
       <div class="stat-card">
-        <div class="value">${stats.engineUsage?.ai || 0} / ${stats.engineUsage?.regex || 0} / ${stats.engineUsage?.vector || 0}</div>
+        <div class="value">${docsProcessed}</div>
+        <div class="label">Documents Processed</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">${stats.engineUsage?.ai || stats.engineUsage?.local_ai || 0} / ${stats.engineUsage?.regex || 0} / ${stats.engineUsage?.vector || 0}</div>
         <div class="label">AI / Regex / Vector</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">${tierUsage.local || 0} / ${tierUsage.hosted || 0} / ${tierUsage.cloud || 0}</div>
+        <div class="label">Local / Hosted / Cloud</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">${stats.engineUsage?.azure_pii || 0} / ${stats.engineUsage?.purview || 0}</div>
+        <div class="label">Azure / Purview</div>
       </div>
     `;
   });
@@ -277,8 +528,35 @@ function saveSettings() {
   currentSettings.regexAfterAi = document.getElementById("regexAfterAi").checked;
   currentSettings.showRedactButton = document.getElementById("showRedactButton").checked;
   currentSettings.enableContentEditable = document.getElementById("enableContentEditable").checked;
+  currentSettings.enableDocumentUpload = document.getElementById("enableDocumentUpload").checked;
   currentSettings.vectorThreshold = parseFloat(document.getElementById("vectorThreshold").value);
   currentSettings.sessionTimeoutMinutes = parseInt(document.getElementById("sessionTimeout").value, 10);
+
+  // Provider config
+  if (!currentSettings.providers) currentSettings.providers = {};
+  currentSettings.providers.local_ai = {
+    ...currentSettings.providers.local_ai,
+    enabled: document.getElementById("provider-local-ai").checked,
+  };
+
+  currentSettings.providers.azure_pii = {
+    ...currentSettings.providers.azure_pii,
+    enabled: document.getElementById("provider-azure-pii").checked,
+    endpoint: document.getElementById("azure-endpoint").value.trim(),
+    apiKey: document.getElementById("azure-apikey").value,
+    language: document.getElementById("azure-language").value.trim(),
+    domain: document.getElementById("azure-domain").value,
+  };
+
+  currentSettings.providers.purview = {
+    ...currentSettings.providers.purview,
+    enabled: document.getElementById("provider-purview").checked,
+    tenantId: document.getElementById("purview-tenant").value.trim(),
+    clientId: document.getElementById("purview-clientid").value.trim(),
+    clientSecret: document.getElementById("purview-secret").value,
+  };
+
+  // Hosted providers are already updated via renderHostedProviders toggles
 
   chrome.runtime.sendMessage(
     { type: "SAVE_SETTINGS", settings: currentSettings },
@@ -287,6 +565,7 @@ function saveSettings() {
       if (response?.success) {
         status.textContent = "Settings saved!";
         status.style.color = "#22c55e";
+        loadProviderStatus(); // Refresh status after re-init
       } else {
         status.textContent = "Failed to save.";
         status.style.color = "#dc2626";
@@ -324,9 +603,19 @@ document.getElementById("btn-reset-stats").addEventListener("click", () => {
   chrome.runtime.sendMessage({ type: "RESET_STATS" }, () => loadStats());
 });
 
-// Close modal on overlay click.
+// Provider buttons
+document.getElementById("btn-add-hosted").addEventListener("click", () => openHostedModal());
+document.getElementById("hosted-modal-cancel").addEventListener("click", closeHostedModal);
+document.getElementById("hosted-modal-save").addEventListener("click", saveHostedModal);
+document.getElementById("btn-test-azure").addEventListener("click", testAzureConnection);
+document.getElementById("btn-test-purview").addEventListener("click", testPurviewConnection);
+
+// Close modals on overlay click.
 document.getElementById("modal-overlay").addEventListener("click", (e) => {
   if (e.target.id === "modal-overlay") closeModal();
+});
+document.getElementById("hosted-modal-overlay").addEventListener("click", (e) => {
+  if (e.target.id === "hosted-modal-overlay") closeHostedModal();
 });
 
 // Initialise.

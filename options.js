@@ -49,6 +49,46 @@ function populateUI() {
   timeoutSlider.value = s.sessionTimeoutMinutes || 5;
   document.getElementById("timeoutValue").textContent = `${timeoutSlider.value} min`;
 
+  // Site filtering.
+  const sf = s.siteFilter || {};
+  const sfMode = document.querySelector(`input[name="siteFilterMode"][value="${sf.mode || "all"}"]`);
+  if (sfMode) sfMode.checked = true;
+  document.getElementById("site-whitelist").value = (sf.whitelist || []).join("\n");
+  document.getElementById("site-blacklist").value = (sf.blacklist || []).join("\n");
+  updateSiteFilterVisibility(sf.mode || "all");
+
+  // AI Chat Guard.
+  const ag = s.aiChatGuard || {};
+  document.getElementById("aiGuardEnabled").checked = ag.enabled !== false;
+  document.getElementById("aiGuardAutoRedact").checked = ag.autoRedactOnAiSites !== false;
+  document.getElementById("aiGuardBlockSubmit").checked = ag.blockSubmitUntilRedacted !== false;
+  document.getElementById("aiGuardInterceptUploads").checked = ag.interceptUploads !== false;
+  document.getElementById("aiGuardBanner").checked = ag.showAiBanner !== false;
+  document.getElementById("aiGuardCustomDomains").value = (ag.customAiDomains || []).join("\n");
+
+  // Auto-redact.
+  const ar = s.autoRedact || {};
+  document.getElementById("autoRedactEnabled").checked = !!ar.enabled;
+  document.getElementById("autoRedactOnlyAi").checked = ar.onlyOnAiSites !== false;
+  document.getElementById("autoRedactOnPaste").checked = ar.onPaste !== false;
+  const debounceSlider = document.getElementById("autoRedactDebounce");
+  debounceSlider.value = ar.debounceMs || 1500;
+  document.getElementById("debounceValue").textContent = `${debounceSlider.value} ms`;
+
+  // Submit guard.
+  const sg = s.submitGuard || {};
+  document.getElementById("submitGuardEnabled").checked = sg.enabled !== false;
+  document.getElementById("submitGuardEnter").checked = sg.interceptEnter !== false;
+  document.getElementById("submitGuardForm").checked = sg.interceptFormSubmit !== false;
+  document.getElementById("submitGuardSendBtn").checked = sg.interceptSendButtons !== false;
+  document.getElementById("submitGuardOnlyAi").checked = sg.onlyOnAiSites !== false;
+
+  // Upload guard.
+  const ug = s.uploadGuard || {};
+  document.getElementById("uploadGuardEnabled").checked = ug.enabled !== false;
+  document.getElementById("uploadGuardOnlyAi").checked = ug.onlyOnAiSites !== false;
+  document.getElementById("uploadGuardConfirm").checked = ug.confirmBeforeUpload !== false;
+
   // Provider configuration.
   const providers = s.providers || {};
   document.getElementById("provider-local-ai").checked = providers.local_ai?.enabled !== false;
@@ -558,6 +598,48 @@ function saveSettings() {
 
   // Hosted providers are already updated via renderHostedProviders toggles
 
+  // Site filtering
+  const sfMode = document.querySelector('input[name="siteFilterMode"]:checked');
+  currentSettings.siteFilter = {
+    mode: sfMode ? sfMode.value : "all",
+    whitelist: parseLines(document.getElementById("site-whitelist").value),
+    blacklist: parseLines(document.getElementById("site-blacklist").value),
+  };
+
+  // AI Chat Guard
+  currentSettings.aiChatGuard = {
+    enabled: document.getElementById("aiGuardEnabled").checked,
+    autoRedactOnAiSites: document.getElementById("aiGuardAutoRedact").checked,
+    blockSubmitUntilRedacted: document.getElementById("aiGuardBlockSubmit").checked,
+    interceptUploads: document.getElementById("aiGuardInterceptUploads").checked,
+    showAiBanner: document.getElementById("aiGuardBanner").checked,
+    customAiDomains: parseLines(document.getElementById("aiGuardCustomDomains").value),
+  };
+
+  // Auto-redact
+  currentSettings.autoRedact = {
+    enabled: document.getElementById("autoRedactEnabled").checked,
+    onlyOnAiSites: document.getElementById("autoRedactOnlyAi").checked,
+    onPaste: document.getElementById("autoRedactOnPaste").checked,
+    debounceMs: parseInt(document.getElementById("autoRedactDebounce").value, 10) || 1500,
+  };
+
+  // Submit guard
+  currentSettings.submitGuard = {
+    enabled: document.getElementById("submitGuardEnabled").checked,
+    interceptEnter: document.getElementById("submitGuardEnter").checked,
+    interceptFormSubmit: document.getElementById("submitGuardForm").checked,
+    interceptSendButtons: document.getElementById("submitGuardSendBtn").checked,
+    onlyOnAiSites: document.getElementById("submitGuardOnlyAi").checked,
+  };
+
+  // Upload guard
+  currentSettings.uploadGuard = {
+    enabled: document.getElementById("uploadGuardEnabled").checked,
+    onlyOnAiSites: document.getElementById("uploadGuardOnlyAi").checked,
+    confirmBeforeUpload: document.getElementById("uploadGuardConfirm").checked,
+  };
+
   chrome.runtime.sendMessage(
     { type: "SAVE_SETTINGS", settings: currentSettings },
     (response) => {
@@ -583,6 +665,15 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function parseLines(text) {
+  return (text || "").split("\n").map(l => l.trim()).filter(Boolean);
+}
+
+function updateSiteFilterVisibility(mode) {
+  document.getElementById("whitelist-section").classList.toggle("hidden", mode !== "whitelist");
+  document.getElementById("blacklist-section").classList.toggle("hidden", mode !== "blacklist");
+}
+
 // ── Event listeners ────────────────────────────────────────────────────────
 
 document.getElementById("vectorThreshold").addEventListener("input", (e) => {
@@ -591,6 +682,16 @@ document.getElementById("vectorThreshold").addEventListener("input", (e) => {
 
 document.getElementById("sessionTimeout").addEventListener("input", (e) => {
   document.getElementById("timeoutValue").textContent = `${e.target.value} min`;
+});
+
+// Site filter mode toggle
+document.querySelectorAll('input[name="siteFilterMode"]').forEach(r => {
+  r.addEventListener("change", (e) => updateSiteFilterVisibility(e.target.value));
+});
+
+// Auto-redact debounce slider
+document.getElementById("autoRedactDebounce").addEventListener("input", (e) => {
+  document.getElementById("debounceValue").textContent = `${e.target.value} ms`;
 });
 
 document.getElementById("btn-add-custom").addEventListener("click", () => openModal());

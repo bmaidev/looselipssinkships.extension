@@ -445,6 +445,19 @@ textarea.input {
   padding: 4px 8px;
 }
 
+/* Hidden utility */
+.hidden { display: none !important; }
+
+/* Site list sections */
+.site-list-section {
+  margin-top: 10px;
+}
+
+.site-list-section textarea {
+  font-family: monospace;
+  font-size: 12px;
+}
+
 /* Stats grid — now 6 cards */
 .stats-grid {
   grid-template-columns: repeat(3, 1fr) !important;

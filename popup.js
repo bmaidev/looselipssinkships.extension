@@ -91,9 +91,20 @@ chrome.runtime.sendMessage({ type: "CHECK_STATUS" }, (response) => {
 // Fetch stats.
 chrome.runtime.sendMessage({ type: "GET_STATS" }, (response) => {
   if (response?.stats) {
-    statRedactions.textContent = response.stats.totalRedactions || 0;
-    statMatches.textContent = response.stats.totalMatches || 0;
-    statDocs.textContent = response.stats.documentsProcessed || 0;
+    const s = response.stats;
+    statRedactions.textContent = s.totalRedactions || 0;
+    statMatches.textContent = s.totalMatches || 0;
+    statDocs.textContent = s.documentsProcessed || 0;
+
+    // Show guard stats if available
+    const guardStats = [];
+    if (s.submitsIntercepted) guardStats.push(`${s.submitsIntercepted} submits blocked`);
+    if (s.uploadsIntercepted) guardStats.push(`${s.uploadsIntercepted} uploads checked`);
+    if (s.autoRedactions) guardStats.push(`${s.autoRedactions} auto-redactions`);
+    const guardEl = document.getElementById("guard-stats");
+    if (guardEl && guardStats.length > 0) {
+      guardEl.textContent = guardStats.join(" · ");
+    }
   }
 });
 

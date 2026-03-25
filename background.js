@@ -8,6 +8,7 @@ importScripts(
   "lib/vector-engine.js",
   "lib/settings.js",
   "lib/redaction-engine.js",
+  "lib/site-filter.js",
   "lib/providers/base-provider.js",
   "lib/providers/local-ai-provider.js",
   "lib/providers/regex-provider.js",
@@ -259,6 +260,48 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       registry.checkAvailability(message.providerId, true)
         .then((result) => sendResponse(result))
         .catch((err) => sendResponse({ available: false, status: "no", detail: err.message }));
+      return true;
+    }
+
+    case "CHECK_SITE": {
+      LLSS_loadSettings().then((settings) => {
+        const result = LLSS_getPageProtectionStatus(message.url, settings);
+        sendResponse(result);
+      });
+      return true;
+    }
+
+    case "RECORD_AUTO_REDACTION": {
+      LLSS_loadStats().then(async (stats) => {
+        stats.autoRedactions = (stats.autoRedactions || 0) + 1;
+        stats.totalMatches += (message.matchCount || 0);
+        if (typeof chrome !== "undefined" && chrome.storage) {
+          chrome.storage.local.set({ llss_stats: stats });
+        }
+        sendResponse({ success: true });
+      });
+      return true;
+    }
+
+    case "RECORD_SUBMIT_INTERCEPT": {
+      LLSS_loadStats().then(async (stats) => {
+        stats.submitsIntercepted = (stats.submitsIntercepted || 0) + 1;
+        if (typeof chrome !== "undefined" && chrome.storage) {
+          chrome.storage.local.set({ llss_stats: stats });
+        }
+        sendResponse({ success: true });
+      });
+      return true;
+    }
+
+    case "RECORD_UPLOAD_INTERCEPT": {
+      LLSS_loadStats().then(async (stats) => {
+        stats.uploadsIntercepted = (stats.uploadsIntercepted || 0) + 1;
+        if (typeof chrome !== "undefined" && chrome.storage) {
+          chrome.storage.local.set({ llss_stats: stats });
+        }
+        sendResponse({ success: true });
+      });
       return true;
     }
 

@@ -12,7 +12,39 @@ describe("DEFAULT_SETTINGS", () => {
     expect(DEFAULT_SETTINGS.vectorThreshold).toBe(0.45);
     expect(DEFAULT_SETTINGS.showRedactButton).toBe(true);
     expect(DEFAULT_SETTINGS.sessionTimeoutMinutes).toBe(5);
-    expect(DEFAULT_SETTINGS.schemaVersion).toBe(2);
+    expect(DEFAULT_SETTINGS.schemaVersion).toBe(3);
+  });
+
+  test("has site filter defaults", () => {
+    expect(DEFAULT_SETTINGS.siteFilter).toBeDefined();
+    expect(DEFAULT_SETTINGS.siteFilter.mode).toBe("all");
+    expect(DEFAULT_SETTINGS.siteFilter.whitelist).toEqual([]);
+    expect(DEFAULT_SETTINGS.siteFilter.blacklist).toEqual([]);
+  });
+
+  test("has AI chat guard defaults", () => {
+    expect(DEFAULT_SETTINGS.aiChatGuard).toBeDefined();
+    expect(DEFAULT_SETTINGS.aiChatGuard.enabled).toBe(true);
+    expect(DEFAULT_SETTINGS.aiChatGuard.autoRedactOnAiSites).toBe(true);
+    expect(DEFAULT_SETTINGS.aiChatGuard.blockSubmitUntilRedacted).toBe(true);
+  });
+
+  test("has auto-redact defaults", () => {
+    expect(DEFAULT_SETTINGS.autoRedact).toBeDefined();
+    expect(DEFAULT_SETTINGS.autoRedact.enabled).toBe(false);
+    expect(DEFAULT_SETTINGS.autoRedact.onlyOnAiSites).toBe(true);
+  });
+
+  test("has submit guard defaults", () => {
+    expect(DEFAULT_SETTINGS.submitGuard).toBeDefined();
+    expect(DEFAULT_SETTINGS.submitGuard.enabled).toBe(true);
+    expect(DEFAULT_SETTINGS.submitGuard.interceptEnter).toBe(true);
+  });
+
+  test("has upload guard defaults", () => {
+    expect(DEFAULT_SETTINGS.uploadGuard).toBeDefined();
+    expect(DEFAULT_SETTINGS.uploadGuard.enabled).toBe(true);
+    expect(DEFAULT_SETTINGS.uploadGuard.confirmBeforeUpload).toBe(true);
   });
 
   test("customPiiTypes defaults to empty array", () => {

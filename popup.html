@@ -8,82 +8,70 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      width: 320px;
+      width: 340px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: #f7f8fa;
       color: #1a1a2e;
       padding: 20px;
     }
 
-    .header {
-      text-align: center;
-      margin-bottom: 16px;
-    }
+    .header { text-align: center; margin-bottom: 16px; }
+    .header h1 { font-size: 15px; font-weight: 700; color: #1a3a5c; letter-spacing: 0.3px; }
+    .header p { font-size: 11px; color: #6b7280; margin-top: 4px; }
 
-    .header h1 {
-      font-size: 15px;
-      font-weight: 700;
-      color: #1a3a5c;
-      letter-spacing: 0.3px;
-    }
-
-    .header p {
-      font-size: 11px;
-      color: #6b7280;
-      margin-top: 4px;
-    }
-
-    .status-card {
+    .card {
       background: #fff;
       border: 1px solid #e5e7eb;
       border-radius: 8px;
       padding: 14px 16px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
 
-    .status-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+    .status-row { display: flex; align-items: center; gap: 10px; }
 
     .status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      flex-shrink: 0;
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
     }
-
     .status-dot.ready       { background: #22c55e; }
     .status-dot.downloading { background: #f59e0b; animation: pulse 1.2s infinite; }
     .status-dot.unavailable { background: #ef4444; }
     .status-dot.checking    { background: #9ca3af; animation: pulse 1.2s infinite; }
+    .status-dot.fallback    { background: #3b82f6; }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50%      { opacity: 0.4; }
-    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-    .status-label {
-      font-size: 13px;
-      font-weight: 600;
-    }
+    .status-label { font-size: 13px; font-weight: 600; }
+    .status-detail { font-size: 11px; color: #6b7280; margin-top: 6px; }
 
-    .status-detail {
-      font-size: 11px;
-      color: #6b7280;
-      margin-top: 6px;
+    .stats-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;
     }
+    .stat-item { text-align: center; }
+    .stat-value { font-size: 18px; font-weight: 700; color: #1a3a5c; }
+    .stat-label { font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .mode-badge {
+      display: inline-block; padding: 2px 8px; font-size: 10px; font-weight: 600;
+      border-radius: 10px; margin-top: 6px;
+    }
+    .mode-badge.ai      { background: #dbeafe; color: #1d4ed8; }
+    .mode-badge.regex   { background: #fef3c7; color: #92400e; }
+    .mode-badge.auto    { background: #d1fae5; color: #065f46; }
+
+    .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+
+    .btn {
+      flex: 1; padding: 8px; font-size: 12px; font-weight: 600;
+      border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer;
+      background: #fff; color: #1a3a5c; transition: background 0.15s;
+      text-align: center; text-decoration: none;
+    }
+    .btn:hover { background: #f0f4f8; }
+    .btn.primary { background: #1a3a5c; color: #fff; border-color: #0f2a44; }
+    .btn.primary:hover { background: #244e78; }
 
     .info {
-      font-size: 11px;
-      color: #6b7280;
-      text-align: center;
-      line-height: 1.5;
-    }
-
-    .info strong {
-      color: #1a3a5c;
+      font-size: 10px; color: #9ca3af; text-align: center; margin-top: 12px; line-height: 1.5;
     }
   </style>
 </head>
@@ -93,17 +81,35 @@
     <p>On-device PII redaction</p>
   </div>
 
-  <div class="status-card">
+  <div class="card">
     <div class="status-row">
       <span id="status-dot" class="status-dot checking"></span>
-      <span id="status-label" class="status-label">Checking model status…</span>
+      <span id="status-label" class="status-label">Checking model status...</span>
     </div>
     <div id="status-detail" class="status-detail"></div>
+    <div id="mode-badge-container"></div>
+  </div>
+
+  <div class="card">
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div id="stat-redactions" class="stat-value">-</div>
+        <div class="stat-label">Redactions</div>
+      </div>
+      <div class="stat-item">
+        <div id="stat-matches" class="stat-value">-</div>
+        <div class="stat-label">PII Found</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button id="btn-options" class="btn primary">Settings</button>
+    <button id="btn-reset-stats" class="btn">Reset Stats</button>
   </div>
 
   <p class="info">
-    All processing is performed <strong>locally</strong> using Chrome's
-    built-in Gemini Nano model. No data ever leaves your device.
+    All processing is performed locally. No data ever leaves your device.
   </p>
 
   <script src="popup.js"></script>

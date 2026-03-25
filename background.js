@@ -1,117 +1,188 @@
-// background.js — Core engine: manages the local AI session and handles redaction requests.
-// All processing happens on-device via Chrome's built-in ai.languageModel (Gemini Nano).
-// No data is ever sent to external servers.
+// background.js — Core service worker for the Loose Lips Sink Ships extension.
+// Manages the AI session lifecycle, loads settings, and orchestrates redaction
+// through the engine chain (AI → Regex → Vector).
 
-const SYSTEM_PROMPT = `You are a strict data compliance assistant for an Australian government agency.
-Your ONLY job is to redact Personally Identifiable Information (PII) from the provided text.
+// Import library modules. In MV3 service workers, importScripts is synchronous.
+importScripts(
+  "lib/pii-types.js",
+  "lib/regex-engine.js",
+  "lib/vector-engine.js",
+  "lib/settings.js",
+  "lib/redaction-engine.js"
+);
 
-Replace the following categories with bracketed tokens:
-- Full names → [REDACTED_NAME]
-- Email addresses → [REDACTED_EMAIL]
-- Phone numbers (any format) → [REDACTED_PHONE]
-- Street/postal addresses → [REDACTED_ADDRESS]
-- Financial data (bank accounts, credit card numbers, BSBs, TFNs, ABNs) → [REDACTED_FINANCIAL]
-- Dates of birth → [REDACTED_DOB]
-- Medicare numbers → [REDACTED_MEDICARE]
-- Passport numbers → [REDACTED_PASSPORT]
-- Driver licence numbers → [REDACTED_LICENCE]
-- IP addresses → [REDACTED_IP]
-
-Rules:
-1. Return ONLY the redacted text. Do not add explanations, commentary, or formatting.
-2. Preserve the original structure, punctuation, and line breaks exactly.
-3. If the text contains no PII, return it unchanged.
-4. When in doubt, redact. False positives are acceptable; false negatives are not.`;
+// ── AI Session Manager ──────────────────────────────────────────────────────
 
 let session = null;
+let aiAvailability = null; // cached availability status
+let currentSystemPrompt = null;
 
-// Check whether the on-device language model is available.
 async function checkAvailability() {
   try {
     if (!self.ai || !self.ai.languageModel) {
+      aiAvailability = "no";
       return "no";
     }
-    const status = await ai.languageModel.availability();
-    return status; // 'readily' | 'downloadable' | 'no'
+    aiAvailability = await ai.languageModel.availability();
+    return aiAvailability;
   } catch (err) {
     console.error("[LLSS] Availability check failed:", err);
+    aiAvailability = "no";
     return "no";
   }
 }
 
-// Initialise (or reuse) the local AI session.
-async function getSession() {
-  if (session) return session;
+const sessionManager = {
+  async getSession() {
+    // Load current settings to build the system prompt dynamically.
+    const settings = await LLSS_loadSettings();
+    const piiTypes = LLSS_getMergedPiiTypes(LLSS_PII_TYPES, settings);
+    const prompt = LLSS_buildSystemPrompt(piiTypes);
 
-  const status = await checkAvailability();
+    // Recreate session if the prompt changed (user updated PII types).
+    if (session && currentSystemPrompt !== prompt) {
+      session.destroy();
+      session = null;
+    }
 
-  if (status === "no") {
-    throw new Error("Local AI model is not available on this device.");
-  }
+    if (session) return session;
 
-  // 'downloadable' — the model will be fetched on first create() call.
-  // 'readily' — already cached locally.
-  session = await ai.languageModel.create({
-    systemPrompt: SYSTEM_PROMPT,
-  });
+    const status = await checkAvailability();
+    if (status === "no") {
+      throw new Error("Local AI model is not available on this device.");
+    }
 
-  return session;
-}
+    session = await ai.languageModel.create({ systemPrompt: prompt });
+    currentSystemPrompt = prompt;
+    return session;
+  },
+};
 
-// Tear down the session to free local memory. Called when the extension is
-// idle or on explicit request.
 function destroySession() {
   if (session) {
     session.destroy();
     session = null;
+    currentSystemPrompt = null;
     console.log("[LLSS] Session destroyed, memory freed.");
   }
 }
 
-// Redact PII from the supplied text using the local model.
-async function redactText(text) {
-  const sess = await getSession();
-  const prompt = `Redact all PII from the following text:\n\n${text}`;
-  const result = await sess.prompt(prompt);
+// ── Idle timer ──────────────────────────────────────────────────────────────
+
+let idleTimer = null;
+
+async function resetIdleTimer() {
+  if (idleTimer) clearTimeout(idleTimer);
+  const settings = await LLSS_loadSettings();
+  const timeout = (settings.sessionTimeoutMinutes || 5) * 60 * 1000;
+  idleTimer = setTimeout(destroySession, timeout);
+}
+
+// ── Main redaction handler ──────────────────────────────────────────────────
+
+async function handleRedact(text) {
+  const settings = await LLSS_loadSettings();
+  const piiTypes = LLSS_getMergedPiiTypes(LLSS_PII_TYPES, settings);
+
+  // Determine AI availability (use cache, refresh if stale).
+  if (aiAvailability === null) {
+    await checkAvailability();
+  }
+  const aiReady = aiAvailability === "readily" || aiAvailability === "downloadable";
+
+  const result = await LLSS_redact(text, {
+    piiTypes,
+    settings,
+    sessionManager,
+    aiAvailable: aiReady,
+  });
+
+  // Record statistics.
+  const engine = result.engine.includes("ai") ? "ai" :
+                 result.engine.includes("vector") ? "vector" : "regex";
+  await LLSS_recordRedaction(engine, result.matches || []);
+
   return result;
 }
 
 // ── Message listener ────────────────────────────────────────────────────────
-// Content scripts and the popup communicate with the background worker here.
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === "CHECK_STATUS") {
-    // Popup requests current model availability.
-    checkAvailability()
-      .then((status) => sendResponse({ status }))
-      .catch(() => sendResponse({ status: "no" }));
-    return true; // keep the message channel open for the async response
-  }
+  resetIdleTimer();
 
-  if (message.type === "REDACT") {
-    // Content script sends text to be redacted.
-    redactText(message.text)
-      .then((redacted) => sendResponse({ success: true, redacted }))
-      .catch((err) =>
-        sendResponse({ success: false, error: err.message })
+  switch (message.type) {
+    case "CHECK_STATUS": {
+      checkAvailability().then(async (status) => {
+        const settings = await LLSS_loadSettings();
+        sendResponse({
+          status,
+          detectionMode: settings.detectionMode,
+        });
+      }).catch(() => sendResponse({ status: "no" }));
+      return true;
+    }
+
+    case "REDACT": {
+      handleRedact(message.text)
+        .then((result) =>
+          sendResponse({
+            success: true,
+            redacted: result.redacted,
+            engine: result.engine,
+            matchCount: result.matches?.length || 0,
+          })
+        )
+        .catch((err) =>
+          sendResponse({ success: false, error: err.message })
+        );
+      return true;
+    }
+
+    case "GET_SETTINGS": {
+      LLSS_loadSettings().then((settings) => sendResponse({ settings }));
+      return true;
+    }
+
+    case "SAVE_SETTINGS": {
+      LLSS_saveSettings(message.settings)
+        .then(() => {
+          // Destroy session so it picks up new system prompt on next use.
+          destroySession();
+          sendResponse({ success: true });
+        })
+        .catch((err) => sendResponse({ success: false, error: err.message }));
+      return true;
+    }
+
+    case "GET_STATS": {
+      LLSS_loadStats().then((stats) => sendResponse({ stats }));
+      return true;
+    }
+
+    case "RESET_STATS": {
+      LLSS_resetStats().then(() => sendResponse({ success: true }));
+      return true;
+    }
+
+    case "TEST_REGEX": {
+      const result = LLSS_testRegexPattern(
+        message.pattern,
+        message.flags,
+        message.sampleText
       );
-    return true;
-  }
+      sendResponse(result);
+      return false;
+    }
 
-  if (message.type === "DESTROY_SESSION") {
-    destroySession();
-    sendResponse({ success: true });
-    return false;
+    case "DESTROY_SESSION": {
+      destroySession();
+      sendResponse({ success: true });
+      return false;
+    }
   }
 });
 
-// Auto-destroy session after 5 minutes of inactivity to conserve resources.
-let idleTimer = null;
-
-function resetIdleTimer() {
-  if (idleTimer) clearTimeout(idleTimer);
-  idleTimer = setTimeout(destroySession, 5 * 60 * 1000);
-}
-
-chrome.runtime.onMessage.addListener(() => {
-  resetIdleTimer();
+// Check availability on install/startup.
+chrome.runtime.onInstalled.addListener(() => {
+  checkAvailability();
 });

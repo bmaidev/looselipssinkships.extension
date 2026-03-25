@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Loose Lips Sink Ships",
-  "version": "1.0.0",
-  "description": "Local-only PII redaction powered by Chrome's built-in Gemini Nano. No data ever leaves your device.",
+  "version": "2.0.0",
+  "description": "Local-only PII redaction powered by Chrome's built-in Gemini Nano. Regex and heuristic fallback when AI is unavailable. No data ever leaves your device.",
   "permissions": [
     "storage",
     "activeTab",
@@ -19,6 +19,7 @@
       "128": "icons/icon128.png"
     }
   },
+  "options_page": "options.html",
   "content_scripts": [
     {
       "matches": ["<all_urls>"],

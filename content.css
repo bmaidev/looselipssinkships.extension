@@ -1,10 +1,17 @@
-/* content.css — Styles for the injected Redact button, spinner, and toast. */
+/* content.css — Styles for the injected Redact button, spinner, badge, and toast. */
+
+.llss-wrapper {
+  position: relative;
+}
 
 .llss-redact-btn {
   position: absolute;
   top: 4px;
   right: 4px;
   z-index: 10000;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 4px 10px;
   font-size: 12px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -17,6 +24,11 @@
   opacity: 0.85;
   transition: opacity 0.15s, background 0.15s;
   line-height: 1.4;
+  white-space: nowrap;
+}
+
+.llss-btn-icon {
+  font-size: 13px;
 }
 
 .llss-redact-btn:hover {
@@ -27,6 +39,12 @@
 .llss-redact-btn:disabled {
   cursor: wait;
   opacity: 0.6;
+}
+
+/* contenteditable button positioning */
+.llss-ce-btn {
+  top: -28px;
+  right: 0;
 }
 
 /* Spinner animation shown while the model is processing. */
@@ -48,9 +66,30 @@
 }
 
 @keyframes llss-spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
+}
+
+/* Engine badge — shows briefly after redaction. */
+.llss-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 10001;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-weight: 600;
+  color: #1a3a5c;
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+  border-radius: 4px;
+  animation: llss-badge-fade 3s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes llss-badge-fade {
+  0%, 70% { opacity: 1; }
+  100%    { opacity: 0; }
 }
 
 /* Error toast */

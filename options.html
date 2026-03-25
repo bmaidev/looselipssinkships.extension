@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loose Lips Sink Ships — Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Loose Lips Sink Ships</h1>
+      <p class="subtitle">PII Redaction Settings</p>
+    </header>
+
+    <!-- Detection Mode -->
+    <section class="card">
+      <h2>Detection Mode</h2>
+      <p class="help">Choose how PII is detected. "Auto" tries the local AI model first and falls back to regex if unavailable.</p>
+      <div class="radio-group">
+        <label class="radio-label">
+          <input type="radio" name="detectionMode" value="auto">
+          <span><strong>Auto</strong> — AI preferred, regex + name detection fallback</span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="detectionMode" value="ai_only">
+          <span><strong>AI Only</strong> — requires Chrome 136+ with compatible hardware</span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="detectionMode" value="regex_only">
+          <span><strong>Regex Only</strong> — pattern matching, no AI required</span>
+        </label>
+      </div>
+    </section>
+
+    <!-- Fallback Options -->
+    <section class="card">
+      <h2>Fallback Options</h2>
+      <label class="checkbox-label">
+        <input type="checkbox" id="enableVectorFallback">
+        <span>Enable name detection heuristic (catches names that regex misses)</span>
+      </label>
+      <div class="slider-row" id="threshold-row">
+        <label for="vectorThreshold">Name detection sensitivity:</label>
+        <input type="range" id="vectorThreshold" min="0.2" max="0.8" step="0.05">
+        <span id="thresholdValue">0.45</span>
+      </div>
+      <label class="checkbox-label">
+        <input type="checkbox" id="regexAfterAi">
+        <span>Also run regex after AI (belt-and-suspenders mode)</span>
+      </label>
+    </section>
+
+    <!-- UI Options -->
+    <section class="card">
+      <h2>Interface</h2>
+      <label class="checkbox-label">
+        <input type="checkbox" id="showRedactButton">
+        <span>Show "Redact PII" button on text fields</span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="enableContentEditable">
+        <span>Also attach to contenteditable elements (rich text editors)</span>
+      </label>
+      <div class="slider-row">
+        <label for="sessionTimeout">AI session idle timeout:</label>
+        <input type="range" id="sessionTimeout" min="1" max="30" step="1">
+        <span id="timeoutValue">5 min</span>
+      </div>
+    </section>
+
+    <!-- PII Types -->
+    <section class="card">
+      <h2>PII Detection Rules</h2>
+      <p class="help">Toggle built-in rules or add custom patterns. Each rule has a regex pattern and a replacement token.</p>
+
+      <div id="pii-type-list"></div>
+
+      <button id="btn-add-custom" class="btn secondary">+ Add Custom Rule</button>
+    </section>
+
+    <!-- Regex Tester -->
+    <section class="card">
+      <h2>Regex Tester</h2>
+      <p class="help">Test a regex pattern against sample text.</p>
+      <div class="form-row">
+        <input type="text" id="test-pattern" placeholder="Regex pattern..." class="input">
+        <input type="text" id="test-flags" placeholder="Flags" class="input input-sm" value="gi">
+      </div>
+      <textarea id="test-sample" class="input" rows="3" placeholder="Paste sample text here..."></textarea>
+      <button id="btn-test-regex" class="btn secondary">Test Pattern</button>
+      <div id="test-results" class="test-results"></div>
+    </section>
+
+    <!-- Statistics -->
+    <section class="card">
+      <h2>Statistics</h2>
+      <div id="stats-display" class="stats-grid"></div>
+      <button id="btn-reset-stats" class="btn secondary">Reset Statistics</button>
+    </section>
+
+    <!-- Save -->
+    <div class="save-bar">
+      <span id="save-status" class="save-status"></span>
+      <button id="btn-save" class="btn primary">Save Settings</button>
+    </div>
+  </div>
+
+  <!-- Modal for adding/editing custom PII types -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h3 id="modal-title">Add Custom Rule</h3>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="modal-name" class="input" placeholder="e.g. Student ID">
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" id="modal-desc" class="input" placeholder="What this rule detects">
+      </div>
+      <div class="form-group">
+        <label>Replacement Token</label>
+        <input type="text" id="modal-token" class="input" placeholder="e.g. [REDACTED_STUDENT_ID]">
+      </div>
+      <div class="form-group">
+        <label>Regex Pattern</label>
+        <input type="text" id="modal-regex" class="input" placeholder="e.g. STU-\d{6}">
+      </div>
+      <div class="form-group">
+        <label>Regex Flags</label>
+        <input type="text" id="modal-flags" class="input input-sm" value="gi">
+      </div>
+      <div id="modal-errors" class="error-text"></div>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn secondary">Cancel</button>
+        <button id="modal-save" class="btn primary">Save Rule</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="lib/pii-types.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

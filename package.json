@@ -1,0 +1,14 @@
+{
+  "name": "loose-lips-sink-ships",
+  "version": "2.0.0",
+  "description": "Local-only PII redaction Chrome Extension",
+  "private": true,
+  "scripts": {
+    "test": "jest --verbose",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

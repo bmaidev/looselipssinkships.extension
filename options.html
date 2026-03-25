@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loose Lips Sink Ships — Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Loose Lips Sink Ships</h1>
+      <p class="subtitle">PII Redaction Settings</p>
+    </header>
+
+    <!-- Detection Mode -->
+    <section class="card">
+      <h2>Detection Mode</h2>
+      <p class="help">Choose how PII is detected. "Auto" tries the local AI model first and falls back to regex if unavailable.</p>
+      <div class="radio-group">
+        <label class="radio-label">
+          <input type="radio" name="detectionMode" value="auto">
+          <span><strong>Auto</strong> — AI preferred, regex + name detection fallback</span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="detectionMode" value="ai_only">
+          <span><strong>AI Only</strong> — requires Chrome 136+ with compatible hardware</span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="detectionMode" value="regex_only">
+          <span><strong>Regex Only</strong> — pattern matching, no AI required</span>
+        </label>
+      </div>
+    </section>
+
+    <!-- Provider Configuration -->
+    <section class="card">
+      <h2>Processing Providers</h2>
+      <p class="help">Configure where PII redaction is processed. Local providers are used first — hosted and cloud providers are used for advanced processing or when local is unavailable.</p>
+
+      <div class="provider-tier">
+        <div class="tier-label">Local (On-Device)</div>
+        <div class="provider-item">
+          <label class="checkbox-label">
+            <input type="checkbox" id="provider-local-ai">
+            <span><strong>Gemini Nano (Chrome AI)</strong> — on-device AI model, zero network calls</span>
+          </label>
+        </div>
+        <div class="provider-item">
+          <div class="provider-info-row">
+            <span class="provider-always-on">Regex Engine — always active as fallback</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="provider-tier">
+        <div class="tier-label">Hosted (Organisation Infrastructure)</div>
+        <div id="hosted-providers-list"></div>
+        <button id="btn-add-hosted" class="btn secondary">+ Add Hosted Provider</button>
+      </div>
+
+      <div class="provider-tier">
+        <div class="tier-label">Cloud (Azure / Microsoft 365)</div>
+        <div class="provider-item">
+          <label class="checkbox-label">
+            <input type="checkbox" id="provider-azure-pii">
+            <span><strong>Azure AI Language PII Detection</strong></span>
+          </label>
+          <div class="provider-config" id="azure-config">
+            <div class="form-group">
+              <label>Endpoint URL</label>
+              <input type="text" id="azure-endpoint" class="input" placeholder="https://yourinstance.cognitiveservices.azure.com">
+            </div>
+            <div class="form-group">
+              <label>API Key</label>
+              <input type="password" id="azure-apikey" class="input" placeholder="Subscription key">
+            </div>
+            <div class="form-row">
+              <div class="form-group" style="flex:1">
+                <label>Language</label>
+                <input type="text" id="azure-language" class="input input-sm" value="en">
+              </div>
+              <div class="form-group" style="flex:1">
+                <label>Domain</label>
+                <select id="azure-domain" class="input">
+                  <option value="none">General</option>
+                  <option value="phi">Protected Health Info</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn secondary btn-sm" id="btn-test-azure">Test Connection</button>
+            <span id="azure-test-result" class="test-inline-result"></span>
+          </div>
+        </div>
+
+        <div class="provider-item">
+          <label class="checkbox-label">
+            <input type="checkbox" id="provider-purview">
+            <span><strong>Microsoft Purview DLP</strong> — M365 sensitive information types</span>
+          </label>
+          <div class="provider-config" id="purview-config">
+            <div class="form-group">
+              <label>Tenant ID</label>
+              <input type="text" id="purview-tenant" class="input" placeholder="Azure AD tenant GUID">
+            </div>
+            <div class="form-group">
+              <label>Client ID (App Registration)</label>
+              <input type="text" id="purview-clientid" class="input" placeholder="Application (client) ID">
+            </div>
+            <div class="form-group">
+              <label>Client Secret</label>
+              <input type="password" id="purview-secret" class="input" placeholder="Client secret value">
+            </div>
+            <button class="btn secondary btn-sm" id="btn-test-purview">Test Connection</button>
+            <span id="purview-test-result" class="test-inline-result"></span>
+          </div>
+        </div>
+      </div>
+
+      <div id="provider-status" class="provider-status"></div>
+    </section>
+
+    <!-- Site Filtering -->
+    <section class="card">
+      <h2>Site Filtering</h2>
+      <p class="help">Control which websites the extension is active on.</p>
+      <div class="radio-group">
+        <label class="radio-label">
+          <input type="radio" name="siteFilterMode" value="all">
+          <span><strong>All sites</strong> — active everywhere</span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="siteFilterMode" value="whitelist">
+          <span><strong>Whitelist only</strong> — only active on listed sites</span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="siteFilterMode" value="blacklist">
+          <span><strong>Blacklist</strong> — active everywhere except listed sites</span>
+        </label>
+      </div>
+      <div id="whitelist-section" class="site-list-section hidden">
+        <label class="form-group">
+          <span class="help">One pattern per line. Supports: <code>example.com</code>, <code>*.gov.au</code>, <code>https://portal.agency.gov.au/*</code></span>
+          <textarea id="site-whitelist" class="input" rows="4" placeholder="*.gov.au&#10;internal.agency.gov.au&#10;https://portal.example.com/*"></textarea>
+        </label>
+      </div>
+      <div id="blacklist-section" class="site-list-section hidden">
+        <label class="form-group">
+          <span class="help">One pattern per line.</span>
+          <textarea id="site-blacklist" class="input" rows="4" placeholder="social-media.com&#10;*.entertainment.com"></textarea>
+        </label>
+      </div>
+    </section>
+
+    <!-- AI Chat Guard -->
+    <section class="card">
+      <h2>AI Chat Guard</h2>
+      <p class="help">Automatically protect against PII being submitted to AI chat services (ChatGPT, Claude, Gemini, Copilot, Grok, and many more).</p>
+      <label class="checkbox-label">
+        <input type="checkbox" id="aiGuardEnabled">
+        <span><strong>Enable AI Chat Guard</strong></span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="aiGuardAutoRedact">
+        <span>Auto-redact text before submission on AI sites</span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="aiGuardBlockSubmit">
+        <span>Block submit/send until redaction completes</span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="aiGuardInterceptUploads">
+        <span>Intercept file uploads on AI chat sites</span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="aiGuardBanner">
+        <span>Show protection banner on AI chat sites</span>
+      </label>
+      <div class="form-group">
+        <label>Additional AI domains (one per line)</label>
+        <textarea id="aiGuardCustomDomains" class="input" rows="3" placeholder="internal-ai.company.com&#10;*.ai-platform.agency.gov.au"></textarea>
+      </div>
+    </section>
+
+    <!-- Auto-Redact -->
+    <section class="card">
+      <h2>Auto-Redact</h2>
+      <p class="help">Automatically redact PII as you type or paste, without clicking the Redact button.</p>
+      <label class="checkbox-label">
+        <input type="checkbox" id="autoRedactEnabled">
+        <span><strong>Enable auto-redact</strong></span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="autoRedactOnlyAi">
+        <span>Only auto-redact on AI chat sites (recommended)</span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="autoRedactOnPaste">
+        <span>Immediately redact pasted content</span>
+      </label>
+      <div class="slider-row">
+        <label for="autoRedactDebounce">Typing debounce:</label>
+        <input type="range" id="autoRedactDebounce" min="500" max="5000" step="250">
+        <span id="debounceValue">1500 ms</span>
+      </div>
+    </section>
+
+    <!-- Submit & Upload Guard -->
+    <section class="card">
+      <h2>Submit &amp; Upload Guard</h2>
+      <p class="help">Intercept form submissions and file uploads to ensure PII is redacted before data leaves the page.</p>
+      <label class="checkbox-label">
+        <input type="checkbox" id="submitGuardEnabled">
+        <span><strong>Enable submit interception</strong></span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="submitGuardEnter">
+        <span>Intercept Enter key in text fields (chat-style UIs)</span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="submitGuardForm">
+        <span>Intercept form submissions</span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="submitGuardSendBtn">
+        <span>Intercept send/submit button clicks</span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="submitGuardOnlyAi">
+        <span>Only on AI chat sites (recommended)</span>
+      </label>
+      <hr style="margin: 12px 0; border: none; border-top: 1px solid #e5e7eb;">
+      <label class="checkbox-label">
+        <input type="checkbox" id="uploadGuardEnabled">
+        <span><strong>Enable upload interception</strong></span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="uploadGuardOnlyAi">
+        <span>Only on AI chat sites (recommended)</span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="uploadGuardConfirm">
+        <span>Show confirmation dialog before allowing upload</span>
+      </label>
+    </section>
+
+    <!-- Document Upload -->
+    <section class="card">
+      <h2>Document Processing</h2>
+      <p class="help">Enable file upload buttons alongside text redaction. Supports Word (.docx), Excel (.xlsx), HTML, Markdown, and images (requires hosted/cloud provider for OCR).</p>
+      <label class="checkbox-label">
+        <input type="checkbox" id="enableDocumentUpload">
+        <span>Show "Redact File" upload button on text fields</span>
+      </label>
+    </section>
+
+    <!-- Fallback Options -->
+    <section class="card">
+      <h2>Fallback Options</h2>
+      <label class="checkbox-label">
+        <input type="checkbox" id="enableVectorFallback">
+        <span>Enable name detection heuristic (catches names that regex misses)</span>
+      </label>
+      <div class="slider-row" id="threshold-row">
+        <label for="vectorThreshold">Name detection sensitivity:</label>
+        <input type="range" id="vectorThreshold" min="0.2" max="0.8" step="0.05">
+        <span id="thresholdValue">0.45</span>
+      </div>
+      <label class="checkbox-label">
+        <input type="checkbox" id="regexAfterAi">
+        <span>Also run regex after AI (belt-and-suspenders mode)</span>
+      </label>
+    </section>
+
+    <!-- UI Options -->
+    <section class="card">
+      <h2>Interface</h2>
+      <label class="checkbox-label">
+        <input type="checkbox" id="showRedactButton">
+        <span>Show "Redact PII" button on text fields</span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="enableContentEditable">
+        <span>Also attach to contenteditable elements (rich text editors)</span>
+      </label>
+      <div class="slider-row">
+        <label for="sessionTimeout">AI session idle timeout:</label>
+        <input type="range" id="sessionTimeout" min="1" max="30" step="1">
+        <span id="timeoutValue">5 min</span>
+      </div>
+    </section>
+
+    <!-- PII Types -->
+    <section class="card">
+      <h2>PII Detection Rules</h2>
+      <p class="help">Toggle built-in rules or add custom patterns. Each rule has a regex pattern and a replacement token.</p>
+
+      <div id="pii-type-list"></div>
+
+      <button id="btn-add-custom" class="btn secondary">+ Add Custom Rule</button>
+    </section>
+
+    <!-- Regex Tester -->
+    <section class="card">
+      <h2>Regex Tester</h2>
+      <p class="help">Test a regex pattern against sample text.</p>
+      <div class="form-row">
+        <input type="text" id="test-pattern" placeholder="Regex pattern..." class="input">
+        <input type="text" id="test-flags" placeholder="Flags" class="input input-sm" value="gi">
+      </div>
+      <textarea id="test-sample" class="input" rows="3" placeholder="Paste sample text here..."></textarea>
+      <button id="btn-test-regex" class="btn secondary">Test Pattern</button>
+      <div id="test-results" class="test-results"></div>
+    </section>
+
+    <!-- Statistics -->
+    <section class="card">
+      <h2>Statistics</h2>
+      <div id="stats-display" class="stats-grid"></div>
+      <button id="btn-reset-stats" class="btn secondary">Reset Statistics</button>
+    </section>
+
+    <!-- Save -->
+    <div class="save-bar">
+      <span id="save-status" class="save-status"></span>
+      <button id="btn-save" class="btn primary">Save Settings</button>
+    </div>
+  </div>
+
+  <!-- Modal for adding/editing custom PII types -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h3 id="modal-title">Add Custom Rule</h3>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="modal-name" class="input" placeholder="e.g. Student ID">
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" id="modal-desc" class="input" placeholder="What this rule detects">
+      </div>
+      <div class="form-group">
+        <label>Replacement Token</label>
+        <input type="text" id="modal-token" class="input" placeholder="e.g. [REDACTED_STUDENT_ID]">
+      </div>
+      <div class="form-group">
+        <label>Regex Pattern</label>
+        <input type="text" id="modal-regex" class="input" placeholder="e.g. STU-\d{6}">
+      </div>
+      <div class="form-group">
+        <label>Regex Flags</label>
+        <input type="text" id="modal-flags" class="input input-sm" value="gi">
+      </div>
+      <div id="modal-errors" class="error-text"></div>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn secondary">Cancel</button>
+        <button id="modal-save" class="btn primary">Save Rule</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for hosted provider configuration -->
+  <div id="hosted-modal-overlay" class="modal-overlay hidden">
+    <div class="modal modal-wide">
+      <h3 id="hosted-modal-title">Add Hosted Provider</h3>
+      <div class="form-group">
+        <label>Display Name</label>
+        <input type="text" id="hosted-name" class="input" placeholder="e.g. Agency LLM (On-Prem)">
+      </div>
+      <div class="form-group">
+        <label>Endpoint URL</label>
+        <input type="text" id="hosted-endpoint" class="input" placeholder="https://internal-llm.agency.gov.au/v1">
+      </div>
+      <div class="form-group">
+        <label>API Key / Token</label>
+        <input type="password" id="hosted-apikey" class="input" placeholder="Bearer token or API key">
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label>API Mode</label>
+          <select id="hosted-apimode" class="input">
+            <option value="openai">OpenAI-Compatible (vLLM, TGI, Ollama, Azure OpenAI)</option>
+            <option value="pii_api">Custom PII Detection API</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>Model Name</label>
+          <input type="text" id="hosted-model" class="input" placeholder="e.g. llama-3-70b">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label>Timeout (ms)</label>
+          <input type="number" id="hosted-timeout" class="input input-sm" value="30000">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>Priority (lower = preferred)</label>
+          <input type="number" id="hosted-priority" class="input input-sm" value="30">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Capabilities</label>
+        <div class="checkbox-group-inline">
+          <label class="checkbox-label"><input type="checkbox" id="hosted-cap-text" checked> Text</label>
+          <label class="checkbox-label"><input type="checkbox" id="hosted-cap-docx"> Documents (DOCX)</label>
+          <label class="checkbox-label"><input type="checkbox" id="hosted-cap-xlsx"> Spreadsheets (XLSX)</label>
+          <label class="checkbox-label"><input type="checkbox" id="hosted-cap-image"> Images (OCR)</label>
+          <label class="checkbox-label"><input type="checkbox" id="hosted-cap-pdf"> PDF</label>
+        </div>
+      </div>
+      <div id="hosted-modal-errors" class="error-text"></div>
+      <div class="modal-actions">
+        <button id="hosted-modal-cancel" class="btn secondary">Cancel</button>
+        <button id="hosted-modal-test" class="btn secondary">Test Connection</button>
+        <button id="hosted-modal-save" class="btn primary">Save Provider</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="lib/pii-types.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

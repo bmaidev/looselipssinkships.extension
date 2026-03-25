@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Loose Lips Sink Ships",
+  "version": "3.0.0",
+  "description": "Enterprise PII redaction with local-first processing. Supports Chrome Gemini Nano, regex fallback, Azure AI Language, Microsoft Purview, and organisation-hosted models. Document processing for Word, Excel, HTML, Markdown, and images.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

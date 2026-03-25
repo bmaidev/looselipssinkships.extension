@@ -292,19 +292,21 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     case "REDACT_DOCUMENT": {
+      LLSS_debug.log("doc", `REDACT_DOCUMENT: ${message.fileName} (${message.mimeType}, ${message.fileData?.length || 0} bytes)`);
       // fileData arrives as an array (serialised ArrayBuffer)
       const buffer = message.fileData instanceof ArrayBuffer
         ? message.fileData
         : new Uint8Array(message.fileData).buffer;
 
       // Track the requesting tab so OCR_PROGRESS messages can be forwarded
-      processingTabId = sender.tab?.id || null;
+      processingTabId = _sender.tab?.id || null;
 
       handleRedactDocument(buffer, message.fileName, message.mimeType, {
         forceProvider: message.forceProvider,
         forceTier: message.forceTier,
       })
         .then((result) => {
+          LLSS_debug.log("doc", `REDACT_DOCUMENT complete: engine=${result.engine} matches=${result.matches?.length || 0} steps=[${result.pipelineSteps?.join("→")}]`);
           processingTabId = null;
           sendResponse({
             success: true,
@@ -319,6 +321,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           });
         })
         .catch((err) => {
+          LLSS_debug.error("doc", "REDACT_DOCUMENT failed:", err.message);
           processingTabId = null;
           sendResponse({ success: false, error: err.message });
         });

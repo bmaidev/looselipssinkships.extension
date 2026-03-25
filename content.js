@@ -952,13 +952,20 @@
         if (li) { li.classList.remove("active"); li.classList.add("done"); }
       },
 
-      /** Transition to "complete" state */
-      complete(matchCount) {
+      /** Transition to "complete" state.  @param {number} matchCount  @param {string[]} [errors] */
+      complete(matchCount, errors) {
         card.classList.add("complete");
-        titleEl.textContent = "Documents Secured";
-        subtitleEl.textContent = matchCount
-          ? `${matchCount} PII item(s) redacted`
-          : "No PII detected — files are clean";
+        if (errors && errors.length > 0) {
+          titleEl.textContent = "Processing Errors";
+          titleEl.style.color = "#dc2626";
+          subtitleEl.textContent = errors.join("; ");
+          subtitleEl.style.color = "#dc2626";
+        } else {
+          titleEl.textContent = "Documents Secured";
+          subtitleEl.textContent = matchCount
+            ? `${matchCount} PII item(s) redacted`
+            : "No PII detected — files are clean";
+        }
         progressFill.style.width = "100%";
         statusText.textContent = "";
         skipBtn.style.display = "none";
@@ -966,8 +973,8 @@
         // Mark all files done
         shadow.querySelectorAll(".file-list li").forEach((li) => li.classList.add("done"));
 
-        // Auto-dismiss after 1.5s
-        setTimeout(() => api.remove(), 1500);
+        // Auto-dismiss after 2.5s (longer if errors)
+        setTimeout(() => api.remove(), errors?.length ? 4000 : 1500);
       },
 
       /** Register skip callback */
@@ -1028,6 +1035,7 @@
     const redactedFiles = [];
     const nonRedactable = files.filter((f) => !isRedactableFile(f));
 
+    const errors = [];
     for (let i = 0; i < redactableFiles.length; i++) {
       if (skipRequested) break;
       const file = redactableFiles[i];
@@ -1044,8 +1052,11 @@
         }
         overlay.markFileDone(file.name);
         chrome.runtime.sendMessage({ type: "RECORD_UPLOAD_INTERCEPT" });
-      } catch {
-        // On error, keep the original file
+      } catch (err) {
+        const msg = err?.message || "Unknown error";
+        const dbg = typeof LLSS_debug !== "undefined" ? LLSS_debug : null;
+        if (dbg) dbg.error("upload", `Failed to redact ${file.name}:`, msg);
+        errors.push(`${file.name}: ${msg}`);
         redactedFiles.push(file);
         overlay.markFileDone(file.name);
       }
@@ -1057,7 +1068,7 @@
       return;
     }
 
-    overlay.complete(totalMatches);
+    overlay.complete(totalMatches, errors);
 
     // Replace the input's files with the redacted versions + any non-redactable files
     const allFiles = [...redactedFiles, ...nonRedactable];
@@ -1090,6 +1101,7 @@
 
     const redactedFiles = [];
     const nonRedactable = files.filter((f) => !isRedactableFile(f));
+    const errors = [];
 
     for (let i = 0; i < redactableFiles.length; i++) {
       if (skipRequested) break;
@@ -1106,7 +1118,11 @@
         }
         overlay.markFileDone(file.name);
         chrome.runtime.sendMessage({ type: "RECORD_UPLOAD_INTERCEPT" });
-      } catch {
+      } catch (err) {
+        const msg = err?.message || "Unknown error";
+        const dbg = typeof LLSS_debug !== "undefined" ? LLSS_debug : null;
+        if (dbg) dbg.error("upload", `Failed to redact ${file.name}:`, msg);
+        errors.push(`${file.name}: ${msg}`);
         redactedFiles.push(file);
         overlay.markFileDone(file.name);
       }
@@ -1118,7 +1134,7 @@
       return;
     }
 
-    overlay.complete(totalMatches);
+    overlay.complete(totalMatches, errors);
 
     // Re-dispatch the drop event with redacted files
     const allFiles = [...redactedFiles, ...nonRedactable];

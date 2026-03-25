@@ -20,6 +20,9 @@ TESSERACT_CORE_VERSION="5.1.0"
 echo "=== Loose Lips Sink Ships — Vendor Setup ==="
 echo ""
 
+# Create directories upfront so all downloads have a target
+mkdir -p tesseract/lang-data
+
 # ── pdf.js ────────────────────────────────────────────────────────────────────
 
 echo "[1/4] Downloading pdf.js v${PDFJS_VERSION}..."
@@ -39,8 +42,6 @@ curl -sL "https://cdn.jsdelivr.net/npm/tesseract.js-core@${TESSERACT_CORE_VERSIO
 echo "      ✓ tesseract/tesseract-core-simd.wasm.js, .wasm"
 
 echo "[4/4] Downloading Tesseract trained data (English — fast model)..."
-mkdir -p tesseract/lang-data
-curl -sL "https://cdn.jsdelivr.net/npm/tesseract.js@${TESSERACT_VERSION}/lang-data/eng.traineddata.gz" -o tesseract/lang-data/eng.traineddata.gz 2>/dev/null || \
 curl -sL "https://raw.githubusercontent.com/naptha/tessdata/gh-pages/4.0.0_fast/eng.traineddata.gz" -o tesseract/lang-data/eng.traineddata.gz
 echo "      ✓ tesseract/lang-data/eng.traineddata.gz"
 

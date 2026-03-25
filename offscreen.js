@@ -30,6 +30,18 @@
 (() => {
   'use strict';
 
+  // ── Debug logging activation ──────────────────────────────────────────────
+  // The offscreen document doesn't load settings.js, so we check storage
+  // directly on startup to enable debug logging.
+  if (typeof chrome !== 'undefined' && chrome.storage) {
+    chrome.storage.local.get('llss_settings', (result) => {
+      if (result?.llss_settings?.debugMode && typeof LLSS_debug !== 'undefined') {
+        LLSS_debug.setEnabled(true);
+        LLSS_debug.log('offscreen', 'Offscreen document ready');
+      }
+    });
+  }
+
   // ── Nano (LanguageModel) session — proxied from service worker ──────────
   // The service worker cannot access LanguageModel (it's a Worker context).
   // This offscreen document CAN, so it hosts the Nano session on behalf of
@@ -74,11 +86,20 @@
     if (message.target !== 'offscreen') return false;
 
     switch (message.type) {
-      case 'RENDER_AND_OCR':
+      case 'RENDER_AND_OCR': {
+        const dbg = typeof LLSS_debug !== 'undefined' ? LLSS_debug : null;
+        if (dbg) dbg.log('offscreen', 'RENDER_AND_OCR received', { contentType: message.contentType, dataLen: message.fileData?.length });
         handleRenderAndOcr(message)
-          .then(sendResponse)
-          .catch((err) => sendResponse({ error: err.message }));
+          .then((result) => {
+            if (dbg) dbg.log('offscreen', 'RENDER_AND_OCR complete', { pages: result.pages?.length, textLen: result.fullText?.length });
+            sendResponse(result);
+          })
+          .catch((err) => {
+            if (dbg) dbg.error('offscreen', 'RENDER_AND_OCR failed:', err.message);
+            sendResponse({ error: err.message });
+          });
         return true;
+      }
 
       case 'APPLY_REDACTIONS':
         handleApplyRedactions(message)

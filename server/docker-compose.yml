@@ -1,0 +1,29 @@
+# LLSS OCR Extraction Server — one-command deployment.
+#
+# Usage:
+#   docker-compose up -d
+#
+# Then configure the extension:
+#   Hosted Provider → Endpoint: http://localhost:8000
+#   API Mode: OCR Extract
+#
+# The server only extracts text + bounding boxes.
+# All PII detection and redaction happens in the browser extension.
+
+services:
+  llss-ocr:
+    build: .
+    image: llss-ocr:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - LLSS_MAX_FILE_SIZE=52428800   # 50MB
+      - LLSS_MAX_PAGES=50
+      - LLSS_TESSERACT_LANG=eng
+      - LLSS_DPI=300
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

@@ -1189,10 +1189,18 @@
 
     let redactedFile = null;
     if (response.redactedFile && response.redactedFile.length > 0) {
-      // Build a new File from the redacted bytes
+      // Build a new File from the redacted bytes, preserving the original extension
       const bytes = new Uint8Array(response.redactedFile);
       const format = response.redactedFileFormat || file.type;
-      const ext = format.includes("pdf") ? ".pdf" : format.includes("png") ? ".png" : "";
+      // Map MIME types to extensions
+      const extMap = {
+        'application/pdf': '.pdf',
+        'image/png': '.png',
+        'image/jpeg': '.jpg',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+      };
+      const ext = extMap[format] || file.name.match(/\.[^.]+$/)?.[0] || '';
       const baseName = file.name.replace(/\.[^.]+$/, "");
       redactedFile = new File([bytes], `${baseName}_secured${ext}`, { type: format });
     }

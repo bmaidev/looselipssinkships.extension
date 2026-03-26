@@ -19,6 +19,8 @@ importScripts(
   "lib/providers/provider-registry.js",
   "lib/documents/document-processor.js",
   "lib/documents/pixel-redactor.js",
+  "lib/documents/zip-writer.js",
+  "lib/documents/docx-redactor.js",
   "lib/pipeline.js"
 );
 

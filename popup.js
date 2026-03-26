@@ -136,6 +136,11 @@ chrome.runtime.sendMessage({ type: "GET_STATS" }, (response) => {
   }
 });
 
+// Open redact tool in a new tab.
+document.getElementById("btn-redact").addEventListener("click", () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL("redact.html") });
+});
+
 // Open options page.
 document.getElementById("btn-options").addEventListener("click", () => {
   chrome.runtime.openOptionsPage();

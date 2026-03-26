@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loose Lips Sink Ships — Redact Documents</title>
+  <link rel="stylesheet" href="redact.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Loose Lips Sink Ships</h1>
+      <p class="subtitle">Document Redaction Tool</p>
+      <div id="provider-status" class="provider-status"></div>
+    </header>
+
+    <!-- Drop Zone -->
+    <section class="card drop-card">
+      <div id="drop-zone" class="drop-zone">
+        <div class="drop-icon">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M28 4H12a4 4 0 0 0-4 4v32a4 4 0 0 0 4 4h24a4 4 0 0 0 4-4V16L28 4z"/>
+            <polyline points="28 4 28 16 40 16"/>
+            <line x1="24" y1="26" x2="24" y2="38"/>
+            <polyline points="18 32 24 26 30 32"/>
+          </svg>
+        </div>
+        <p class="drop-text">Drop files here or <button id="btn-browse" class="link-btn">browse</button></p>
+        <p class="drop-hint">DOCX, XLSX, PDF, Images, HTML, Markdown, TXT</p>
+      </div>
+      <input type="file" id="file-input" multiple accept=".docx,.doc,.xlsx,.xls,.pdf,.html,.htm,.md,.markdown,.txt,.png,.jpg,.jpeg,.gif,.webp,.bmp,.tiff,.tif,application/pdf,image/*" hidden>
+    </section>
+
+    <!-- File Queue -->
+    <section id="queue-section" class="card" hidden>
+      <div class="queue-header">
+        <h2>Files</h2>
+        <div class="queue-actions">
+          <button id="btn-clear" class="btn-sm">Clear All</button>
+          <button id="btn-process" class="btn btn-primary">Redact All</button>
+        </div>
+      </div>
+      <ul id="file-list" class="file-list"></ul>
+    </section>
+
+    <!-- Summary -->
+    <section id="summary-section" class="card" hidden>
+      <h2>Summary</h2>
+      <div id="summary-content" class="summary-content"></div>
+      <div class="summary-actions">
+        <button id="btn-download-all" class="btn btn-primary" hidden>Download All Redacted</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="lib/pii-types.js"></script>
+  <script src="lib/documents/document-processor.js"></script>
+  <script src="redact.js"></script>
+</body>
+</html>

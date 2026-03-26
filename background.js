@@ -18,6 +18,7 @@ importScripts(
   "lib/providers/hosted-model-provider.js",
   "lib/providers/provider-registry.js",
   "lib/documents/document-processor.js",
+  "lib/documents/pixel-redactor.js",
   "lib/pipeline.js"
 );
 

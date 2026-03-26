@@ -28,7 +28,9 @@ mkdir -p tesseract/lang-data
 echo "[1/4] Downloading pdf.js v${PDFJS_VERSION}..."
 curl -sL "https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.min.mjs" -o pdf.min.mjs
 curl -sL "https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.mjs" -o pdf.worker.min.mjs
-echo "      ✓ pdf.min.mjs, pdf.worker.min.mjs"
+# Also save worker as .js — Chrome may skip .mjs files loaded without type="module"
+cp pdf.worker.min.mjs pdf.worker.min.js
+echo "      ✓ pdf.min.mjs, pdf.worker.min.mjs, pdf.worker.min.js"
 
 # ── Tesseract.js ──────────────────────────────────────────────────────────────
 

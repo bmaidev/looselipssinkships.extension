@@ -26,7 +26,8 @@
   -->
 
   <!-- Phase 1: Regular scripts -->
-  <script src="vendor/pdf.worker.min.mjs"></script>
+  <!-- .js not .mjs — Chrome may silently skip .mjs files loaded without type="module" -->
+  <script src="vendor/pdf.worker.min.js"></script>
   <script src="vendor/tesseract/tesseract.min.js"></script>
   <script src="lib/debug.js"></script>
   <script src="lib/documents/pdf-renderer.js"></script>

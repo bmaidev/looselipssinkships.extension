@@ -1046,11 +1046,13 @@
 
       try {
         const result = await processFileForRedaction(file);
+        totalMatches += result.matchCount || 0;
         if (result.redactedFile) {
           redactedFiles.push(result.redactedFile);
-          totalMatches += result.matchCount || 0;
         } else {
-          // No pixel redaction available — keep original
+          // No pixel redaction available (text-based formats like DOCX/XLSX)
+          // — keep original file. PII was detected but can't be redacted
+          // in the file itself without rebuilding the document format.
           redactedFiles.push(file);
         }
         overlay.markFileDone(file.name);
@@ -1122,9 +1124,9 @@
 
       try {
         const result = await processFileForRedaction(file);
+        totalMatches += result.matchCount || 0;
         if (result.redactedFile) {
           redactedFiles.push(result.redactedFile);
-          totalMatches += result.matchCount || 0;
         } else {
           redactedFiles.push(file);
         }

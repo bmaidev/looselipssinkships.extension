@@ -13,8 +13,10 @@ if (!globalThis.pdfjsLib) {
   console.error('[LLSS] pdf.min.mjs loaded but pdfjsLib not on globalThis');
 }
 
-// Disable pdf.js web worker — run in the offscreen document's main thread
-globalThis.pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+// pdf.js v4 requires a valid workerSrc — point to the worker bundle.
+// import.meta.url gives us the module's own URL, so we can resolve relative paths.
+globalThis.pdfjsLib.GlobalWorkerOptions.workerSrc =
+  new URL('./pdf.worker.min.mjs', import.meta.url).href;
 
 // Signal that pdf.js is ready
 globalThis.__pdfjsReady = true;

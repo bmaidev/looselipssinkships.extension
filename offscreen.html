@@ -19,20 +19,33 @@
     Lifecycle: created on-demand, destroyed after idle timeout.
   -->
 
-  <!-- Vendor libraries -->
-  <script src="vendor/pdf.min.mjs" type="module"></script>
+  <!--
+    Load order matters:
+    1. Vendor libs first (set globals: pdfjsLib, Tesseract)
+    2. Then LLSS modules that depend on those globals
+    3. Then the message handler last
+
+    pdf.min.mjs is NOT loaded as type="module" — module scripts are
+    deferred and would execute AFTER the non-module scripts, leaving
+    pdfjsLib undefined when pdf-renderer.js runs.
+  -->
+
+  <!-- Vendor libraries (must be regular scripts, not modules) -->
+  <script src="vendor/pdf.min.mjs"></script>
   <script src="vendor/tesseract/tesseract.min.js"></script>
+
+  <!-- Debug logger -->
+  <script src="lib/debug.js"></script>
 
   <!-- LLSS document processing modules -->
   <script src="lib/documents/pdf-renderer.js"></script>
   <script src="lib/documents/ocr-processor.js"></script>
   <script src="lib/documents/pixel-redactor.js"></script>
 
-  <!-- Debug logger + Nano (LanguageModel) session manager for service-worker proxy -->
-  <script src="lib/debug.js"></script>
+  <!-- Nano (LanguageModel) session manager for service-worker proxy -->
   <script src="lib/nano-session.js"></script>
 
-  <!-- Offscreen message handler -->
+  <!-- Offscreen message handler (must be last) -->
   <script src="offscreen.js"></script>
 </body>
 </html>

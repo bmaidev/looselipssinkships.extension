@@ -147,6 +147,8 @@ async function sendToOffscreen(type, data = {}) {
           reject(new Error(chrome.runtime.lastError.message));
         } else if (response?.error) {
           reject(new Error(response.error));
+        } else if (response === undefined || response === null) {
+          reject(new Error(`Offscreen document did not respond to ${type} (scripts may still be loading)`));
         } else {
           resolve(response);
         }

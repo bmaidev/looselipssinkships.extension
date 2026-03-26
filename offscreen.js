@@ -37,7 +37,17 @@
     chrome.storage.local.get('llss_settings', (result) => {
       if (result?.llss_settings?.debugMode && typeof LLSS_debug !== 'undefined') {
         LLSS_debug.setEnabled(true);
-        LLSS_debug.log('offscreen', 'Offscreen document ready');
+      }
+      // Always log startup diagnostics when debug is on
+      const dbg = typeof LLSS_debug !== 'undefined' ? LLSS_debug : null;
+      if (dbg && dbg.isEnabled()) {
+        dbg.log('offscreen', 'Offscreen document ready — vendor status:', {
+          pdfjsLib: typeof pdfjsLib !== 'undefined' ? 'loaded' : 'MISSING',
+          Tesseract: typeof Tesseract !== 'undefined' ? 'loaded' : 'MISSING',
+          LLSS_ocrPages: typeof LLSS_ocrPages !== 'undefined' ? 'defined' : 'MISSING',
+          LLSS_renderPdfPages: typeof LLSS_renderPdfPages !== 'undefined' ? 'defined' : 'MISSING',
+          LanguageModel: typeof LanguageModel !== 'undefined' ? 'available' : 'not available',
+        });
       }
     });
   }

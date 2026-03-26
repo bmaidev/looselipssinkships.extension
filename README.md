@@ -119,13 +119,23 @@ Intercepts file uploads to redact documents before they leave the page.
 - **Microsoft Purview** — M365 DLP sensitive information types and trainable classifiers.
 - **Organisation-Hosted Models** — Connect to your own infrastructure (vLLM, Ollama, TGI, Azure OpenAI, or custom PII APIs).
 
-### Document Processing
-- **Word (.docx)** — Local XML-based text extraction, no external dependencies.
-- **Excel (.xlsx)** — Local spreadsheet parsing with shared strings support.
-- **HTML** — DOM-based text extraction with script/style stripping.
-- **Markdown** — Formatting-aware text extraction.
-- **PDF** — Local OCR via pdf.js + Tesseract.js in Offscreen Document. Image-based flattening for provably secure redaction.
-- **Images** — Local OCR via Tesseract.js. Pixel-level redaction on canvas.
+### Document Redaction
+- **Word (.docx)** — Run-aware XML text replacement. Parses the DOCX ZIP, builds a character-offset map from `<w:t>` elements, runs PII detection, replaces PII with tokens in the XML, and repacks the ZIP. Handles PII spanning multiple formatting runs. Preserves all formatting, images, styles, and tables. Processes document.xml plus headers, footers, comments, and footnotes.
+- **Excel (.xlsx)** — Local spreadsheet parsing with shared strings support. Text-only redaction.
+- **HTML** — DOM-based text extraction with script/style stripping. Text-only redaction.
+- **Markdown** — Formatting-aware text extraction. Text-only redaction.
+- **PDF (text-based)** — Fast text extraction via pdf.js `getTextContent()` (no rendering or OCR). PII detection on extracted text. Outputs redacted text as `.txt` file.
+- **PDF (scanned)** — Full render pipeline: pdf.js renders pages to canvas (using `intent: 'print'` to bypass `requestAnimationFrame` in offscreen documents) → Tesseract.js OCR extracts text + word-level bounding boxes → PII detection → pixel-level black box redaction → image-only PDF reconstruction.
+- **Images** — Local OCR via Tesseract.js. PII detection with character-position mapping to OCR bounding boxes. Pixel-level black box redaction on canvas. Output as redacted PNG.
+
+### Standalone Redaction Tool
+Accessible via **"Redact Files"** button in the extension popup. Opens a dedicated tab with:
+- **Drag-and-drop file zone** with multi-file support.
+- **File queue** with per-file status (pending / processing / done / error).
+- **Per-file results** showing match count, engine used, tier, pipeline steps, and redacted text preview.
+- **Download buttons** for individual files or batch download.
+- **Provider status** showing which detection engines are active.
+- Works with all supported document formats. No site interaction required.
 
 ### 17 Built-in PII Types (Australian Focus)
 | Category | Types |
@@ -211,6 +221,16 @@ Off globally by default. Auto-activates on AI chat sites when AI Chat Guard is e
 - To enable globally: **Settings** → **Auto-Redact** → uncheck "Only auto-redact on AI chat sites".
 - Adjust debounce timing to balance responsiveness vs. processing load.
 
+### Detection Modes
+| Mode | Behaviour |
+|------|-----------|
+| **Auto** (default) | Nano → Regex → Hosted → Cloud (progressive escalation) |
+| **AI Only** | AI providers across all tiers, no regex fallback |
+| **Regex Only** | Pattern matching only, no AI or cloud |
+| **Cloud Only** | Azure PII / Purview first, regex fallback if unavailable |
+
+In **Cloud Only** mode, all document types (including DOCX XML replacement) use the cloud provider for PII detection. The `engine` field in debug logs and results confirms which provider processed the text.
+
 ### Enterprise Setup
 1. Click the extension icon → **Settings**.
 2. Under **Processing Providers**, configure your providers:
@@ -230,18 +250,20 @@ Enable "Redact File" buttons in settings to upload documents directly from any t
 ├── background.js                    # Service worker — message routing, providers, offscreen mgmt
 ├── content.js                       # Content script — UI, guards, interception, direct Nano redaction
 ├── content.css                      # Injected styles (buttons, banners, overlays)
-├── offscreen.html / offscreen.js    # Offscreen Document — Canvas/WASM, Nano proxy for service worker
-├── popup.html / popup.js            # Toolbar popup (status via direct LanguageModel check, stats)
+├── offscreen.html / offscreen.js    # Offscreen Document — Canvas/WASM, PDF/OCR, Nano proxy
+├── popup.html / popup.js            # Toolbar popup (status, stats, "Redact Files" launcher)
+├── redact.html / redact.js / .css  # Standalone document redaction tool (batch processing)
 ├── options.html / options.js / .css # Full settings page
 ├── lib/
-│   ├── nano-session.js              # LanguageModel (Prompt API) session manager — shared by content script + offscreen
+│   ├── debug.js                     # Debug logger with subsystem tagging ([LLSS:*])
+│   ├── nano-session.js              # LanguageModel (Prompt API) session manager
 │   ├── site-filter.js               # URL matching, AI service detection
 │   ├── pii-types.js                 # 17 default PII type definitions
 │   ├── regex-engine.js              # Pattern-based redaction with overlap resolution
 │   ├── vector-engine.js             # Heuristic name detection (trigram similarity)
 │   ├── redaction-engine.js          # AI/regex/vector routing (legacy compat)
-│   ├── settings.js                  # Storage, migration (v1→v2→v3)
-│   ├── pipeline.js                  # Progressive processing pipeline
+│   ├── settings.js                  # Storage, migration (v1→v2→v3), debug toggle
+│   ├── pipeline.js                  # Progressive processing pipeline (auto/ai/regex/cloud modes)
 │   ├── providers/
 │   │   ├── base-provider.js         # Abstract provider interface
 │   │   ├── provider-registry.js     # Provider lifecycle + capability routing
@@ -251,10 +273,12 @@ Enable "Redact File" buttons in settings to upload documents directly from any t
 │   │   ├── purview-provider.js      # Microsoft Purview DLP
 │   │   └── hosted-model-provider.js # Org-hosted models + OCR Extract
 │   └── documents/
-│       ├── document-processor.js    # File parsing (DOCX, XLSX, HTML, MD)
+│       ├── document-processor.js    # File parsing, ZIP reader, content type detection
+│       ├── zip-writer.js            # ZIP builder (CompressionStream + CRC-32)
+│       ├── docx-redactor.js         # Run-aware XML redaction for DOCX files
 │       ├── pdf-renderer.js          # pdf.js wrapper — PDF pages to canvas
 │       ├── ocr-processor.js         # Tesseract.js — OCR with worker pool
-│       ├── pixel-redactor.js        # Canvas redaction + PDF reconstruction
+│       ├── pixel-redactor.js        # PII→bbox mapping, canvas redaction, PDF reconstruction
 │       └── async-queue.js           # FIFO task queue with concurrency control
 ├── vendor/
 │   ├── setup.sh                     # Downloads pdf.js + Tesseract.js
@@ -276,7 +300,11 @@ Enable "Redact File" buttons in settings to upload documents directly from any t
 │   ├── pixel-redactor.test.js       # PII→bbox mapping, PDF builder
 │   ├── pdf-renderer.test.js
 │   ├── ocr-processor.test.js        # Worker pool exports
-│   └── async-queue.test.js          # Concurrency, FIFO, callbacks
+│   ├── async-queue.test.js          # Concurrency, FIFO, callbacks
+│   ├── zip-writer.test.js           # ZIP builder, CRC-32, round-trip
+│   ├── docx-redactor.test.js        # Run mapping, XML redaction, multi-run spans
+│   ├── debug.test.js                # Logger enable/disable, subsystems
+│   └── nano-session.test.js         # Prompt builder, conversational guard
 └── icons/
 ```
 
@@ -284,7 +312,7 @@ Enable "Redact File" buttons in settings to upload documents directly from any t
 
 ```bash
 npm install
-npm test              # Run all 203 tests
+npm test              # Run all tests
 npm run test:watch    # Watch mode
 npm run test:coverage # Coverage report
 ```
@@ -333,8 +361,8 @@ Settings are stored in `chrome.storage.local` with automatic migration across ve
 - **No telemetry.** The extension collects no analytics and phones home to nowhere.
 - **Enterprise providers are opt-in.** Azure, Purview, and hosted model connections only activate when explicitly configured.
 - **Credentials stored locally.** API keys are saved in `chrome.storage.local` (not synced).
-- **Document processing is local.** DOCX, XLSX, HTML, Markdown, PDF, and images are all processed in the browser. PDF/image OCR runs in an Offscreen Document using WASM — no document content leaves the browser unless a hosted/cloud provider is explicitly configured.
-- **Provably secure redaction.** PDF/image output uses image-based flattening — there is no hidden text layer. The `pdf-lib` overlay approach (which 65% of government "redacted" PDFs use) is deliberately avoided.
+- **Document processing is local.** DOCX, XLSX, HTML, Markdown, PDF, and images are all processed in the browser. DOCX redaction modifies the XML inside the ZIP — the original PII is removed from the file. PDF/image OCR runs in an Offscreen Document using WASM — no document content leaves the browser unless a hosted/cloud provider is explicitly configured.
+- **Provably secure redaction.** Scanned PDF and image output uses image-based flattening — there is no hidden text layer. The `pdf-lib` overlay approach (which 65% of government "redacted" PDFs use) is deliberately avoided. DOCX redaction replaces PII with visible tokens in the XML — the original text is genuinely removed.
 - **AI Chat Guard protects outbound data.** Redaction happens before text leaves the text field, not after.
 - **Submit interception is pre-send.** The extension blocks the submit action, redacts, then re-dispatches — content is never sent unredacted.
 - **Upload interception is pre-upload.** Files are intercepted, redacted, and replaced before the target site's handlers run. The original unredacted file never reaches the site's JavaScript.

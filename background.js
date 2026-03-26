@@ -137,12 +137,17 @@ async function ensureOffscreenDocument() {
   }
 }
 
-async function sendToOffscreen(type, data = {}) {
+async function sendToOffscreen(type, data = {}, timeoutMs = 120000) {
   await ensureOffscreenDocument();
   return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Offscreen ${type} timed out after ${timeoutMs / 1000}s`));
+    }, timeoutMs);
+
     chrome.runtime.sendMessage(
       { target: 'offscreen', type, ...data },
       (response) => {
+        clearTimeout(timer);
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
         } else if (response?.error) {

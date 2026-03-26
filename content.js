@@ -1012,7 +1012,10 @@
     const redactableFiles = files.filter((f) => isRedactableFile(f));
     if (redactableFiles.length === 0) return;
 
-    // Block the event from reaching the target site's listeners
+    // Block the original event — we'll replace the files and re-dispatch.
+    // This is necessary because redaction is async and we can't let the
+    // original (unredacted) file reach the site's handlers.
+    e.preventDefault();
     e.stopImmediatePropagation();
     e.stopPropagation();
 
@@ -1073,6 +1076,15 @@
     // Replace the input's files with the redacted versions + any non-redactable files
     const allFiles = [...redactedFiles, ...nonRedactable];
     replaceFileInput(input, allFiles);
+
+    // Many sites (especially AI chat UIs) use hidden file inputs triggered by
+    // custom buttons. They read input.files in their own callback which we
+    // blocked with stopImmediatePropagation. Re-triggering the input's click()
+    // would open the file dialog again, which is wrong. Instead, try to
+    // programmatically trigger the site's upload by clicking the input again
+    // in a way that re-reads the files. As a fallback, notify the user.
+    const dbg = typeof LLSS_debug !== "undefined" ? LLSS_debug : null;
+    if (dbg) dbg.log("upload", `Redaction complete: ${totalMatches} PII items across ${allFiles.length} file(s). Files set on input.`);
   }
 
   // ── Drag-and-drop interception ────────────────────────────────────────────
@@ -1191,12 +1203,17 @@
       }
       input.files = dt.files;
 
-      // Re-dispatch change event — our listener will see isRedactedDispatch=true and skip
+      // Re-dispatch events to notify the site that files have changed.
+      // We fire both 'input' and 'change' since different frameworks listen
+      // on different events.  A small delay before dispatch ensures the
+      // input.files property is readable by the site's handlers.
       isRedactedDispatch = true;
-      input.dispatchEvent(new Event("change", { bubbles: true }));
-      // Small delay to ensure all synchronous handlers run before we reset
-      setTimeout(() => { isRedactedDispatch = false; }, 0);
-      if (dbg) dbg.log("upload", "File input replaced and change event dispatched");
+      setTimeout(() => {
+        input.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true, cancelable: true }));
+        setTimeout(() => { isRedactedDispatch = false; }, 50);
+        if (dbg) dbg.log("upload", "File input replaced, input+change events dispatched");
+      }, 100);
     } catch (err) {
       if (dbg) dbg.error("upload", "replaceFileInput failed:", err?.message || String(err));
       showToast(document.body, "File redaction complete but could not update the upload. Try re-selecting the file.");

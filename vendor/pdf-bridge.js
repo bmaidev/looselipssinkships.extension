@@ -13,10 +13,14 @@ if (!globalThis.pdfjsLib) {
   console.error('[LLSS] pdf.min.mjs loaded but pdfjsLib not on globalThis');
 }
 
-// pdf.js v4 requires a valid workerSrc — point to the worker bundle.
-// import.meta.url gives us the module's own URL, so we can resolve relative paths.
-globalThis.pdfjsLib.GlobalWorkerOptions.workerSrc =
-  new URL('./pdf.worker.min.mjs', import.meta.url).href;
+// Disable the pdf.js web worker — the offscreen document is already off the
+// UI thread, so a worker-in-a-worker just adds complexity.  The .mjs worker
+// file can't be loaded as a classic web worker anyway (needs module worker
+// support which isn't available in all extension contexts).
+//
+// Setting workerSrc to empty string no longer works in v4.  Instead, import
+// the worker code directly so pdf.js detects it and runs inline.
+import './pdf.worker.min.mjs';
 
 // Signal that pdf.js is ready
 globalThis.__pdfjsReady = true;

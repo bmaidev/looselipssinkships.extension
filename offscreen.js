@@ -105,8 +105,9 @@
             sendResponse(result);
           })
           .catch((err) => {
-            if (dbg) dbg.error('offscreen', 'RENDER_AND_OCR failed:', err.message);
-            sendResponse({ error: err.message });
+            const msg = err?.message || String(err) || 'Unknown error';
+            if (dbg) dbg.error('offscreen', 'RENDER_AND_OCR failed:', msg, err);
+            sendResponse({ error: msg });
           });
         return true;
       }
@@ -114,19 +115,19 @@
       case 'APPLY_REDACTIONS':
         handleApplyRedactions(message)
           .then(sendResponse)
-          .catch((err) => sendResponse({ error: err.message }));
+          .catch((err) => sendResponse({ error: err?.message || String(err) }));
         return true;
 
       case 'OCR_IMAGE':
         handleOcrImage(message)
           .then(sendResponse)
-          .catch((err) => sendResponse({ error: err.message }));
+          .catch((err) => sendResponse({ error: err?.message || String(err) }));
         return true;
 
       case 'CLEANUP':
         handleCleanup()
           .then(sendResponse)
-          .catch((err) => sendResponse({ error: err.message }));
+          .catch((err) => sendResponse({ error: err?.message || String(err) }));
         return true;
 
       // ── Nano proxy messages (from service worker) ─────────────────────

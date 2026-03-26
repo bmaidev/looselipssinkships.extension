@@ -87,7 +87,7 @@
     // Try direct Nano first (only if mode allows AI and belt-and-suspenders
     // is off — when regexAfterAi is on we need the full background pipeline).
     const mode = cachedSettings.detectionMode || "auto";
-    if (mode !== "regex_only" && !cachedSettings.regexAfterAi) {
+    if (mode !== "regex_only" && mode !== "cloud_only" && !cachedSettings.regexAfterAi) {
       const nanoResult = await tryNanoRedact(text);
       if (nanoResult) {
         if (dbg) dbg.log("redact", "Used direct Nano path (no IPC)");

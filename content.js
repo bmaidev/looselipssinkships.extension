@@ -1182,9 +1182,11 @@
    * the change event so the target site's handler processes the secured files.
    */
   function replaceFileInput(input, files) {
+    const dbg = typeof LLSS_debug !== "undefined" ? LLSS_debug : null;
     try {
       const dt = new DataTransfer();
       for (const f of files) {
+        if (dbg) dbg.log("upload", `Adding to DataTransfer: ${f.name} (${f.size} bytes, ${f.type})`);
         dt.items.add(f);
       }
       input.files = dt.files;
@@ -1194,9 +1196,10 @@
       input.dispatchEvent(new Event("change", { bubbles: true }));
       // Small delay to ensure all synchronous handlers run before we reset
       setTimeout(() => { isRedactedDispatch = false; }, 0);
-    } catch {
-      // DataTransfer not supported — show result overlay instead
-      showToast(document.body, "Files redacted. Download from the overlay.");
+      if (dbg) dbg.log("upload", "File input replaced and change event dispatched");
+    } catch (err) {
+      if (dbg) dbg.error("upload", "replaceFileInput failed:", err?.message || String(err));
+      showToast(document.body, "File redaction complete but could not update the upload. Try re-selecting the file.");
     }
   }
 

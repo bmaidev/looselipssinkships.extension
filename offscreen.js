@@ -236,10 +236,19 @@
    * pdfjsReady event dispatched by vendor/pdf-bridge.js.
    */
   function waitForPdfjs(timeoutMs = 10000) {
+    // Check both the library object and the ready flag — the pdfjsReady event
+    // may have already fired before this function is called (race condition
+    // between deferred ES module execution and incoming messages).
     if (globalThis.pdfjsLib) return Promise.resolve(globalThis.pdfjsLib);
+    if (globalThis.__pdfjsReady) return Promise.resolve(globalThis.pdfjsLib);
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
-        reject(new Error('pdf.js module did not load within ' + timeoutMs + 'ms. Check that vendor/pdf.min.mjs exists.'));
+        // One final check before rejecting — module may have loaded during timeout
+        if (globalThis.pdfjsLib || globalThis.__pdfjsReady) {
+          resolve(globalThis.pdfjsLib);
+        } else {
+          reject(new Error('pdf.js module did not load within ' + timeoutMs + 'ms. Check that vendor/pdf.min.mjs exists.'));
+        }
       }, timeoutMs);
       document.addEventListener('pdfjsReady', () => {
         clearTimeout(timer);

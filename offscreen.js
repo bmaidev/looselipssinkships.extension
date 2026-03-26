@@ -199,6 +199,15 @@
     let allOcrResults;
 
     if (contentType === 'pdf') {
+      // Try text extraction first (fast, no rendering/OCR needed).
+      // Falls back to render+OCR only if text extraction yields nothing
+      // (scanned/image-only PDFs).
+      const textResult = await tryPdfTextExtraction(buffer);
+      if (textResult) {
+        console.log('[LLSS:offscreen] PDF text extraction succeeded:', textResult.fullText.length, 'chars');
+        return textResult;
+      }
+      console.log('[LLSS:offscreen] PDF text extraction empty, falling back to render+OCR');
       allOcrResults = await renderAndOcrPdf(buffer, ocrFn);
     } else {
       allOcrResults = await renderAndOcrImage(buffer, contentType, ocrFn);
@@ -266,6 +275,54 @@
   /**
    * PDF: render pages in chunks, OCR each chunk, release canvases.
    */
+  /**
+   * Try extracting text directly from PDF (no rendering/OCR).
+   * Works for text-based PDFs. Returns null for scanned/image-only PDFs.
+   * Uses pdf.js getTextContent() which is much faster than render+OCR.
+   */
+  async function tryPdfTextExtraction(buffer) {
+    try {
+      const pdfjsLib = await waitForPdfjs();
+      const pdfDoc = await pdfjsLib.getDocument({ data: buffer }).promise;
+      const totalPages = Math.min(pdfDoc.numPages, 50);
+
+      const pageTexts = [];
+      let offset = 0;
+      const pages = [];
+
+      for (let i = 1; i <= totalPages; i++) {
+        const page = await pdfDoc.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map(item => item.str).join(' ');
+        page.cleanup();
+
+        if (pageText.trim().length > 0) {
+          pages.push({
+            pageNumber: i,
+            text: pageText,
+            blocks: [], // No bounding boxes from text extraction
+            width: 0,
+            height: 0,
+            charStart: offset,
+            charEnd: offset + pageText.length,
+          });
+          pageTexts.push(pageText);
+          offset += pageText.length + 1;
+        }
+      }
+
+      pdfDoc.destroy();
+
+      const fullText = pageTexts.join('\n');
+      if (fullText.trim().length < 10) return null; // Too little text — probably scanned
+
+      return { pages, fullText };
+    } catch (err) {
+      console.warn('[LLSS:offscreen] PDF text extraction failed:', err?.message || err);
+      return null;
+    }
+  }
+
   async function renderAndOcrPdf(buffer, ocrFn) {
     const renderPdf = globalThis.LLSS_renderPdfPages;
     if (!renderPdf) throw new Error('PDF renderer not available');

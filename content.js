@@ -1199,6 +1199,7 @@
         'image/jpeg': '.jpg',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+        'text/plain': '.txt',
       };
       const ext = extMap[format] || file.name.match(/\.[^.]+$/)?.[0] || '';
       const baseName = file.name.replace(/\.[^.]+$/, "");

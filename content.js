@@ -1159,12 +1159,27 @@
     const buffer = await file.arrayBuffer();
     const data = Array.from(new Uint8Array(buffer));
 
-    const response = await chrome.runtime.sendMessage({
-      type: "REDACT_DOCUMENT",
-      fileData: data,
-      fileName: file.name,
-      mimeType: file.type,
-    });
+    // Open a long-lived port to keep the service worker alive during
+    // potentially long document processing (OCR can take minutes).
+    // A connected port prevents Chrome from terminating the worker.
+    let keepAlivePort = null;
+    try {
+      keepAlivePort = chrome.runtime.connect({ name: 'doc-processing' });
+    } catch (_) {}
+
+    let response;
+    try {
+      response = await chrome.runtime.sendMessage({
+        type: "REDACT_DOCUMENT",
+        fileData: data,
+        fileName: file.name,
+        mimeType: file.type,
+      });
+    } finally {
+      if (keepAlivePort) {
+        try { keepAlivePort.disconnect(); } catch (_) {}
+      }
+    }
 
     if (!response?.success) {
       throw new Error(response?.error || "Redaction failed");

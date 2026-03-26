@@ -182,32 +182,23 @@ let processingTabId = null;
 // (offscreen OCR, Nano sessions) need periodic pings to prevent termination.
 
 let keepAliveInterval = null;
-let keepAlivePort = null;
 
 function startKeepAlive() {
   if (keepAliveInterval) return;
-  // Method 1: Periodic API call (reliable for short operations)
+  // Periodic chrome API calls prevent MV3 from killing the service worker.
+  // We ping every 4 seconds (Chrome's idle threshold is ~5s of no API activity).
   keepAliveInterval = setInterval(() => {
-    chrome.runtime.getPlatformInfo(() => {});
-  }, 5000);
-  // Method 2: Self-connecting port (keeps worker alive as long as port is open)
-  try {
-    keepAlivePort = chrome.runtime.connect({ name: 'keepalive' });
-    keepAlivePort.onDisconnect.addListener(() => { keepAlivePort = null; });
-  } catch (_) {}
-  LLSS_debug.log("keepalive", "Started");
+    chrome.storage.local.get('__keepalive', () => {});
+  }, 4000);
+  LLSS_debug.log("keepalive", "Started (4s interval)");
 }
 
 function stopKeepAlive() {
   if (keepAliveInterval) {
     clearInterval(keepAliveInterval);
     keepAliveInterval = null;
+    LLSS_debug.log("keepalive", "Stopped");
   }
-  if (keepAlivePort) {
-    try { keepAlivePort.disconnect(); } catch (_) {}
-    keepAlivePort = null;
-  }
-  LLSS_debug.log("keepalive", "Stopped");
 }
 
 // ── Idle timer ──────────────────────────────────────────────────────────────
@@ -491,6 +482,21 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       sendResponse({ success: true });
       return false;
     }
+  }
+});
+
+// ── Long-lived port connections ──────────────────────────────────────────────
+// Content scripts open a port during document processing to keep the service
+// worker alive. An open port prevents Chrome MV3 from terminating the worker.
+
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === 'doc-processing') {
+    LLSS_debug.log("keepalive", "Content script connected (doc-processing port)");
+    startKeepAlive();
+    port.onDisconnect.addListener(() => {
+      LLSS_debug.log("keepalive", "Content script disconnected");
+      stopKeepAlive();
+    });
   }
 });
 

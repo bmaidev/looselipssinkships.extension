@@ -34,6 +34,13 @@
   <script src="vendor/pdf.min.js"></script>
   <script src="vendor/tesseract/tesseract.min.js"></script>
 
+  <!-- Vendor load check — logs immediately so failures are visible -->
+  <script>
+    console.log('[LLSS:offscreen] Vendor load check:',
+      'pdfjsLib=' + (typeof pdfjsLib !== 'undefined' ? 'OK' : 'MISSING'),
+      'Tesseract=' + (typeof Tesseract !== 'undefined' ? 'OK' : 'MISSING'));
+  </script>
+
   <!-- Debug logger -->
   <script src="lib/debug.js"></script>
 

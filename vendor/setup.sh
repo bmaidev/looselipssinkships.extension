@@ -34,7 +34,8 @@ echo "      ✓ pdf.min.mjs, pdf.worker.min.mjs"
 
 echo "[2/4] Downloading Tesseract.js v${TESSERACT_VERSION}..."
 curl -sL "https://cdn.jsdelivr.net/npm/tesseract.js@${TESSERACT_VERSION}/dist/tesseract.min.js" -o tesseract/tesseract.min.js
-echo "      ✓ tesseract/tesseract.min.js"
+curl -sL "https://cdn.jsdelivr.net/npm/tesseract.js@${TESSERACT_VERSION}/dist/worker.min.js" -o tesseract/worker.min.js
+echo "      ✓ tesseract/tesseract.min.js, worker.min.js"
 
 echo "[3/4] Downloading Tesseract.js core WASM v${TESSERACT_CORE_VERSION}..."
 curl -sL "https://cdn.jsdelivr.net/npm/tesseract.js-core@${TESSERACT_CORE_VERSION}/tesseract-core-simd.wasm.js" -o tesseract/tesseract-core-simd.wasm.js

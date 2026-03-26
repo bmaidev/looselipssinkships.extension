@@ -230,17 +230,32 @@
   }
 
   /**
+   * Wait for pdf.js module to load (it's deferred via type="module").
+   * Returns immediately if already loaded, otherwise waits for the
+   * pdfjsReady event dispatched by vendor/pdf-bridge.js.
+   */
+  function waitForPdfjs(timeoutMs = 10000) {
+    if (globalThis.pdfjsLib) return Promise.resolve(globalThis.pdfjsLib);
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error('pdf.js module did not load within ' + timeoutMs + 'ms. Check that vendor/pdf.min.mjs exists.'));
+      }, timeoutMs);
+      document.addEventListener('pdfjsReady', () => {
+        clearTimeout(timer);
+        resolve(globalThis.pdfjsLib);
+      }, { once: true });
+    });
+  }
+
+  /**
    * PDF: render pages in chunks, OCR each chunk, release canvases.
    */
   async function renderAndOcrPdf(buffer, ocrFn) {
     const renderPdf = globalThis.LLSS_renderPdfPages;
     if (!renderPdf) throw new Error('PDF renderer not available');
 
-    // First, get total page count without rendering
-    const pdfjsLib = globalThis.pdfjsLib;
-    if (pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-    }
+    // Wait for pdf.js (loaded as deferred ES module)
+    const pdfjsLib = await waitForPdfjs();
     const pdfDoc = await pdfjsLib.getDocument({ data: buffer }).promise;
     const totalPages = Math.min(pdfDoc.numPages, 50);
 
@@ -409,7 +424,7 @@
    * Pages without redactions are rendered clean (still flattened to image for security).
    */
   async function reRenderAndRedactPdf(redactionMap) {
-    const pdfjsLib = globalThis.pdfjsLib;
+    const pdfjsLib = await waitForPdfjs();
     const redactFn = globalThis.LLSS_redactCanvasRegions;
     const scale = 2.0;
 

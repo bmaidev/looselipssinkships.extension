@@ -14,45 +14,34 @@
       2. OCR text extraction (Tesseract.js → WASM)
       3. Pixel-level redaction (Canvas black rectangles)
       4. PDF reconstruction (flattened images → new PDF)
+      5. Nano (LanguageModel) session proxy for service worker
 
     Communication: chrome.runtime.onMessage ↔ background.js
     Lifecycle: created on-demand, destroyed after idle timeout.
+
+    LOAD ORDER:
+      pdf.js uses import.meta (ES module only). It MUST be loaded via
+      type="module". Module scripts are deferred — they execute AFTER
+      all regular scripts. So the load order is:
+
+      Phase 1 (synchronous): Tesseract, debug, LLSS modules, offscreen.js
+      Phase 2 (deferred):    pdf-bridge.js imports pdf.min.mjs → sets pdfjsLib
+
+      The message handler in offscreen.js is registered in Phase 1 and
+      works immediately for non-PDF operations (image OCR, Nano).
+      PDF operations check for pdfjsLib at call time.
   -->
 
-  <!--
-    Load order matters:
-    1. Vendor libs first (set globals: pdfjsLib, Tesseract)
-    2. Then LLSS modules that depend on those globals
-    3. Then the message handler last
-
-    pdf.min.js is NOT loaded as type="module" — module scripts are
-    deferred and would execute AFTER the non-module scripts, leaving
-    pdfjsLib undefined when pdf-renderer.js runs.
-  -->
-
-  <!-- Vendor libraries (must be regular scripts, not modules) -->
-  <script src="vendor/pdf.min.js"></script>
+  <!-- Phase 1: Regular scripts (execute immediately, in order) -->
   <script src="vendor/tesseract/tesseract.min.js"></script>
-
-  <!-- Vendor load check — logs immediately so failures are visible -->
-  <script>
-    console.log('[LLSS:offscreen] Vendor load check:',
-      'pdfjsLib=' + (typeof pdfjsLib !== 'undefined' ? 'OK' : 'MISSING'),
-      'Tesseract=' + (typeof Tesseract !== 'undefined' ? 'OK' : 'MISSING'));
-  </script>
-
-  <!-- Debug logger -->
   <script src="lib/debug.js"></script>
-
-  <!-- LLSS document processing modules -->
   <script src="lib/documents/pdf-renderer.js"></script>
   <script src="lib/documents/ocr-processor.js"></script>
   <script src="lib/documents/pixel-redactor.js"></script>
-
-  <!-- Nano (LanguageModel) session manager for service-worker proxy -->
   <script src="lib/nano-session.js"></script>
-
-  <!-- Offscreen message handler (must be last) -->
   <script src="offscreen.js"></script>
+
+  <!-- Phase 2: ES module — loads pdf.js and fires pdfjsReady event -->
+  <script type="module" src="vendor/pdf-bridge.js"></script>
 </body>
 </html>

@@ -271,8 +271,12 @@
     if (!renderPdf) throw new Error('PDF renderer not available');
 
     // Wait for pdf.js (loaded as deferred ES module)
+    console.log('[LLSS:offscreen] renderAndOcrPdf: waiting for pdf.js...');
     const pdfjsLib = await waitForPdfjs();
+    console.log('[LLSS:offscreen] renderAndOcrPdf: pdfjsLib ready, calling getDocument...');
+    console.log('[LLSS:offscreen] pdfjsWorker check:', typeof globalThis.pdfjsWorker?.WorkerMessageHandler);
     const pdfDoc = await pdfjsLib.getDocument({ data: buffer }).promise;
+    console.log('[LLSS:offscreen] renderAndOcrPdf: PDF loaded, pages:', pdfDoc.numPages);
     const totalPages = Math.min(pdfDoc.numPages, 50);
 
     sendProgress({ phase: 'render_start', totalPages });

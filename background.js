@@ -177,22 +177,32 @@ let processingTabId = null;
 // (offscreen OCR, Nano sessions) need periodic pings to prevent termination.
 
 let keepAliveInterval = null;
+let keepAlivePort = null;
 
 function startKeepAlive() {
   if (keepAliveInterval) return;
+  // Method 1: Periodic API call (reliable for short operations)
   keepAliveInterval = setInterval(() => {
-    // A no-op chrome API call keeps the service worker alive
     chrome.runtime.getPlatformInfo(() => {});
-  }, 20000);
-  LLSS_debug.log("keepalive", "Started (20s interval)");
+  }, 5000);
+  // Method 2: Self-connecting port (keeps worker alive as long as port is open)
+  try {
+    keepAlivePort = chrome.runtime.connect({ name: 'keepalive' });
+    keepAlivePort.onDisconnect.addListener(() => { keepAlivePort = null; });
+  } catch (_) {}
+  LLSS_debug.log("keepalive", "Started");
 }
 
 function stopKeepAlive() {
   if (keepAliveInterval) {
     clearInterval(keepAliveInterval);
     keepAliveInterval = null;
-    LLSS_debug.log("keepalive", "Stopped");
   }
+  if (keepAlivePort) {
+    try { keepAlivePort.disconnect(); } catch (_) {}
+    keepAlivePort = null;
+  }
+  LLSS_debug.log("keepalive", "Stopped");
 }
 
 // ── Idle timer ──────────────────────────────────────────────────────────────
@@ -243,14 +253,22 @@ async function handleRedactDocument(fileData, fileName, mimeType, options = {}) 
     throw new Error(`Unsupported file type: ${fileName} (${mimeType})`);
   }
 
+  const enabledPiiTypes = piiTypes.filter(t => t.enabled);
+  LLSS_debug.log("doc", `Processing ${contentType}: ${fileName}, ${enabledPiiTypes.length} PII types enabled`);
+
   const result = await LLSS_pipelineRedactDocument(fileData, contentType, {
     registry,
-    piiTypes: piiTypes.filter(t => t.enabled),
+    piiTypes: enabledPiiTypes,
     settings,
     forceProvider: options.forceProvider,
     forceTier: options.forceTier,
     offscreenProcessor,
   });
+
+  LLSS_debug.log("doc", `Result: engine=${result.engine} matches=${result.matches?.length} redacted_len=${result.redacted?.length} steps=[${result.pipelineSteps?.join("→")}]`);
+  if (result.redacted) {
+    LLSS_debug.log("doc", `Extracted text preview (first 200 chars): "${result.redacted.substring(0, 200)}"`);
+  }
 
   // Record statistics
   const engineKey = result.engine.includes("+") ? result.engine.split("+")[0] : result.engine;

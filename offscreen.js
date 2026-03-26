@@ -358,7 +358,7 @@
 
         // Timeout per page — fake worker can hang on complex pages
         const renderResult = await Promise.race([
-          page.render({ canvasContext: ctx, viewport }).promise,
+          page.render({ canvasContext: ctx, viewport, intent: 'print' }).promise,
           new Promise((_, reject) => setTimeout(() => reject(new Error(`Page ${i + 1} render timed out after 30s`)), 30000)),
         ]);
 
@@ -524,7 +524,7 @@
       canvas.height = Math.floor(viewport.height);
       const ctx = canvas.getContext('2d');
       await Promise.race([
-        page.render({ canvasContext: ctx, viewport }).promise,
+        page.render({ canvasContext: ctx, viewport, intent: 'print' }).promise,
         new Promise((_, reject) => setTimeout(() => reject(new Error(`Page ${meta.pageNumber} redaction render timed out after 30s`)), 30000)),
       ]);
 

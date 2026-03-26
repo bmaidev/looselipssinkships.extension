@@ -25,13 +25,13 @@
     2. Then LLSS modules that depend on those globals
     3. Then the message handler last
 
-    pdf.min.mjs is NOT loaded as type="module" — module scripts are
+    pdf.min.js is NOT loaded as type="module" — module scripts are
     deferred and would execute AFTER the non-module scripts, leaving
     pdfjsLib undefined when pdf-renderer.js runs.
   -->
 
   <!-- Vendor libraries (must be regular scripts, not modules) -->
-  <script src="vendor/pdf.min.mjs"></script>
+  <script src="vendor/pdf.min.js"></script>
   <script src="vendor/tesseract/tesseract.min.js"></script>
 
   <!-- Debug logger -->

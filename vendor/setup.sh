@@ -26,9 +26,10 @@ mkdir -p tesseract/lang-data
 # ── pdf.js ────────────────────────────────────────────────────────────────────
 
 echo "[1/4] Downloading pdf.js v${PDFJS_VERSION}..."
-curl -sL "https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.min.mjs" -o pdf.min.mjs
-curl -sL "https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.mjs" -o pdf.worker.min.mjs
-echo "      ✓ pdf.min.mjs, pdf.worker.min.mjs"
+# Download as .mjs then rename to .js — Chrome won't execute .mjs as a regular script
+curl -sL "https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.min.mjs" -o pdf.min.js
+curl -sL "https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.mjs" -o pdf.worker.min.js
+echo "      ✓ pdf.min.js, pdf.worker.min.js"
 
 # ── Tesseract.js ──────────────────────────────────────────────────────────────
 

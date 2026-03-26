@@ -8,31 +8,25 @@
   <!--
     Offscreen Document for Loose Lips Sink Ships.
 
-    MV3 service workers cannot access Canvas or DOM APIs.
-    This document provides:
-      1. PDF page rendering (pdf.js → Canvas)
-      2. OCR text extraction (Tesseract.js → WASM)
-      3. Pixel-level redaction (Canvas black rectangles)
-      4. PDF reconstruction (flattened images → new PDF)
-      5. Nano (LanguageModel) session proxy for service worker
+    LOAD ORDER (critical):
 
-    Communication: chrome.runtime.onMessage ↔ background.js
-    Lifecycle: created on-demand, destroyed after idle timeout.
+    Phase 1 (regular scripts, execute immediately in order):
+      - pdf.worker.min.mjs as regular script → sets globalThis.pdfjsWorker
+        (file has NO import.meta or ES module syntax despite .mjs extension)
+      - Tesseract, debug, LLSS modules, offscreen.js
 
-    LOAD ORDER:
-      pdf.js uses import.meta (ES module only). It MUST be loaded via
-      type="module". Module scripts are deferred — they execute AFTER
-      all regular scripts. So the load order is:
+    Phase 2 (ES module, deferred):
+      - pdf-bridge.js imports pdf.min.mjs (which DOES use import.meta)
+        → sets globalThis.pdfjsLib, fires pdfjsReady event.
+        pdf.js detects pdfjsWorker.WorkerMessageHandler and uses inline
+        mode (no web worker spawn).
 
-      Phase 1 (synchronous): Tesseract, debug, LLSS modules, offscreen.js
-      Phase 2 (deferred):    pdf-bridge.js imports pdf.min.mjs → sets pdfjsLib
-
-      The message handler in offscreen.js is registered in Phase 1 and
-      works immediately for non-PDF operations (image OCR, Nano).
-      PDF operations check for pdfjsLib at call time.
+    Non-PDF operations (image OCR, Nano) work immediately from Phase 1.
+    PDF operations wait for Phase 2 via waitForPdfjs().
   -->
 
-  <!-- Phase 1: Regular scripts (execute immediately, in order) -->
+  <!-- Phase 1: Regular scripts -->
+  <script src="vendor/pdf.worker.min.mjs"></script>
   <script src="vendor/tesseract/tesseract.min.js"></script>
   <script src="lib/debug.js"></script>
   <script src="lib/documents/pdf-renderer.js"></script>
@@ -41,7 +35,7 @@
   <script src="lib/nano-session.js"></script>
   <script src="offscreen.js"></script>
 
-  <!-- Phase 2: ES module — loads pdf.js and fires pdfjsReady event -->
+  <!-- Phase 2: ES module for pdf.js main library (uses import.meta) -->
   <script type="module" src="vendor/pdf-bridge.js"></script>
 </body>
 </html>

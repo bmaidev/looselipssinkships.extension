@@ -202,7 +202,10 @@
       // Try text extraction first (fast, no rendering/OCR needed).
       // Falls back to render+OCR only if text extraction yields nothing
       // (scanned/image-only PDFs).
-      const textResult = await tryPdfTextExtraction(buffer);
+      // NOTE: pdf.js detaches the ArrayBuffer on getDocument(), so we must
+      // pass a copy to text extraction and keep the original for render+OCR.
+      const bufferCopy = buffer.slice(0);
+      const textResult = await tryPdfTextExtraction(bufferCopy);
       if (textResult) {
         console.log('[LLSS:offscreen] PDF text extraction succeeded:', textResult.fullText.length, 'chars');
         return textResult;

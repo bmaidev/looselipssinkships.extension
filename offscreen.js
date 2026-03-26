@@ -348,13 +348,21 @@
 
       // Render this chunk
       for (let i = start; i < end; i++) {
+        console.log(`[LLSS:offscreen] Rendering page ${i + 1}/${totalPages}...`);
         const page = await pdfDoc.getPage(i + 1);
         const viewport = page.getViewport({ scale });
         const canvas = document.createElement('canvas');
         canvas.width = Math.floor(viewport.width);
         canvas.height = Math.floor(viewport.height);
         const ctx = canvas.getContext('2d');
-        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        // Timeout per page — fake worker can hang on complex pages
+        const renderResult = await Promise.race([
+          page.render({ canvasContext: ctx, viewport }).promise,
+          new Promise((_, reject) => setTimeout(() => reject(new Error(`Page ${i + 1} render timed out after 30s`)), 30000)),
+        ]);
+
+        console.log(`[LLSS:offscreen] Page ${i + 1} rendered: ${canvas.width}x${canvas.height}`);
 
         chunkPages.push({
           pageNumber: i + 1,
@@ -515,7 +523,10 @@
       canvas.width = Math.floor(viewport.width);
       canvas.height = Math.floor(viewport.height);
       const ctx = canvas.getContext('2d');
-      await page.render({ canvasContext: ctx, viewport }).promise;
+      await Promise.race([
+        page.render({ canvasContext: ctx, viewport }).promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`Page ${meta.pageNumber} redaction render timed out after 30s`)), 30000)),
+      ]);
 
       // Apply redactions if any
       const regions = redactionMap.get(meta.pageNumber);

@@ -8,26 +8,22 @@
   <!--
     Offscreen Document for Loose Lips Sink Ships.
 
-    LOAD ORDER (critical):
+    LOAD ORDER:
+      Phase 1 (regular scripts): Tesseract, debug, LLSS modules, offscreen.js
+      Phase 2 (ES module):       pdf-bridge.js imports BOTH pdf.worker and
+                                  pdf.min.mjs, then fires pdfjsReady.
 
-    Phase 1 (regular scripts, execute immediately in order):
-      - pdf.worker.min.mjs as regular script → sets globalThis.pdfjsWorker
-        (file has NO import.meta or ES module syntax despite .mjs extension)
-      - Tesseract, debug, LLSS modules, offscreen.js
-
-    Phase 2 (ES module, deferred):
-      - pdf-bridge.js imports pdf.min.mjs (which DOES use import.meta)
-        → sets globalThis.pdfjsLib, fires pdfjsReady event.
-        pdf.js detects pdfjsWorker.WorkerMessageHandler and uses inline
-        mode (no web worker spawn).
+    pdf.js is loaded ENTIRELY through the module bridge because:
+      - pdf.min.mjs uses import.meta (requires module context)
+      - Loading pdf.worker as a regular script silently fails in Chrome
+        extension offscreen documents
+      - The bridge guarantees both load in order: worker first, then lib
 
     Non-PDF operations (image OCR, Nano) work immediately from Phase 1.
     PDF operations wait for Phase 2 via waitForPdfjs().
   -->
 
-  <!-- Phase 1: Regular scripts -->
-  <!-- .js not .mjs — Chrome may silently skip .mjs files loaded without type="module" -->
-  <script src="vendor/pdf.worker.min.js"></script>
+  <!-- Phase 1: Regular scripts (no pdf.js here — it's all in Phase 2) -->
   <script src="vendor/tesseract/tesseract.min.js"></script>
   <script src="lib/debug.js"></script>
   <script src="lib/documents/pdf-renderer.js"></script>
@@ -36,7 +32,7 @@
   <script src="lib/nano-session.js"></script>
   <script src="offscreen.js"></script>
 
-  <!-- Phase 2: ES module for pdf.js main library (uses import.meta) -->
+  <!-- Phase 2: ES module bridge loads pdf.worker + pdf.min.mjs -->
   <script type="module" src="vendor/pdf-bridge.js"></script>
 </body>
 </html>

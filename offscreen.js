@@ -31,11 +31,10 @@
   'use strict';
 
   // ── Startup diagnostic (always logs, not dependent on debug setting) ─────
-  // This is critical for diagnosing PDF/Tesseract loading issues.
-  console.log('[LLSS:offscreen] Phase 1 vendor status:',
-    'pdfjsWorker=' + (typeof pdfjsWorker !== 'undefined' && pdfjsWorker?.WorkerMessageHandler ? 'OK' : 'MISSING'),
+  console.log('[LLSS:offscreen] Phase 1 status:',
     'Tesseract=' + (typeof Tesseract !== 'undefined' ? 'OK' : 'MISSING'),
-    'LLSS_ocrPages=' + (typeof LLSS_ocrPages !== 'undefined' ? 'OK' : 'MISSING'));
+    'LLSS_ocrPages=' + (typeof LLSS_ocrPages !== 'undefined' ? 'OK' : 'MISSING'),
+    '(pdf.js loads in Phase 2 via module bridge)');
 
   // ── Debug logging activation ──────────────────────────────────────────────
   // The offscreen document doesn't load settings.js, so we check storage

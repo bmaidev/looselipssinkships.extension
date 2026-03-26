@@ -30,6 +30,13 @@
 (() => {
   'use strict';
 
+  // ── Startup diagnostic (always logs, not dependent on debug setting) ─────
+  // This is critical for diagnosing PDF/Tesseract loading issues.
+  console.log('[LLSS:offscreen] Phase 1 vendor status:',
+    'pdfjsWorker=' + (typeof pdfjsWorker !== 'undefined' && pdfjsWorker?.WorkerMessageHandler ? 'OK' : 'MISSING'),
+    'Tesseract=' + (typeof Tesseract !== 'undefined' ? 'OK' : 'MISSING'),
+    'LLSS_ocrPages=' + (typeof LLSS_ocrPages !== 'undefined' ? 'OK' : 'MISSING'));
+
   // ── Debug logging activation ──────────────────────────────────────────────
   // The offscreen document doesn't load settings.js, so we check storage
   // directly on startup to enable debug logging.
@@ -38,11 +45,11 @@
       if (result?.llss_settings?.debugMode && typeof LLSS_debug !== 'undefined') {
         LLSS_debug.setEnabled(true);
       }
-      // Always log startup diagnostics when debug is on
       const dbg = typeof LLSS_debug !== 'undefined' ? LLSS_debug : null;
       if (dbg && dbg.isEnabled()) {
         dbg.log('offscreen', 'Offscreen document ready — vendor status:', {
-          pdfjsLib: typeof pdfjsLib !== 'undefined' ? 'loaded' : 'MISSING',
+          pdfjsWorker: typeof pdfjsWorker !== 'undefined' && pdfjsWorker?.WorkerMessageHandler ? 'OK (inline)' : 'MISSING',
+          pdfjsLib: typeof pdfjsLib !== 'undefined' ? 'loaded (via module bridge)' : 'MISSING (deferred)',
           Tesseract: typeof Tesseract !== 'undefined' ? 'loaded' : 'MISSING',
           LLSS_ocrPages: typeof LLSS_ocrPages !== 'undefined' ? 'defined' : 'MISSING',
           LLSS_renderPdfPages: typeof LLSS_renderPdfPages !== 'undefined' ? 'defined' : 'MISSING',

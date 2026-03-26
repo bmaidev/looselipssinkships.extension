@@ -172,6 +172,29 @@ const offscreenProcessor = {
 
 let processingTabId = null;
 
+// ── Service worker keep-alive ────────────────────────────────────────────────
+// MV3 kills service workers after ~30s of inactivity.  Long-running operations
+// (offscreen OCR, Nano sessions) need periodic pings to prevent termination.
+
+let keepAliveInterval = null;
+
+function startKeepAlive() {
+  if (keepAliveInterval) return;
+  keepAliveInterval = setInterval(() => {
+    // A no-op chrome API call keeps the service worker alive
+    chrome.runtime.getPlatformInfo(() => {});
+  }, 20000);
+  LLSS_debug.log("keepalive", "Started (20s interval)");
+}
+
+function stopKeepAlive() {
+  if (keepAliveInterval) {
+    clearInterval(keepAliveInterval);
+    keepAliveInterval = null;
+    LLSS_debug.log("keepalive", "Stopped");
+  }
+}
+
 // ── Idle timer ──────────────────────────────────────────────────────────────
 
 let idleTimer = null;
@@ -295,6 +318,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
     case "REDACT_DOCUMENT": {
       LLSS_debug.log("doc", `REDACT_DOCUMENT: ${message.fileName} (${message.mimeType}, ${message.fileData?.length || 0} bytes)`);
+      startKeepAlive(); // Prevent service worker termination during long OCR
       // fileData arrives as an array (serialised ArrayBuffer)
       const buffer = message.fileData instanceof ArrayBuffer
         ? message.fileData
@@ -308,6 +332,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         forceTier: message.forceTier,
       })
         .then((result) => {
+          stopKeepAlive();
           LLSS_debug.log("doc", `REDACT_DOCUMENT complete: engine=${result.engine} matches=${result.matches?.length || 0} steps=[${result.pipelineSteps?.join("→")}]`);
           processingTabId = null;
           sendResponse({
@@ -323,6 +348,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           });
         })
         .catch((err) => {
+          stopKeepAlive();
           LLSS_debug.error("doc", "REDACT_DOCUMENT failed:", err.message);
           processingTabId = null;
           sendResponse({ success: false, error: err.message });

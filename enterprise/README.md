@@ -44,9 +44,84 @@ Lock individual settings or entire sections:
 
 - `"aiChatGuard": true` — locks the entire AI Chat Guard section (all sub-settings)
 - `"aiChatGuard.enabled": true` — locks only the enable toggle; users can still adjust sub-settings
-- `"providers.azure_pii": true` — locks the entire Azure config (endpoint, key, etc.)
+- `"providers.azure_pii": true` — locks the entire Azure config (endpoint, auth, storage, etc.)
 
 Locked settings appear in the options page as disabled with an **Admin** badge.
+
+---
+
+## Authentication Modes
+
+The Azure PII provider supports two connection modes:
+
+### Direct Mode (API Key)
+
+Simple setup for dev/test and small deployments:
+- API key stored in settings (managed storage or local)
+- SAS tokens required for native document blob storage
+- No Azure AD integration needed
+
+### Enterprise Mode (Azure AD OAuth2 PKCE)
+
+Secure, credential-free setup for production enterprise:
+- Users sign in via Azure AD popup (MFA, Conditional Access apply)
+- Short-lived Bearer tokens (1hr), auto-refreshed
+- No API keys stored anywhere
+- Native document storage uses managed identity (no SAS tokens)
+- Per-user audit trail via Azure AD logs
+
+**Enterprise mode requires an Azure AD App Registration:**
+
+1. Azure Portal → Microsoft Entra ID → App Registrations → New
+2. **Redirect URI**: `https://<extension-id>.chromiumapp.org/` (type: SPA)
+3. **API permissions**:
+   - `Azure Cognitive Services` → `user_impersonation`
+   - `Azure Storage` → `user_impersonation` (if using native document redaction)
+4. **Authentication** → Enable public client flows: **Yes**
+5. **Supported account types**: Single tenant (or multi-tenant for cross-org)
+
+The extension ID is visible at `chrome://extensions` after installation.
+
+---
+
+## Native Document Redaction (Server-Side)
+
+Azure's native document API processes PDF, DOCX, and TXT files entirely server-side — no local OCR or rendering needed. Returns a redacted document file.
+
+### Storage Setup
+
+| Mode | Source Container | Target Container | Language Resource → Storage |
+|------|---|---|---|
+| **Direct** | URL with SAS token (read + list) | URL with SAS token (write + list) | SAS tokens in job URLs |
+| **Enterprise** | Plain URL (no SAS) | Plain URL (no SAS) | Language resource managed identity |
+
+### Enterprise Storage Setup (Managed Identity)
+
+1. Azure Portal → Language Resource → Identity → System assigned → **On**
+2. Copy the Language resource's Object ID
+3. Storage Account → Access Control (IAM) → Add role assignment:
+   - **Storage Blob Data Reader** → assign to the Language resource's managed identity → scope: source container
+   - **Storage Blob Data Contributor** → assign to the Language resource's managed identity → scope: target container
+4. Provide plain container URLs in the extension config (no SAS tokens needed):
+   - Source: `https://youraccount.blob.core.windows.net/llss-source`
+   - Target: `https://youraccount.blob.core.windows.net/llss-target`
+
+### Direct Storage Setup (SAS Tokens)
+
+1. Azure Portal → Storage Account → Shared access signature
+2. Generate a SAS token for the **source container** with **Read + List** permissions
+3. Generate a SAS token for the **target container** with **Write + List** permissions
+4. Paste the full URLs (including `?sv=...` SAS query string) into the extension settings
+
+### Supported Formats
+
+| Format | Extension | Notes |
+|--------|-----------|-------|
+| PDF | `.pdf` | Text-based PDFs. Scanned PDFs are not supported by the native API. |
+| Word | `.docx` | Full document redaction with formatting preserved. |
+| Text | `.txt` | Plain text files. |
+
+For scanned PDFs and images, the extension falls back to local OCR (Tesseract.js + pdf.js).
 
 ---
 
@@ -117,7 +192,7 @@ Each top-level key becomes a registry value. Nested objects are JSON-encoded REG
 
 ```
 "detectionMode" = "cloud_only"                    (REG_SZ)
-"_policyVersion" = 1                               (REG_DWORD)
+"_policyVersion" = 2                               (REG_DWORD)
 "_locked" = "{\"detectionMode\":true, ...}"        (REG_SZ, JSON)
 "providers" = "{\"azure_pii\":{...}}"              (REG_SZ, JSON)
 "aiChatGuard" = "{\"enabled\":true, ...}"          (REG_SZ, JSON)
@@ -161,12 +236,16 @@ Edit the hosted JSON file. All users pick up changes within 6 hours (or immediat
 
 ## Configuration Reference
 
-See `managed_schema.json` in the extension root for the full schema of all configurable settings. Key sections:
+See `managed_schema.json` in the extension root for the full schema. Key sections:
 
 | Section | Description |
 |---------|-------------|
 | `detectionMode` | `auto`, `ai_only`, `regex_only`, `cloud_only` |
-| `providers.azure_pii` | Azure AI Language PII endpoint and credentials |
+| `providers.azure_pii.connectionMode` | `direct` (API key) or `enterprise` (Azure AD OAuth2) |
+| `providers.azure_pii.nativeDocEnabled` | Enable server-side PDF/DOCX redaction |
+| `providers.azure_pii.sourceContainerUrl` | Blob storage source (with SAS in direct, plain in enterprise) |
+| `providers.azure_pii.targetContainerUrl` | Blob storage target (with SAS in direct, plain in enterprise) |
+| `providers.azure_pii.redactionPolicy` | `entityMask`, `characterMask`, or `noMask` |
 | `providers.purview` | Microsoft Purview DLP configuration |
 | `providers.hosted[]` | Organisation-hosted model endpoints |
 | `aiChatGuard` | AI chat service protection settings |
@@ -179,6 +258,8 @@ See `managed_schema.json` in the extension root for the full schema of all confi
 
 ## Security Notes
 
-- **API keys in managed storage**: `chrome.storage.managed` is read-only to the extension and invisible to web pages. For higher security, consider using Azure Managed Identity instead of API keys.
+- **Enterprise mode eliminates stored secrets.** No API keys or SAS tokens. Azure AD OAuth2 tokens are short-lived (1 hour) and stored in `chrome.storage.session` (memory-only, cleared on browser close). Managed identity handles Language-to-Storage authentication.
+- **Direct mode API keys** in `chrome.storage.managed` are read-only to the extension and invisible to web pages. However, any user with DevTools access can view them. Use enterprise mode for production.
 - **Remote config**: Always use HTTPS. The config is cached in `chrome.storage.local` — a user with DevTools access could read it.
 - **Lock enforcement**: Even if a user modifies local storage directly, managed values always win at merge time (managed storage overlays last). `saveSettings()` also strips locked keys before persisting.
+- **Per-user audit**: Enterprise mode provides per-user token-based authentication. Azure AD sign-in logs show who accessed the PII API and when. Conditional Access policies (MFA, device compliance, location) apply automatically.

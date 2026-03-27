@@ -1,5 +1,5 @@
 {
-  "_policyVersion": 1,
+  "_policyVersion": 2,
   "_locked": {
     "detectionMode": true,
     "aiChatGuard.enabled": true,
@@ -41,11 +41,17 @@
     },
     "azure_pii": {
       "enabled": true,
+      "connectionMode": "enterprise",
       "endpoint": "https://YOUR-INSTANCE.cognitiveservices.azure.com",
-      "apiKey": "YOUR_API_KEY",
+      "tenantId": "YOUR_TENANT_ID",
+      "clientId": "YOUR_APP_REGISTRATION_CLIENT_ID",
       "apiVersion": "2023-04-01",
       "language": "en",
-      "domain": "none"
+      "domain": "none",
+      "nativeDocEnabled": true,
+      "sourceContainerUrl": "https://YOUR-STORAGE.blob.core.windows.net/llss-source",
+      "targetContainerUrl": "https://YOUR-STORAGE.blob.core.windows.net/llss-target",
+      "redactionPolicy": "entityMask"
     }
   }
 }

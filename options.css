@@ -462,3 +462,53 @@ textarea.input {
 .stats-grid {
   grid-template-columns: repeat(3, 1fr) !important;
 }
+
+/* ── Managed / Enterprise styles ──────────────────────────────────────── */
+
+.managed-banner {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: #1e40af;
+  font-size: 13px;
+}
+
+.managed-banner.hidden { display: none; }
+
+.managed-banner-icon { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+
+.managed-banner p { font-size: 12px; color: #3b82f6; margin-top: 2px; }
+
+.managed-meta { font-size: 11px; color: #6b7280; }
+
+/* Admin badge — shown next to locked settings */
+.admin-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: #dbeafe;
+  color: #1e40af;
+  border-radius: 3px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* Locked settings — disabled with reduced opacity */
+.locked {
+  opacity: 0.6;
+  pointer-events: none;
+  position: relative;
+}
+
+.locked .admin-badge {
+  opacity: 1;
+  pointer-events: auto;
+}

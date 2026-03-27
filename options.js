@@ -17,6 +17,7 @@ async function init() {
       if (!currentSettings.providers) currentSettings.providers = {};
       if (!currentSettings.providers.hosted) currentSettings.providers.hosted = [];
       populateUI();
+      applyManagedState();
       loadStats();
       loadProviderStatus();
       resolve();
@@ -113,6 +114,120 @@ function populateUI() {
 
   // PII types list.
   renderPiiTypes();
+
+  // Remote config URL
+  document.getElementById("configUrl").value = s.configUrl || "";
+}
+
+// ── Managed / Enterprise State ────────────────────────────────────────────────
+
+/**
+ * Map of dot-path setting keys to DOM element info for lock visuals.
+ */
+const SETTING_MAP = {
+  "detectionMode":                   { type: "radio-group", name: "detectionMode" },
+  "enableVectorFallback":            { type: "checkbox", id: "enableVectorFallback" },
+  "regexAfterAi":                    { type: "checkbox", id: "regexAfterAi" },
+  "showRedactButton":                { type: "checkbox", id: "showRedactButton" },
+  "enableContentEditable":           { type: "checkbox", id: "enableContentEditable" },
+  "enableDocumentUpload":            { type: "checkbox", id: "enableDocumentUpload" },
+  "debugMode":                       { type: "checkbox", id: "debugMode" },
+  "aiChatGuard.enabled":             { type: "checkbox", id: "aiGuardEnabled" },
+  "aiChatGuard.autoRedactOnAiSites": { type: "checkbox", id: "aiGuardAutoRedact" },
+  "aiChatGuard.blockSubmitUntilRedacted": { type: "checkbox", id: "aiGuardBlockSubmit" },
+  "aiChatGuard.interceptUploads":    { type: "checkbox", id: "aiGuardInterceptUploads" },
+  "aiChatGuard.showAiBanner":        { type: "checkbox", id: "aiGuardBanner" },
+  "autoRedact.enabled":              { type: "checkbox", id: "autoRedactEnabled" },
+  "autoRedact.onlyOnAiSites":        { type: "checkbox", id: "autoRedactOnlyAi" },
+  "autoRedact.onPaste":              { type: "checkbox", id: "autoRedactOnPaste" },
+  "submitGuard.enabled":             { type: "checkbox", id: "submitGuardEnabled" },
+  "submitGuard.interceptEnter":      { type: "checkbox", id: "submitGuardEnter" },
+  "submitGuard.interceptFormSubmit":  { type: "checkbox", id: "submitGuardForm" },
+  "submitGuard.interceptSendButtons": { type: "checkbox", id: "submitGuardSendBtn" },
+  "submitGuard.onlyOnAiSites":       { type: "checkbox", id: "submitGuardOnlyAi" },
+  "uploadGuard.enabled":             { type: "checkbox", id: "uploadGuardEnabled" },
+  "uploadGuard.onlyOnAiSites":       { type: "checkbox", id: "uploadGuardOnlyAi" },
+  "uploadGuard.confirmBeforeUpload":  { type: "checkbox", id: "uploadGuardConfirm" },
+  "providers.local_ai":              { type: "checkbox", id: "provider-local-ai" },
+  "providers.azure_pii":             { type: "section", id: "azure-config" },
+  "providers.azure_pii.enabled":     { type: "checkbox", id: "provider-azure-pii" },
+  "providers.purview":               { type: "section", id: "purview-config" },
+  "providers.purview.enabled":       { type: "checkbox", id: "provider-purview" },
+};
+
+function isSettingLocked(meta, dotPath) {
+  if (!meta?.locked) return false;
+  if (meta.locked[dotPath]) return true;
+  const parts = dotPath.split(".");
+  for (let i = 1; i < parts.length; i++) {
+    if (meta.locked[parts.slice(0, i).join(".")]) return true;
+  }
+  return false;
+}
+
+function applyManagedState() {
+  const meta = currentSettings._meta;
+  if (!meta) return;
+
+  // Show managed banner
+  if (meta.isManaged || meta.isRemoteConfig) {
+    document.getElementById("managed-banner").classList.remove("hidden");
+    const verEl = document.getElementById("managed-policy-version");
+    if (meta.policyVersion) {
+      verEl.textContent = `Policy version: ${meta.policyVersion}`;
+    }
+    if (meta.isRemoteConfig && !meta.isManaged) {
+      document.querySelector(".managed-banner-icon").textContent = "\u{1F517}"; // link icon
+      document.querySelector(".managed-banner strong").textContent = "Remote configuration active";
+    }
+  }
+
+  // Lock individual settings
+  if (!meta.locked || Object.keys(meta.locked).length === 0) return;
+
+  for (const [path, domInfo] of Object.entries(SETTING_MAP)) {
+    if (isSettingLocked(meta, path)) {
+      lockElement(domInfo);
+    }
+  }
+}
+
+function lockElement(domInfo) {
+  if (domInfo.type === "radio-group") {
+    document.querySelectorAll(`input[name="${domInfo.name}"]`).forEach(r => {
+      r.disabled = true;
+    });
+    const group = document.querySelector(".radio-group");
+    if (group) {
+      group.classList.add("locked");
+      appendAdminBadge(group);
+    }
+  } else if (domInfo.type === "section") {
+    const section = document.getElementById(domInfo.id);
+    if (section) {
+      section.classList.add("locked");
+      appendAdminBadge(section.parentElement);
+    }
+  } else {
+    const el = document.getElementById(domInfo.id);
+    if (el) {
+      el.disabled = true;
+      const container = el.closest("label") || el.closest(".form-group");
+      if (container) {
+        container.classList.add("locked");
+        appendAdminBadge(container);
+      }
+    }
+  }
+}
+
+function appendAdminBadge(container) {
+  if (!container || container.querySelector(".admin-badge")) return;
+  const badge = document.createElement("span");
+  badge.className = "admin-badge";
+  badge.title = "This setting is managed by your organisation";
+  badge.textContent = "Admin";
+  container.appendChild(badge);
 }
 
 // ── Provider Status ──────────────────────────────────────────────────────────
@@ -679,6 +794,9 @@ function saveSettings() {
     confirmBeforeUpload: document.getElementById("uploadGuardConfirm").checked,
   };
 
+  // Remote config URL
+  currentSettings.configUrl = document.getElementById("configUrl").value.trim();
+
   chrome.runtime.sendMessage(
     { type: "SAVE_SETTINGS", settings: currentSettings },
     (response) => {
@@ -749,6 +867,34 @@ document.getElementById("hosted-modal-cancel").addEventListener("click", closeHo
 document.getElementById("hosted-modal-save").addEventListener("click", saveHostedModal);
 document.getElementById("btn-test-azure").addEventListener("click", testAzureConnection);
 document.getElementById("btn-test-purview").addEventListener("click", testPurviewConnection);
+
+// Remote config fetch
+document.getElementById("btn-fetch-config").addEventListener("click", async () => {
+  const url = document.getElementById("configUrl").value.trim();
+  const resultEl = document.getElementById("config-fetch-result");
+  if (!url) {
+    resultEl.textContent = "Enter a URL first.";
+    resultEl.style.color = "#dc2626";
+    return;
+  }
+  resultEl.textContent = "Fetching...";
+  resultEl.style.color = "#6b7280";
+  try {
+    const response = await fetch(url, { cache: "no-cache" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const config = await response.json();
+    // Save to local storage
+    chrome.storage.local.set({ llss_remote_config: config }, () => {
+      const keys = Object.keys(config).filter(k => !k.startsWith("_"));
+      const locked = Object.keys(config._locked || {}).filter(k => config._locked[k]);
+      resultEl.textContent = `Fetched: ${keys.length} settings, ${locked.length} locked. Save and reload to apply.`;
+      resultEl.style.color = "#059669";
+    });
+  } catch (err) {
+    resultEl.textContent = `Failed: ${err.message}`;
+    resultEl.style.color = "#dc2626";
+  }
+});
 
 // Close modals on overlay click.
 document.getElementById("modal-overlay").addEventListener("click", (e) => {

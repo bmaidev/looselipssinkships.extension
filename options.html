@@ -13,6 +13,16 @@
       <p class="subtitle">PII Redaction Settings</p>
     </header>
 
+    <!-- Managed policy banner (hidden unless enterprise-managed) -->
+    <div id="managed-banner" class="managed-banner hidden">
+      <span class="managed-banner-icon">&#x1f3e2;</span>
+      <div>
+        <strong>Organisation-managed settings</strong>
+        <p>Some settings are managed by your organisation and cannot be changed. Look for the <span class="admin-badge">Admin</span> badge.</p>
+        <span id="managed-policy-version" class="managed-meta"></span>
+      </div>
+    </div>
+
     <!-- Detection Mode -->
     <section class="card">
       <h2>Detection Mode</h2>
@@ -315,6 +325,18 @@
       <textarea id="test-sample" class="input" rows="3" placeholder="Paste sample text here..."></textarea>
       <button id="btn-test-regex" class="btn secondary">Test Pattern</button>
       <div id="test-results" class="test-results"></div>
+    </section>
+
+    <!-- Remote Configuration (small business) -->
+    <section class="card">
+      <h2>Remote Configuration</h2>
+      <p class="help">For organisations without enterprise MDM: paste a URL to a hosted JSON configuration file. The extension will fetch it periodically and apply the settings. Your admin will provide this URL.</p>
+      <div class="form-group">
+        <label>Configuration URL</label>
+        <input type="text" id="configUrl" class="input" placeholder="https://config.yourorg.com/llss-config.json">
+      </div>
+      <button id="btn-fetch-config" class="btn secondary btn-sm">Fetch Now</button>
+      <span id="config-fetch-result" class="test-inline-result"></span>
     </section>
 
     <!-- Debug -->

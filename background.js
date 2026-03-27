@@ -10,6 +10,7 @@ importScripts(
   "lib/settings.js",
   "lib/redaction-engine.js",
   "lib/site-filter.js",
+  "lib/azure-auth.js",
   "lib/providers/base-provider.js",
   "lib/providers/local-ai-provider.js",
   "lib/providers/regex-provider.js",
@@ -485,6 +486,30 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       sendResponse({ success: true });
       return false;
     }
+
+    // ── Azure AD OAuth2 ─────────────────────────────────────────────
+    case "AZURE_SIGN_IN": {
+      LLSS_AzureAuth.signIn(message.tenantId, message.clientId)
+        .then((userInfo) => sendResponse({ success: true, userInfo }))
+        .catch((err) => sendResponse({ success: false, error: err.message }));
+      return true;
+    }
+
+    case "AZURE_SIGN_OUT": {
+      LLSS_AzureAuth.signOut()
+        .then(() => { initProviders(); sendResponse({ success: true }); })
+        .catch((err) => sendResponse({ success: false, error: err.message }));
+      return true;
+    }
+
+    case "AZURE_AUTH_STATUS": {
+      (async () => {
+        const signedIn = await LLSS_AzureAuth.isSignedIn();
+        const userInfo = signedIn ? await LLSS_AzureAuth.getUserInfo() : null;
+        sendResponse({ signedIn, userInfo });
+      })();
+      return true;
+    }
   }
 });
 
@@ -524,6 +549,11 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 // For small-business deployment: periodically fetch remote config from URL.
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name === "llss-azure-token-refresh") {
+    LLSS_debug.log("azure-auth", "Token refresh alarm fired");
+    await LLSS_AzureAuth.handleRefreshAlarm();
+    return;
+  }
   if (alarm.name === "llss-remote-config-refresh") {
     const settings = await LLSS_loadSettings();
     if (settings.configUrl) {

@@ -159,15 +159,15 @@
           "type": "object",
           "properties": {
             "enabled": { "type": "boolean" },
+            "connectionMode": { "type": "string", "enum": ["direct", "enterprise"], "description": "'direct' uses API key, 'enterprise' uses Azure AD OAuth2 PKCE." },
             "endpoint": { "type": "string" },
             "apiKey": { "type": "string" },
             "apiVersion": { "type": "string" },
             "language": { "type": "string" },
             "domain": { "type": "string", "enum": ["none", "phi"] },
             "categoriesFilter": { "type": "array", "items": { "type": "string" } },
-            "useManagedIdentity": { "type": "boolean" },
-            "tenantId": { "type": "string" },
-            "clientId": { "type": "string" }
+            "tenantId": { "type": "string", "description": "Azure AD tenant ID (GUID) for Enterprise mode." },
+            "clientId": { "type": "string", "description": "Azure AD App Registration client ID for Enterprise mode." }
           }
         },
         "purview": {

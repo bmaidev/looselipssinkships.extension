@@ -102,6 +102,14 @@ function populateUI() {
   document.getElementById("azure-language").value = providers.azure_pii?.language || "en";
   const azureDomain = document.getElementById("azure-domain");
   if (azureDomain) azureDomain.value = providers.azure_pii?.domain || "none";
+  // Azure connection mode
+  const azureMode = providers.azure_pii?.connectionMode || "direct";
+  const azureModeRadio = document.querySelector(`input[name="azureConnectionMode"][value="${azureMode}"]`);
+  if (azureModeRadio) azureModeRadio.checked = true;
+  updateAzureConnectionMode(azureMode);
+  document.getElementById("azure-tenant-id").value = providers.azure_pii?.tenantId || "";
+  document.getElementById("azure-client-id").value = providers.azure_pii?.clientId || "";
+  refreshAzureAuthStatus();
 
   // Purview
   document.getElementById("provider-purview").checked = providers.purview?.enabled || false;
@@ -736,8 +744,11 @@ function saveSettings() {
   currentSettings.providers.azure_pii = {
     ...currentSettings.providers.azure_pii,
     enabled: document.getElementById("provider-azure-pii").checked,
+    connectionMode: document.querySelector('input[name="azureConnectionMode"]:checked')?.value || "direct",
     endpoint: document.getElementById("azure-endpoint").value.trim(),
     apiKey: document.getElementById("azure-apikey").value,
+    tenantId: document.getElementById("azure-tenant-id").value.trim(),
+    clientId: document.getElementById("azure-client-id").value.trim(),
     language: document.getElementById("azure-language").value.trim(),
     domain: document.getElementById("azure-domain").value,
   };
@@ -865,6 +876,68 @@ document.getElementById("btn-reset-stats").addEventListener("click", () => {
 document.getElementById("btn-add-hosted").addEventListener("click", () => openHostedModal());
 document.getElementById("hosted-modal-cancel").addEventListener("click", closeHostedModal);
 document.getElementById("hosted-modal-save").addEventListener("click", saveHostedModal);
+// ── Azure connection mode toggle and OAuth2 ──────────────────────────────────
+
+function updateAzureConnectionMode(mode) {
+  document.getElementById("azure-direct-fields").classList.toggle("hidden", mode !== "direct");
+  document.getElementById("azure-enterprise-fields").classList.toggle("hidden", mode !== "enterprise");
+}
+
+function refreshAzureAuthStatus() {
+  chrome.runtime.sendMessage({ type: "AZURE_AUTH_STATUS" }, (response) => {
+    const userInfoDiv = document.getElementById("azure-user-info");
+    const signinBtn = document.getElementById("btn-azure-signin");
+    if (!userInfoDiv || !signinBtn) return;
+
+    if (response?.signedIn && response.userInfo) {
+      userInfoDiv.classList.remove("hidden");
+      signinBtn.classList.add("hidden");
+      document.getElementById("azure-user-display").textContent = response.userInfo.name || "Signed in";
+      document.getElementById("azure-user-email").textContent = response.userInfo.email || "";
+    } else {
+      userInfoDiv.classList.add("hidden");
+      signinBtn.classList.remove("hidden");
+    }
+  });
+}
+
+function azureSignIn() {
+  const tenantId = document.getElementById("azure-tenant-id").value.trim();
+  const clientId = document.getElementById("azure-client-id").value.trim();
+  const resultEl = document.getElementById("azure-auth-result");
+  if (!tenantId || !clientId) {
+    resultEl.textContent = "Tenant ID and Client ID are required.";
+    resultEl.style.color = "#dc2626";
+    return;
+  }
+  resultEl.textContent = "Signing in...";
+  resultEl.style.color = "#6b7280";
+  chrome.runtime.sendMessage({ type: "AZURE_SIGN_IN", tenantId, clientId }, (response) => {
+    if (response?.success) {
+      resultEl.textContent = `Signed in as ${response.userInfo?.name || "user"}`;
+      resultEl.style.color = "#059669";
+      refreshAzureAuthStatus();
+    } else {
+      resultEl.textContent = response?.error || "Sign-in failed";
+      resultEl.style.color = "#dc2626";
+    }
+  });
+}
+
+function azureSignOut() {
+  chrome.runtime.sendMessage({ type: "AZURE_SIGN_OUT" }, () => {
+    refreshAzureAuthStatus();
+    const resultEl = document.getElementById("azure-auth-result");
+    if (resultEl) resultEl.textContent = "";
+  });
+}
+
+document.querySelectorAll('input[name="azureConnectionMode"]').forEach(r => {
+  r.addEventListener("change", (e) => updateAzureConnectionMode(e.target.value));
+});
+document.getElementById("btn-azure-signin").addEventListener("click", azureSignIn);
+document.getElementById("btn-azure-signout").addEventListener("click", azureSignOut);
+
 document.getElementById("btn-test-azure").addEventListener("click", testAzureConnection);
 document.getElementById("btn-test-purview").addEventListener("click", testPurviewConnection);
 

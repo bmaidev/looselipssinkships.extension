@@ -81,14 +81,61 @@
             <span><strong>Azure AI Language PII Detection</strong></span>
           </label>
           <div class="provider-config" id="azure-config">
+            <!-- Connection Mode Toggle -->
+            <div class="form-group">
+              <label>Connection Mode</label>
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input type="radio" name="azureConnectionMode" value="direct" checked>
+                  <span><strong>Direct</strong> — API key authentication</span>
+                </label>
+                <label class="radio-label">
+                  <input type="radio" name="azureConnectionMode" value="enterprise">
+                  <span><strong>Enterprise</strong> — Azure AD sign-in (OAuth2 PKCE, no stored keys)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Shared: Endpoint URL -->
             <div class="form-group">
               <label>Endpoint URL</label>
               <input type="text" id="azure-endpoint" class="input" placeholder="https://yourinstance.cognitiveservices.azure.com">
             </div>
-            <div class="form-group">
-              <label>API Key</label>
-              <input type="password" id="azure-apikey" class="input" placeholder="Subscription key">
+
+            <!-- Direct mode: API Key -->
+            <div id="azure-direct-fields">
+              <div class="form-group">
+                <label>API Key</label>
+                <input type="password" id="azure-apikey" class="input" placeholder="Subscription key">
+              </div>
             </div>
+
+            <!-- Enterprise mode: Tenant/Client + Sign-in -->
+            <div id="azure-enterprise-fields" class="hidden">
+              <div class="form-row">
+                <div class="form-group" style="flex:1">
+                  <label>Tenant ID</label>
+                  <input type="text" id="azure-tenant-id" class="input" placeholder="Azure AD tenant GUID">
+                </div>
+                <div class="form-group" style="flex:1">
+                  <label>Client ID (App Registration)</label>
+                  <input type="text" id="azure-client-id" class="input" placeholder="Application (client) ID">
+                </div>
+              </div>
+              <div id="azure-auth-section" style="margin: 8px 0 12px;">
+                <button class="btn primary btn-sm" id="btn-azure-signin">Sign in with Azure AD</button>
+                <div id="azure-user-info" class="hidden" style="margin-top: 8px; font-size: 12px;">
+                  <span style="color: #059669; font-weight: 600;">Signed in:</span>
+                  <span id="azure-user-display" style="font-weight: 600;"></span>
+                  <span id="azure-user-email" style="color: #6b7280; margin-left: 4px;"></span>
+                  <button class="btn secondary btn-sm" id="btn-azure-signout" style="margin-left: 8px;">Sign out</button>
+                </div>
+                <span id="azure-auth-result" class="test-inline-result"></span>
+              </div>
+              <p class="help">Requires an Azure AD App Registration with redirect URI: <code>https://&lt;extension-id&gt;.chromiumapp.org/</code>, API permission <code>Azure Cognitive Services &gt; user_impersonation</code>, and public client flows enabled.</p>
+            </div>
+
+            <!-- Shared: Language & Domain -->
             <div class="form-row">
               <div class="form-group" style="flex:1">
                 <label>Language</label>

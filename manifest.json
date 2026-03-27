@@ -8,7 +8,8 @@
     "activeTab",
     "scripting",
     "offscreen",
-    "alarms"
+    "alarms",
+    "identity"
   ],
   "storage": {
     "managed_schema": "managed_schema.json"

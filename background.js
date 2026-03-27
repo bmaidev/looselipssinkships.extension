@@ -503,11 +503,54 @@ chrome.runtime.onConnect.addListener((port) => {
   }
 });
 
+// ── Managed storage change listener ──────────────────────────────────────────
+// When enterprise admin pushes a policy update via GPO/Intune/Workspace,
+// reinitialise providers and notify all content scripts immediately.
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "managed") {
+    LLSS_debug.log("policy", "Managed storage changed:", Object.keys(changes));
+    initProviders();
+    // Broadcast to all tabs so content scripts refresh settings immediately
+    chrome.tabs.query({}, (tabs) => {
+      for (const tab of tabs) {
+        chrome.tabs.sendMessage(tab.id, { type: "SETTINGS_UPDATED" }).catch(() => {});
+      }
+    });
+  }
+});
+
+// ── Remote config periodic refresh ──────────────────────────────────────────
+// For small-business deployment: periodically fetch remote config from URL.
+
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name === "llss-remote-config-refresh") {
+    const settings = await LLSS_loadSettings();
+    if (settings.configUrl) {
+      LLSS_debug.log("remote-config", "Periodic refresh from:", settings.configUrl);
+      await LLSS_fetchRemoteConfig(settings.configUrl);
+      await initProviders();
+    }
+  }
+});
+
+async function setupRemoteConfigAlarm() {
+  const settings = await LLSS_loadSettings();
+  if (settings.configUrl) {
+    chrome.alarms.create("llss-remote-config-refresh", { periodInMinutes: 360 }); // Every 6 hours
+    LLSS_debug.log("remote-config", "Alarm set for periodic refresh (every 6h)");
+    // Fetch immediately on startup
+    await LLSS_fetchRemoteConfig(settings.configUrl);
+  }
+}
+
 // ── Startup ─────────────────────────────────────────────────────────────────
 
 chrome.runtime.onInstalled.addListener(() => {
   initProviders();
+  setupRemoteConfigAlarm();
 });
 
 // Also init on service worker startup (covers restarts)
 initProviders();
+setupRemoteConfigAlarm();

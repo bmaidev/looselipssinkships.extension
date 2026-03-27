@@ -762,9 +762,13 @@
     document.addEventListener("drop", onFileDrop, true);
 
     // Listen for progress updates from background (forwarded from offscreen OCR)
+    // and managed storage policy changes
     chrome.runtime.onMessage.addListener((msg) => {
       if (msg.type === "REDACT_PROGRESS" && activeOverlay) {
         activeOverlay.updateProgress(msg);
+      }
+      if (msg.type === "SETTINGS_UPDATED") {
+        refreshSettings(); // Immediately apply new managed/remote config
       }
     });
   }

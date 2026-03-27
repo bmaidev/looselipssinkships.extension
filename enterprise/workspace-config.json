@@ -5,7 +5,9 @@
     "aiChatGuard.enabled": true,
     "submitGuard.enabled": true,
     "uploadGuard.enabled": true,
-    "providers.azure_pii": true
+    "providers.azure_pii": true,
+    "providers.purview.gateEnabled": true,
+    "providers.purview.blockedLabels": true
   },
   "detectionMode": "cloud_only",
   "aiChatGuard": {
@@ -52,6 +54,15 @@
       "sourceContainerUrl": "https://YOUR-STORAGE.blob.core.windows.net/llss-source",
       "targetContainerUrl": "https://YOUR-STORAGE.blob.core.windows.net/llss-target",
       "redactionPolicy": "entityMask"
+    },
+    "purview": {
+      "enabled": true,
+      "gateEnabled": true,
+      "blockedLabels": ["PROTECTED", "SECRET", "TOP SECRET"],
+      "warnLabels": ["OFFICIAL: Sensitive"],
+      "blockEncrypted": true,
+      "tenantId": "YOUR_TENANT_ID",
+      "clientId": "YOUR_APP_REGISTRATION_CLIENT_ID"
     }
   }
 }

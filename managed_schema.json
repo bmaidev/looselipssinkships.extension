@@ -179,7 +179,13 @@
             "clientSecret": { "type": "string" },
             "graphEndpoint": { "type": "string" },
             "useDelegatedAuth": { "type": "boolean" },
-            "dlpPolicyId": { "type": "string" }
+            "dlpPolicyId": { "type": "string" },
+            "gateEnabled": { "type": "boolean", "description": "Enable pre-upload classification gate — blocks documents with restricted sensitivity labels." },
+            "blockedLabels": { "type": "array", "items": { "type": "string" }, "description": "Sensitivity label names to block (e.g., PROTECTED, SECRET)." },
+            "warnLabels": { "type": "array", "items": { "type": "string" }, "description": "Sensitivity label names to warn about but allow." },
+            "blockedSensitivity": { "type": "integer", "description": "Block labels with sensitivity >= this value (0 = disabled)." },
+            "blockEncrypted": { "type": "boolean", "description": "Block files with encryption/protection markers." },
+            "checkViaApi": { "type": "boolean", "description": "Also check classification via Graph API (requires auth)." }
           }
         },
         "hosted": {

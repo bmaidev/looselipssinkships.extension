@@ -12,6 +12,7 @@ importScripts(
   "lib/site-filter.js",
   "lib/azure-auth.js",
   "lib/azure-native-doc.js",
+  "lib/purview-gate.js",
   "lib/providers/base-provider.js",
   "lib/providers/local-ai-provider.js",
   "lib/providers/regex-provider.js",
@@ -256,6 +257,21 @@ async function handleRedactDocument(fileData, fileName, mimeType, options = {}) 
 
   const enabledPiiTypes = piiTypes.filter(t => t.enabled);
   LLSS_debug.log("doc", `Processing ${contentType}: ${fileName}, ${enabledPiiTypes.length} PII types enabled`);
+
+  // Classification gate: check if file is blocked by sensitivity label
+  if (LLSS_PurviewGate && settings.providers?.purview?.gateEnabled) {
+    const gateResult = await LLSS_PurviewGate.evaluateGate(
+      fileData, fileName, mimeType, contentType, settings.providers.purview
+    );
+    if (!gateResult.allowed) {
+      LLSS_debug.log("purview-gate", `BLOCKED: ${fileName} — ${gateResult.reason}`);
+      throw new Error(`CLASSIFICATION_BLOCKED:${gateResult.label || 'Unknown'}:${gateResult.reason}`);
+    }
+    if (gateResult.severity === 'warned') {
+      LLSS_debug.log("purview-gate", `WARNING: ${fileName} — ${gateResult.reason}`);
+      // Warning is noted but processing continues
+    }
+  }
 
   const result = await LLSS_pipelineRedactDocument(fileData, contentType, {
     registry,

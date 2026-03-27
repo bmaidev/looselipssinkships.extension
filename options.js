@@ -124,6 +124,14 @@ function populateUI() {
   document.getElementById("purview-tenant").value = providers.purview?.tenantId || "";
   document.getElementById("purview-clientid").value = providers.purview?.clientId || "";
   document.getElementById("purview-secret").value = providers.purview?.clientSecret || "";
+  // Purview classification gate
+  const gateEnabled = providers.purview?.gateEnabled || false;
+  document.getElementById("purview-gate-enabled").checked = gateEnabled;
+  document.getElementById("purview-gate-fields").classList.toggle("hidden", !gateEnabled);
+  document.getElementById("purview-blocked-labels").value = (providers.purview?.blockedLabels || []).join("\n");
+  document.getElementById("purview-warn-labels").value = (providers.purview?.warnLabels || []).join("\n");
+  document.getElementById("purview-block-encrypted").checked = providers.purview?.blockEncrypted !== false;
+  document.getElementById("purview-check-api").checked = providers.purview?.checkViaApi || false;
 
   // Hosted providers list.
   renderHostedProviders();
@@ -771,6 +779,11 @@ function saveSettings() {
     tenantId: document.getElementById("purview-tenant").value.trim(),
     clientId: document.getElementById("purview-clientid").value.trim(),
     clientSecret: document.getElementById("purview-secret").value,
+    gateEnabled: document.getElementById("purview-gate-enabled").checked,
+    blockedLabels: parseLines(document.getElementById("purview-blocked-labels").value),
+    warnLabels: parseLines(document.getElementById("purview-warn-labels").value),
+    blockEncrypted: document.getElementById("purview-block-encrypted").checked,
+    checkViaApi: document.getElementById("purview-check-api").checked,
   };
 
   // Hosted providers are already updated via renderHostedProviders toggles
@@ -979,6 +992,9 @@ document.getElementById("btn-azure-signin").addEventListener("click", azureSignI
 document.getElementById("btn-azure-signout").addEventListener("click", azureSignOut);
 document.getElementById("azure-native-doc").addEventListener("change", (e) => {
   document.getElementById("azure-native-doc-fields").classList.toggle("hidden", !e.target.checked);
+});
+document.getElementById("purview-gate-enabled").addEventListener("change", (e) => {
+  document.getElementById("purview-gate-fields").classList.toggle("hidden", !e.target.checked);
 });
 
 document.getElementById("btn-test-azure").addEventListener("click", testAzureConnection);

@@ -256,6 +256,54 @@ See `managed_schema.json` in the extension root for the full schema. Key section
 
 ---
 
+## Classification Gate
+
+The Purview classification gate blocks uploads of documents with restricted sensitivity labels **before any processing occurs**. This is a pre-upload check — blocked files never enter the redaction pipeline.
+
+### How It Works
+
+1. **Layer 1 (local, instant)**: Reads MSIP_Label_* metadata from DOCX/XLSX file custom properties. No API call needed.
+2. **Layer 2 (optional, API)**: Evaluates classification via Microsoft Graph beta API for deeper policy checking.
+
+If a document's label matches the `blockedLabels` list, the upload is blocked with a red "Upload Blocked" overlay showing the classification and reason. The user must dismiss the overlay — there is no skip option.
+
+### Configuration
+
+```json
+{
+  "providers": {
+    "purview": {
+      "gateEnabled": true,
+      "blockedLabels": ["PROTECTED", "SECRET", "TOP SECRET"],
+      "warnLabels": ["OFFICIAL: Sensitive"],
+      "blockEncrypted": true,
+      "checkViaApi": false
+    }
+  },
+  "_locked": {
+    "providers.purview.gateEnabled": true,
+    "providers.purview.blockedLabels": true
+  }
+}
+```
+
+### Australian Government Classification Mapping
+
+| Classification | Action | Rationale |
+|---------------|--------|-----------|
+| UNOFFICIAL | Allow | No restrictions |
+| OFFICIAL | Allow | Standard business |
+| OFFICIAL: Sensitive | Warn | Caution advised |
+| PROTECTED | **Block** | Must not leave controlled environment |
+| SECRET | **Block** | Classified material |
+| TOP SECRET | **Block** | Classified material |
+
+### Lock Recommendations
+
+Lock `gateEnabled` and `blockedLabels` via managed policy so users cannot disable the classification gate or remove labels from the blocked list.
+
+---
+
 ## Security Notes
 
 - **Enterprise mode eliminates stored secrets.** No API keys or SAS tokens. Azure AD OAuth2 tokens are short-lived (1 hour) and stored in `chrome.storage.session` (memory-only, cleared on browser close). Managed identity handles Language-to-Storage authentication.

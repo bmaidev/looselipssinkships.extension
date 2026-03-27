@@ -996,6 +996,30 @@
         setTimeout(() => api.remove(), errors?.length ? 4000 : 1500);
       },
 
+      /** Show blocked state — classification gate prevented upload */
+      blocked(label, reason) {
+        card.classList.add("complete");
+        titleEl.textContent = "Upload Blocked";
+        titleEl.style.color = "#dc2626";
+        subtitleEl.textContent = reason || `Document classified "${label}" — upload not permitted`;
+        subtitleEl.style.color = "#dc2626";
+        progressFill.style.width = "100%";
+        progressFill.style.background = "#dc2626";
+        statusText.textContent = `Classification: ${label}`;
+        statusText.style.color = "#dc2626";
+        statusText.style.fontWeight = "700";
+        skipBtn.style.display = "none";
+
+        // DO NOT auto-dismiss — user must acknowledge
+        const dismissBtn = document.createElement("button");
+        dismissBtn.className = "skip-btn";
+        dismissBtn.textContent = "Dismiss";
+        dismissBtn.style.marginTop = "12px";
+        dismissBtn.addEventListener("click", () => api.remove());
+        const cardEl = shadow.querySelector(".card");
+        if (cardEl) cardEl.appendChild(dismissBtn);
+      },
+
       /** Register skip callback */
       onSkip(fn) { _onSkip = fn; },
 
@@ -1079,6 +1103,18 @@
       } catch (err) {
         const msg = err?.message || "Unknown error";
         const dbg = typeof LLSS_debug !== "undefined" ? LLSS_debug : null;
+
+        // Check if this is a classification gate block
+        if (msg.startsWith("CLASSIFICATION_BLOCKED:")) {
+          const parts = msg.split(":");
+          const label = parts[1] || "Unknown";
+          const reason = parts.slice(2).join(":") || "Upload blocked by classification policy";
+          if (dbg) dbg.log("upload", `BLOCKED by classification: ${file.name} (${label})`);
+          overlay.blocked(label, reason);
+          // Do NOT add to redactedFiles — block the entire upload
+          return;
+        }
+
         if (dbg) dbg.error("upload", `Failed to redact ${file.name}:`, msg);
         errors.push(`${file.name}: ${msg}`);
         redactedFiles.push(file);
@@ -1154,6 +1190,16 @@
       } catch (err) {
         const msg = err?.message || "Unknown error";
         const dbg = typeof LLSS_debug !== "undefined" ? LLSS_debug : null;
+
+        if (msg.startsWith("CLASSIFICATION_BLOCKED:")) {
+          const parts = msg.split(":");
+          const label = parts[1] || "Unknown";
+          const reason = parts.slice(2).join(":") || "Upload blocked by classification policy";
+          if (dbg) dbg.log("upload", `BLOCKED by classification: ${file.name} (${label})`);
+          overlay.blocked(label, reason);
+          return;
+        }
+
         if (dbg) dbg.error("upload", `Failed to redact ${file.name}:`, msg);
         errors.push(`${file.name}: ${msg}`);
         redactedFiles.push(file);

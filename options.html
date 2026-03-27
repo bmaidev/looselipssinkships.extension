@@ -149,6 +149,32 @@
                 </select>
               </div>
             </div>
+            <!-- Native Document Redaction (server-side) -->
+            <hr style="margin: 12px 0; border: none; border-top: 1px solid #e5e7eb;">
+            <label class="checkbox-label">
+              <input type="checkbox" id="azure-native-doc">
+              <span><strong>Native document redaction</strong> — send PDF/DOCX files to Azure for server-side PII redaction (returns redacted document)</span>
+            </label>
+            <div id="azure-native-doc-fields" class="hidden">
+              <p class="help">Requires Azure Blob Storage with source (read+list) and target (write+list) containers. Generate SAS tokens in the Azure Portal → Storage Account → Shared access signature.</p>
+              <div class="form-group">
+                <label>Source Container SAS URL</label>
+                <input type="text" id="azure-source-sas" class="input" placeholder="https://account.blob.core.windows.net/source?sv=2022-11-02&ss=b&srt=co&sp=rl&se=...">
+              </div>
+              <div class="form-group">
+                <label>Target Container SAS URL</label>
+                <input type="text" id="azure-target-sas" class="input" placeholder="https://account.blob.core.windows.net/target?sv=2022-11-02&ss=b&srt=co&sp=wl&se=...">
+              </div>
+              <div class="form-group">
+                <label>Redaction Policy</label>
+                <select id="azure-redaction-policy" class="input">
+                  <option value="entityMask">Entity Mask — [PERSON_1], [PHONENUMBER_1]</option>
+                  <option value="characterMask">Character Mask — ********</option>
+                  <option value="noMask">No Mask — detect only, no redaction in document</option>
+                </select>
+              </div>
+            </div>
+
             <button class="btn secondary btn-sm" id="btn-test-azure">Test Connection</button>
             <span id="azure-test-result" class="test-inline-result"></span>
           </div>

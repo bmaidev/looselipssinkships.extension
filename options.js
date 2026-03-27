@@ -110,6 +110,13 @@ function populateUI() {
   document.getElementById("azure-tenant-id").value = providers.azure_pii?.tenantId || "";
   document.getElementById("azure-client-id").value = providers.azure_pii?.clientId || "";
   refreshAzureAuthStatus();
+  // Native document redaction
+  const nativeDocEnabled = providers.azure_pii?.nativeDocEnabled || false;
+  document.getElementById("azure-native-doc").checked = nativeDocEnabled;
+  document.getElementById("azure-native-doc-fields").classList.toggle("hidden", !nativeDocEnabled);
+  document.getElementById("azure-source-sas").value = providers.azure_pii?.sourceContainerSas || "";
+  document.getElementById("azure-target-sas").value = providers.azure_pii?.targetContainerSas || "";
+  document.getElementById("azure-redaction-policy").value = providers.azure_pii?.redactionPolicy || "entityMask";
 
   // Purview
   document.getElementById("provider-purview").checked = providers.purview?.enabled || false;
@@ -751,6 +758,10 @@ function saveSettings() {
     clientId: document.getElementById("azure-client-id").value.trim(),
     language: document.getElementById("azure-language").value.trim(),
     domain: document.getElementById("azure-domain").value,
+    nativeDocEnabled: document.getElementById("azure-native-doc").checked,
+    sourceContainerSas: document.getElementById("azure-source-sas").value.trim(),
+    targetContainerSas: document.getElementById("azure-target-sas").value.trim(),
+    redactionPolicy: document.getElementById("azure-redaction-policy").value,
   };
 
   currentSettings.providers.purview = {
@@ -937,6 +948,9 @@ document.querySelectorAll('input[name="azureConnectionMode"]').forEach(r => {
 });
 document.getElementById("btn-azure-signin").addEventListener("click", azureSignIn);
 document.getElementById("btn-azure-signout").addEventListener("click", azureSignOut);
+document.getElementById("azure-native-doc").addEventListener("change", (e) => {
+  document.getElementById("azure-native-doc-fields").classList.toggle("hidden", !e.target.checked);
+});
 
 document.getElementById("btn-test-azure").addEventListener("click", testAzureConnection);
 document.getElementById("btn-test-purview").addEventListener("click", testPurviewConnection);

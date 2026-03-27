@@ -1,0 +1,20 @@
+{
+  "_policyVersion": 1,
+  "_locked": {
+    "aiChatGuard.enabled": true,
+    "submitGuard.enabled": true
+  },
+  "detectionMode": "auto",
+  "aiChatGuard": {
+    "enabled": true,
+    "autoRedactOnAiSites": true,
+    "blockSubmitUntilRedacted": true,
+    "interceptUploads": true,
+    "showAiBanner": true,
+    "customAiDomains": []
+  },
+  "submitGuard": {
+    "enabled": true,
+    "onlyOnAiSites": true
+  }
+}

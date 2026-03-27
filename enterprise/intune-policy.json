@@ -1,0 +1,39 @@
+{
+  "description": "Loose Lips Sink Ships — Intune managed configuration template",
+  "notes": "Apply via: Intune > Devices > Configuration > Create > Templates > Custom > Chrome Extension Settings. Set the extension ID and paste this JSON as the managed configuration.",
+  "extensionId": "YOUR_EXTENSION_ID",
+  "configuration": {
+    "_policyVersion": 1,
+    "_locked": {
+      "detectionMode": true,
+      "aiChatGuard.enabled": true,
+      "submitGuard.enabled": true,
+      "uploadGuard.enabled": true,
+      "providers.azure_pii": true
+    },
+    "detectionMode": "cloud_only",
+    "aiChatGuard": {
+      "enabled": true,
+      "autoRedactOnAiSites": true,
+      "blockSubmitUntilRedacted": true,
+      "interceptUploads": true,
+      "customAiDomains": []
+    },
+    "submitGuard": {
+      "enabled": true,
+      "onlyOnAiSites": true
+    },
+    "uploadGuard": {
+      "enabled": true,
+      "onlyOnAiSites": true
+    },
+    "providers": {
+      "azure_pii": {
+        "enabled": true,
+        "endpoint": "https://YOUR-INSTANCE.cognitiveservices.azure.com",
+        "apiKey": "YOUR_API_KEY",
+        "language": "en"
+      }
+    }
+  }
+}

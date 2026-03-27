@@ -1,0 +1,51 @@
+{
+  "_policyVersion": 1,
+  "_locked": {
+    "detectionMode": true,
+    "aiChatGuard.enabled": true,
+    "submitGuard.enabled": true,
+    "uploadGuard.enabled": true,
+    "providers.azure_pii": true
+  },
+  "detectionMode": "cloud_only",
+  "aiChatGuard": {
+    "enabled": true,
+    "autoRedactOnAiSites": true,
+    "blockSubmitUntilRedacted": true,
+    "interceptUploads": true,
+    "showAiBanner": true,
+    "customAiDomains": [
+      "internal-ai.yourorg.com"
+    ]
+  },
+  "submitGuard": {
+    "enabled": true,
+    "interceptEnter": true,
+    "interceptFormSubmit": true,
+    "interceptSendButtons": true,
+    "onlyOnAiSites": true
+  },
+  "uploadGuard": {
+    "enabled": true,
+    "onlyOnAiSites": true,
+    "confirmBeforeUpload": true
+  },
+  "siteFilter": {
+    "mode": "all",
+    "whitelist": [],
+    "blacklist": []
+  },
+  "providers": {
+    "local_ai": {
+      "enabled": true
+    },
+    "azure_pii": {
+      "enabled": true,
+      "endpoint": "https://YOUR-INSTANCE.cognitiveservices.azure.com",
+      "apiKey": "YOUR_API_KEY",
+      "apiVersion": "2023-04-01",
+      "language": "en",
+      "domain": "none"
+    }
+  }
+}

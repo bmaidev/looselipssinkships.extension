@@ -1,0 +1,210 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "_policyVersion": {
+      "type": "integer",
+      "description": "Policy revision number for tracking deployed configuration versions."
+    },
+    "_locked": {
+      "type": "object",
+      "description": "Map of dot-path setting keys to boolean. When true, the setting cannot be changed by the user. Parent paths lock all children (e.g., 'aiChatGuard' locks 'aiChatGuard.enabled').",
+      "properties": {
+        "detectionMode": { "type": "boolean" },
+        "enableVectorFallback": { "type": "boolean" },
+        "vectorThreshold": { "type": "boolean" },
+        "regexAfterAi": { "type": "boolean" },
+        "showRedactButton": { "type": "boolean" },
+        "enableContentEditable": { "type": "boolean" },
+        "enableDocumentUpload": { "type": "boolean" },
+        "sessionTimeoutMinutes": { "type": "boolean" },
+        "siteFilter": { "type": "boolean" },
+        "aiChatGuard": { "type": "boolean" },
+        "aiChatGuard.enabled": { "type": "boolean" },
+        "autoRedact": { "type": "boolean" },
+        "autoRedact.enabled": { "type": "boolean" },
+        "submitGuard": { "type": "boolean" },
+        "submitGuard.enabled": { "type": "boolean" },
+        "uploadGuard": { "type": "boolean" },
+        "uploadGuard.enabled": { "type": "boolean" },
+        "providers": { "type": "boolean" },
+        "providers.local_ai": { "type": "boolean" },
+        "providers.azure_pii": { "type": "boolean" },
+        "providers.purview": { "type": "boolean" },
+        "providers.hosted": { "type": "boolean" },
+        "debugMode": { "type": "boolean" }
+      },
+      "additionalProperties": { "type": "boolean" }
+    },
+    "detectionMode": {
+      "type": "string",
+      "enum": ["auto", "ai_only", "regex_only", "cloud_only"],
+      "description": "PII detection mode. 'auto' tries local AI first with progressive fallback."
+    },
+    "enableVectorFallback": {
+      "type": "boolean",
+      "description": "Enable heuristic name detection alongside regex."
+    },
+    "vectorThreshold": {
+      "type": "number",
+      "description": "Confidence threshold for vector name detection (0.0–1.0)."
+    },
+    "regexAfterAi": {
+      "type": "boolean",
+      "description": "Run regex after AI for extra safety (belt-and-suspenders mode)."
+    },
+    "showRedactButton": {
+      "type": "boolean",
+      "description": "Show the Redact PII button on text fields."
+    },
+    "enableContentEditable": {
+      "type": "boolean",
+      "description": "Attach redaction to contenteditable elements."
+    },
+    "enableDocumentUpload": {
+      "type": "boolean",
+      "description": "Enable document upload and redaction."
+    },
+    "sessionTimeoutMinutes": {
+      "type": "integer",
+      "description": "Idle timeout before destroying the AI session (minutes)."
+    },
+    "debugMode": {
+      "type": "boolean",
+      "description": "Enable debug logging to browser console."
+    },
+    "siteFilter": {
+      "type": "object",
+      "description": "Controls which sites the extension activates on.",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["all", "whitelist", "blacklist"]
+        },
+        "whitelist": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Site patterns for whitelist mode."
+        },
+        "blacklist": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Site patterns for blacklist mode."
+        }
+      }
+    },
+    "aiChatGuard": {
+      "type": "object",
+      "description": "AI chat service protection settings.",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "autoRedactOnAiSites": { "type": "boolean" },
+        "blockSubmitUntilRedacted": { "type": "boolean" },
+        "interceptUploads": { "type": "boolean" },
+        "showAiBanner": { "type": "boolean" },
+        "customAiDomains": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Additional domains to treat as AI chat services."
+        }
+      }
+    },
+    "autoRedact": {
+      "type": "object",
+      "description": "Auto-redact on type/paste settings.",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "debounceMs": { "type": "integer" },
+        "onPaste": { "type": "boolean" },
+        "onlyOnAiSites": { "type": "boolean" }
+      }
+    },
+    "submitGuard": {
+      "type": "object",
+      "description": "Submit/send interception settings.",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "interceptEnter": { "type": "boolean" },
+        "interceptFormSubmit": { "type": "boolean" },
+        "interceptSendButtons": { "type": "boolean" },
+        "onlyOnAiSites": { "type": "boolean" }
+      }
+    },
+    "uploadGuard": {
+      "type": "object",
+      "description": "File upload interception settings.",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "onlyOnAiSites": { "type": "boolean" },
+        "confirmBeforeUpload": { "type": "boolean" }
+      }
+    },
+    "providers": {
+      "type": "object",
+      "description": "Provider configuration. Admin can pre-configure cloud provider credentials.",
+      "properties": {
+        "local_ai": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" }
+          }
+        },
+        "regex": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" }
+          }
+        },
+        "azure_pii": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "endpoint": { "type": "string" },
+            "apiKey": { "type": "string" },
+            "apiVersion": { "type": "string" },
+            "language": { "type": "string" },
+            "domain": { "type": "string", "enum": ["none", "phi"] },
+            "categoriesFilter": { "type": "array", "items": { "type": "string" } },
+            "useManagedIdentity": { "type": "boolean" },
+            "tenantId": { "type": "string" },
+            "clientId": { "type": "string" }
+          }
+        },
+        "purview": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "tenantId": { "type": "string" },
+            "clientId": { "type": "string" },
+            "clientSecret": { "type": "string" },
+            "graphEndpoint": { "type": "string" },
+            "useDelegatedAuth": { "type": "boolean" },
+            "dlpPolicyId": { "type": "string" }
+          }
+        },
+        "hosted": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "enabled": { "type": "boolean" },
+              "providerId": { "type": "string" },
+              "displayName": { "type": "string" },
+              "endpoint": { "type": "string" },
+              "apiKey": { "type": "string" },
+              "apiMode": { "type": "string", "enum": ["openai", "pii_api", "ocr_extract"] },
+              "model": { "type": "string" },
+              "maxTokens": { "type": "integer" },
+              "timeout": { "type": "integer" },
+              "priority": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "configUrl": {
+      "type": "string",
+      "description": "URL to a remote JSON configuration file (for small-business deployment without MDM)."
+    }
+  }
+}

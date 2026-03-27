@@ -7,8 +7,12 @@
     "storage",
     "activeTab",
     "scripting",
-    "offscreen"
+    "offscreen",
+    "alarms"
   ],
+  "storage": {
+    "managed_schema": "managed_schema.json"
+  },
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; object-src 'self'"
   },

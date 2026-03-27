@@ -47,8 +47,10 @@
     'image/png': '.png',
     'image/jpeg': '.jpg',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.csv',
     'text/plain': '.txt',
+    'text/csv': '.csv',
+    'application/zip': '.zip',
   };
 
   function detectType(file) {

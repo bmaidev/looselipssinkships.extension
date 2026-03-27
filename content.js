@@ -187,10 +187,25 @@
   // ── File upload handler ────────────────────────────────────────────────────
 
   const SUPPORTED_ACCEPT =
-    ".docx,.doc,.xlsx,.xls,.pdf,.html,.htm,.md,.markdown,.txt,.png,.jpg,.jpeg,.gif,.webp,.bmp,.tiff,.tif" +
+    // Office documents
+    ".docx,.doc,.xlsx,.xls,.pdf" +
+    // Web / markup
+    ",.html,.htm,.md,.markdown" +
+    // Structured text
+    ",.csv,.tsv,.json,.jsonl,.xml,.yaml,.yml,.toml,.ini,.cfg,.conf,.env" +
+    // Plain text / docs
+    ",.txt,.log,.rtf,.rst,.adoc,.tex" +
+    // Code files
+    ",.py,.rb,.php,.js,.ts,.jsx,.tsx,.java,.cs,.go,.rs,.swift,.kt,.c,.cpp,.h,.sh,.ps1,.sql,.r,.bat" +
+    // Images
+    ",.png,.jpg,.jpeg,.gif,.webp,.bmp,.tiff,.tif" +
+    // Archives
+    ",.zip" +
+    // MIME types
     ",application/vnd.openxmlformats-officedocument.wordprocessingml.document" +
     ",application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" +
-    ",application/pdf,text/html,text/markdown,text/plain,image/*";
+    ",application/pdf,text/html,text/markdown,text/plain,text/csv,application/json,application/xml" +
+    ",application/zip,image/*";
 
   function triggerFileUpload(setText, btn) {
     const input = document.createElement("input");
@@ -1202,8 +1217,10 @@
         'image/png': '.png',
         'image/jpeg': '.jpg',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.csv',
         'text/plain': '.txt',
+        'text/csv': '.csv',
+        'application/zip': '.zip',
       };
       const ext = extMap[format] || file.name.match(/\.[^.]+$/)?.[0] || '';
       const baseName = file.name.replace(/\.[^.]+$/, "");

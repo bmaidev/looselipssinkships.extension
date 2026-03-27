@@ -109,7 +109,7 @@ Intercepts file uploads to redact documents before they leave the page.
 - **Drag-and-drop interception** — Captures drop events with `preventDefault()` and `stopImmediatePropagation()`.
 - **File replacement** — Secured files injected into the original input via `DataTransfer`, then the event is re-dispatched.
 - **Confirmation dialog** — "Check & Redact" or "Skip (Upload as-is)".
-- **Supports** — DOCX, XLSX, PDF, HTML, Markdown, TXT, CSV, PNG, JPG, GIF, WebP, BMP, TIFF.
+- **Supports** — DOCX, XLSX, PDF, CSV, JSON, XML, YAML, HTML, Markdown, TXT, code files, config files, images (PNG, JPG, GIF, WebP, BMP, TIFF), and ZIP archives.
 
 ### Detection Engines
 - **Gemini Nano (Local AI)** — Chrome's built-in on-device model via the [Prompt API](https://developer.chrome.com/docs/ai/prompt-api) (`LanguageModel` global). Zero network calls. Runs directly in the content script for text fields (no IPC overhead) and via the offscreen document for background pipeline processing. The Prompt API is not available in service workers, so the extension uses context-appropriate execution: content scripts and the offscreen document both have direct access to `LanguageModel`.
@@ -121,12 +121,13 @@ Intercepts file uploads to redact documents before they leave the page.
 
 ### Document Redaction
 - **Word (.docx)** — Run-aware XML text replacement. Parses the DOCX ZIP, builds a character-offset map from `<w:t>` elements, runs PII detection, replaces PII with tokens in the XML, and repacks the ZIP. Handles PII spanning multiple formatting runs. Preserves all formatting, images, styles, and tables. Processes document.xml plus headers, footers, comments, and footnotes.
-- **Excel (.xlsx)** — Local spreadsheet parsing with shared strings support. Text-only redaction.
-- **HTML** — DOM-based text extraction with script/style stripping. Text-only redaction.
-- **Markdown** — Formatting-aware text extraction. Text-only redaction.
+- **Excel (.xlsx)** — Converts to CSV as a pre-step (preserving row/column structure), then redacts PII per cell. Output as redacted `.csv` with RFC 4180 quoting. Original tabular structure is maintained.
 - **PDF (text-based)** — Fast text extraction via pdf.js `getTextContent()` (no rendering or OCR). PII detection on extracted text. Outputs redacted text as `.txt` file.
 - **PDF (scanned)** — Full render pipeline: pdf.js renders pages to canvas (using `intent: 'print'` to bypass `requestAnimationFrame` in offscreen documents) → Tesseract.js OCR extracts text + word-level bounding boxes → PII detection → pixel-level black box redaction → image-only PDF reconstruction.
+- **PDF / DOCX / TXT (Azure native)** — Server-side redaction via Azure Language native document API. Azure handles OCR, text extraction, PII detection, and document reconstruction. Returns a redacted document in the original format.
 - **Images** — Local OCR via Tesseract.js. PII detection with character-position mapping to OCR bounding boxes. Pixel-level black box redaction on canvas. Output as redacted PNG.
+- **ZIP archives** — Extracts all entries, processes each supported text-based file through the PII pipeline, repacks with redacted contents. Binary files (images, PDFs) are kept as-is.
+- **All text-based formats** — JSON, CSV, TSV, XML, YAML, SQL, code files (.py, .js, .java, .go, etc.), config files (.env, .ini, .conf), logs, RTF, LaTeX, and more. Read as UTF-8, PII detected and replaced, output in the same format.
 
 ### Standalone Redaction Tool
 Accessible via **"Redact Files"** button in the extension popup. Opens a dedicated tab with:

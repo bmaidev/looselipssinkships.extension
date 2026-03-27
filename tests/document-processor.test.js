@@ -155,4 +155,55 @@ describe("EXT_TO_TYPE map", () => {
     expect(EXT_TO_TYPE[".docx"]).toBe("docx");
     expect(EXT_TO_TYPE[".xlsx"]).toBe("xlsx");
   });
+
+  test("recognises text-based formats", () => {
+    expect(EXT_TO_TYPE[".json"]).toBe("text");
+    expect(EXT_TO_TYPE[".xml"]).toBe("text");
+    expect(EXT_TO_TYPE[".yaml"]).toBe("text");
+    expect(EXT_TO_TYPE[".yml"]).toBe("text");
+    expect(EXT_TO_TYPE[".toml"]).toBe("text");
+    expect(EXT_TO_TYPE[".log"]).toBe("text");
+    expect(EXT_TO_TYPE[".env"]).toBe("text");
+    expect(EXT_TO_TYPE[".ini"]).toBe("text");
+    expect(EXT_TO_TYPE[".rtf"]).toBe("text");
+  });
+
+  test("recognises code files", () => {
+    expect(EXT_TO_TYPE[".py"]).toBe("text");
+    expect(EXT_TO_TYPE[".js"]).toBe("text");
+    expect(EXT_TO_TYPE[".ts"]).toBe("text");
+    expect(EXT_TO_TYPE[".java"]).toBe("text");
+    expect(EXT_TO_TYPE[".cs"]).toBe("text");
+    expect(EXT_TO_TYPE[".go"]).toBe("text");
+    expect(EXT_TO_TYPE[".sql"]).toBe("text");
+    expect(EXT_TO_TYPE[".sh"]).toBe("text");
+    expect(EXT_TO_TYPE[".ps1"]).toBe("text");
+  });
+
+  test("recognises CSV and ZIP", () => {
+    expect(EXT_TO_TYPE[".csv"]).toBe("csv");
+    expect(EXT_TO_TYPE[".zip"]).toBe("zip");
+  });
+});
+
+describe("detectContentType — expanded formats", () => {
+  test("detects JSON from MIME", () => {
+    expect(detectContentType(null, "application/json")).toBe("text");
+  });
+
+  test("detects CSV from MIME and extension", () => {
+    expect(detectContentType(null, "text/csv")).toBe("csv");
+    expect(detectContentType("data.csv")).toBe("csv");
+  });
+
+  test("detects ZIP from MIME and extension", () => {
+    expect(detectContentType(null, "application/zip")).toBe("zip");
+    expect(detectContentType("archive.zip")).toBe("zip");
+  });
+
+  test("detects code files by extension", () => {
+    expect(detectContentType("script.py")).toBe("text");
+    expect(detectContentType("app.tsx")).toBe("text");
+    expect(detectContentType("query.sql")).toBe("text");
+  });
 });

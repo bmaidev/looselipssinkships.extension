@@ -114,9 +114,10 @@ function populateUI() {
   const nativeDocEnabled = providers.azure_pii?.nativeDocEnabled || false;
   document.getElementById("azure-native-doc").checked = nativeDocEnabled;
   document.getElementById("azure-native-doc-fields").classList.toggle("hidden", !nativeDocEnabled);
-  document.getElementById("azure-source-sas").value = providers.azure_pii?.sourceContainerSas || "";
-  document.getElementById("azure-target-sas").value = providers.azure_pii?.targetContainerSas || "";
+  document.getElementById("azure-source-url").value = providers.azure_pii?.sourceContainerUrl || "";
+  document.getElementById("azure-target-url").value = providers.azure_pii?.targetContainerUrl || "";
   document.getElementById("azure-redaction-policy").value = providers.azure_pii?.redactionPolicy || "entityMask";
+  updateNativeDocHelp(azureMode);
 
   // Purview
   document.getElementById("provider-purview").checked = providers.purview?.enabled || false;
@@ -759,8 +760,8 @@ function saveSettings() {
     language: document.getElementById("azure-language").value.trim(),
     domain: document.getElementById("azure-domain").value,
     nativeDocEnabled: document.getElementById("azure-native-doc").checked,
-    sourceContainerSas: document.getElementById("azure-source-sas").value.trim(),
-    targetContainerSas: document.getElementById("azure-target-sas").value.trim(),
+    sourceContainerUrl: document.getElementById("azure-source-url").value.trim(),
+    targetContainerUrl: document.getElementById("azure-target-url").value.trim(),
     redactionPolicy: document.getElementById("azure-redaction-policy").value,
   };
 
@@ -892,6 +893,34 @@ document.getElementById("hosted-modal-save").addEventListener("click", saveHoste
 function updateAzureConnectionMode(mode) {
   document.getElementById("azure-direct-fields").classList.toggle("hidden", mode !== "direct");
   document.getElementById("azure-enterprise-fields").classList.toggle("hidden", mode !== "enterprise");
+  updateNativeDocHelp(mode);
+}
+
+function updateNativeDocHelp(mode) {
+  const directHelp = document.getElementById("azure-native-doc-help-direct");
+  const enterpriseHelp = document.getElementById("azure-native-doc-help-enterprise");
+  const sourceLabel = document.getElementById("azure-source-label");
+  const targetLabel = document.getElementById("azure-target-label");
+  const sourceInput = document.getElementById("azure-source-url");
+  const targetInput = document.getElementById("azure-target-url");
+
+  if (!directHelp) return;
+
+  if (mode === "enterprise") {
+    directHelp.classList.add("hidden");
+    enterpriseHelp.classList.remove("hidden");
+    sourceLabel.textContent = "Source Container URL";
+    targetLabel.textContent = "Target Container URL";
+    sourceInput.placeholder = "https://account.blob.core.windows.net/source";
+    targetInput.placeholder = "https://account.blob.core.windows.net/target";
+  } else {
+    directHelp.classList.remove("hidden");
+    enterpriseHelp.classList.add("hidden");
+    sourceLabel.textContent = "Source Container URL (with SAS token)";
+    targetLabel.textContent = "Target Container URL (with SAS token)";
+    sourceInput.placeholder = "https://account.blob.core.windows.net/source?sv=2022-11-02&ss=b&srt=co&sp=rl&se=...";
+    targetInput.placeholder = "https://account.blob.core.windows.net/target?sv=2022-11-02&ss=b&srt=co&sp=wl&se=...";
+  }
 }
 
 function refreshAzureAuthStatus() {

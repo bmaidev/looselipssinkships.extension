@@ -156,14 +156,22 @@
               <span><strong>Native document redaction</strong> — send PDF/DOCX files to Azure for server-side PII redaction (returns redacted document)</span>
             </label>
             <div id="azure-native-doc-fields" class="hidden">
-              <p class="help">Requires Azure Blob Storage with source (read+list) and target (write+list) containers. Generate SAS tokens in the Azure Portal → Storage Account → Shared access signature.</p>
-              <div class="form-group">
-                <label>Source Container SAS URL</label>
-                <input type="text" id="azure-source-sas" class="input" placeholder="https://account.blob.core.windows.net/source?sv=2022-11-02&ss=b&srt=co&sp=rl&se=...">
+              <div id="azure-native-doc-help-direct" class="help">
+                Requires Azure Blob Storage. Generate SAS tokens in Azure Portal → Storage Account → Shared access signature.<br>
+                Source: read + list permissions. Target: write + list permissions.
+              </div>
+              <div id="azure-native-doc-help-enterprise" class="help hidden">
+                Requires Azure Blob Storage. Admin must enable managed identity on the Language resource and grant it:<br>
+                <strong>Storage Blob Data Reader</strong> on source container, <strong>Storage Blob Data Contributor</strong> on target container.<br>
+                The App Registration also needs <code>https://storage.azure.com/user_impersonation</code> API permission for the extension to upload/download files.
               </div>
               <div class="form-group">
-                <label>Target Container SAS URL</label>
-                <input type="text" id="azure-target-sas" class="input" placeholder="https://account.blob.core.windows.net/target?sv=2022-11-02&ss=b&srt=co&sp=wl&se=...">
+                <label id="azure-source-label">Source Container URL</label>
+                <input type="text" id="azure-source-url" class="input" placeholder="https://account.blob.core.windows.net/source">
+              </div>
+              <div class="form-group">
+                <label id="azure-target-label">Target Container URL</label>
+                <input type="text" id="azure-target-url" class="input" placeholder="https://account.blob.core.windows.net/target">
               </div>
               <div class="form-group">
                 <label>Redaction Policy</label>

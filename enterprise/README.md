@@ -109,8 +109,8 @@ Azure's native document API processes PDF, DOCX, and TXT files entirely server-s
 ### Direct Storage Setup (SAS Tokens)
 
 1. Azure Portal → Storage Account → Shared access signature
-2. Generate a SAS token for the **source container** with **Read + List** permissions
-3. Generate a SAS token for the **target container** with **Write + List** permissions
+2. Generate a SAS token for the **source container** with **Read + Write + List** permissions (extension uploads the file, Language API reads it)
+3. Generate a SAS token for the **target container** with **Read + Write + List** permissions (Language API writes results, extension downloads them)
 4. Paste the full URLs (including `?sv=...` SAS query string) into the extension settings
 
 ### Supported Formats

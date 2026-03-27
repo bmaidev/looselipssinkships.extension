@@ -158,7 +158,8 @@
             <div id="azure-native-doc-fields" class="hidden">
               <div id="azure-native-doc-help-direct" class="help">
                 Requires Azure Blob Storage. Generate SAS tokens in Azure Portal → Storage Account → Shared access signature.<br>
-                Source: read + list permissions. Target: write + list permissions.
+                Source: read + write + list permissions (extension uploads, Language API reads).<br>
+                Target: read + write + list permissions (Language API writes, extension downloads).
               </div>
               <div id="azure-native-doc-help-enterprise" class="help hidden">
                 Requires Azure Blob Storage. Admin must enable managed identity on the Language resource and grant it:<br>

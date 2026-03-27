@@ -1,144 +1,117 @@
 # Loose Lips Sink Ships
 
-Enterprise-grade PII redaction for Chrome with local-first processing. Designed for Australian government agencies and secure enterprise environments.
+**Enterprise-grade PII redaction for Chrome.** Local-first processing with progressive escalation to hosted and cloud providers. Designed for Australian government agencies and secure enterprise environments.
 
-## Architecture
+> **Zero PII leaves the browser** unless you explicitly configure a cloud provider. Every document, every text field, every file upload — scanned for personally identifiable information before it reaches the network.
 
-**Progressive Processing Pipeline: Local → Hosted → Cloud**
+---
+
+## How It Works
 
 ```
-Content Input (text / document / upload)
-       │
-       ▼
-┌──────────────────────────────────────────────────┐
-│  Site Filter (lib/site-filter.js)                │
-│  Whitelist / Blacklist / All sites               │
-│  AI Chat Service auto-detection (30+ services)   │
-└──────────┬───────────────────────────────────────┘
-           │
-           ▼
-┌──────────────────────────────────────────────────┐
-│  Content Guards (content.js)                     │
-│  - Direct Nano redaction (LanguageModel API)     │
-│  - Auto-redact on type/paste                     │
-│  - Submit interception (Enter, forms, buttons)   │
-│  - Upload interception (file inputs, drag-drop)  │
-│  - Security Handshake (Shadow DOM overlay)       │
-└──────┬───────────────────────────────────────────┘
-       │  text fields: direct Nano (no IPC)
-       │  documents / fallback: background pipeline
-       ▼
-┌──────────────────────────────────────────────────┐
-│  Pipeline Router (lib/pipeline.js)               │
-│  Selects best provider based on content type,    │
-│  availability, tier preference, user config      │
-└─────────┬───────────┬───────────┬────────────────┘
-          │           │           │
-    ┌─────▼─────┐ ┌──▼──────┐ ┌─▼──────────┐
-    │  LOCAL     │ │ HOSTED  │ │  CLOUD      │
-    │           │ │         │ │             │
-    │ Gemini    │ │ Org LLM │ │ Azure PII   │
-    │ Nano      │ │ (vLLM,  │ │ Detection   │
-    │ (via      │ │ Ollama, │ │             │
-    │ offscreen)│ │ TGI,    │ │ Microsoft   │
-    │           │ │ custom) │ │ Purview DLP │
-    │ Regex     │ │         │ │             │
-    │ Engine    │ │ OCR     │ │             │
-    │           │ │ Extract │ │             │
-    │ Vector    │ │ Server  │ │             │
-    │ Names     │ │         │ │             │
-    │           │ │         │ │             │
-    │ PDF/Image │ │         │ │             │
-    │ OCR       │ │         │ │             │
-    └───────────┘ └─────────┘ └─────────────┘
+  User types / pastes / uploads
+            │
+            ▼
+  ┌─────────────────────────────────────────┐
+  │  Content Guards                         │
+  │  Auto-redact ─ Submit guard ─ Upload    │
+  │  interception ─ AI chat detection       │
+  └────────────┬────────────────────────────┘
+               │
+               ▼
+  ┌─────────────────────────────────────────┐
+  │  Pipeline Router                        │
+  │  Picks the best provider by tier,       │
+  │  availability, and user config          │
+  └────┬──────────┬──────────┬──────────────┘
+       │          │          │
+  ┌────▼────┐ ┌──▼─────┐ ┌─▼──────────┐
+  │  LOCAL  │ │ HOSTED │ │   CLOUD    │
+  │         │ │        │ │            │
+  │ Gemini  │ │ Your   │ │ Azure PII  │
+  │ Nano    │ │ LLMs   │ │ Detection  │
+  │         │ │        │ │            │
+  │ Regex   │ │ OCR    │ │ Azure      │
+  │ Engine  │ │ Server │ │ Native Doc │
+  │         │ │        │ │            │
+  │ OCR +   │ │        │ │ Microsoft  │
+  │ Pixel   │ │        │ │ Purview    │
+  │ Redact  │ │        │ │            │
+  └─────────┘ └────────┘ └────────────┘
 ```
 
-## Features
+**Detection modes:** Auto (local-first) | AI Only | Regex Only | Cloud Only
 
-### PDF & Image Redaction (Provably Secure)
-Local OCR-based redaction for PDFs and images. Uses image-based flattening — there is **no hidden text layer** in the output, so copy-paste / select-all cannot recover redacted content.
+---
 
-- **PDF rendering** — pdf.js renders each page to a canvas image at 2× scale.
-- **OCR extraction** — Tesseract.js extracts text + word-level bounding boxes.
-- **PII detection** — Existing pipeline (Gemini Nano / regex / hosted) finds PII in the extracted text.
-- **Pixel redaction** — Black rectangles drawn at the bounding box coordinates on the canvas.
-- **PDF reconstruction** — Redacted page images assembled into a new image-only PDF.
-- **Worker pool** — 4 parallel Tesseract.js workers for documents with 4+ pages (~4× speedup).
-- **Chunked rendering** — Pages rendered in groups of 5, canvases released after OCR, re-rendered only for redaction (memory-efficient for 50-page PDFs).
-- **Optional OCR container** — Self-hosted FastAPI + Tesseract 5 + Poppler for server-grade accuracy (see [OCR Container Setup](#ocr-container-setup)).
+## Supported File Types
 
-### Security Handshake (Visual Interception)
-When a user uploads a file, the extension performs a "Security Handshake" — intercepting the upload before the target site sees it.
+| Format | Method | Output |
+|--------|--------|--------|
+| **DOCX** | XML text replacement in-place | Redacted `.docx` (formatting preserved) |
+| **XLSX** | Convert to CSV, redact per-cell | Redacted `.csv` (structure preserved) |
+| **PDF** (text) | pdf.js text extraction | Redacted `.txt` |
+| **PDF** (scanned) | Render + Tesseract OCR + pixel redaction | Redacted image-only PDF |
+| **PDF / DOCX / TXT** | Azure native document API (server-side) | Redacted in original format |
+| **Images** | Tesseract OCR + pixel redaction | Redacted `.png` with black boxes |
+| **CSV, TSV, JSON, XML, YAML** | UTF-8 text redaction | Same format |
+| **Code** (.py, .js, .ts, .java, .go, .sql, etc.) | UTF-8 text redaction | Same format |
+| **Config** (.env, .ini, .conf, .cfg, .toml) | UTF-8 text redaction | Same format |
+| **Docs** (HTML, Markdown, RTF, LaTeX, TXT, LOG) | Text extraction + redaction | Same format |
+| **ZIP** | Extract → redact each file → repack | Redacted `.zip` |
 
-- **Shadow DOM overlay** — Closed shadow root prevents style leakage. Shows a document icon with scanning laser-line animation.
-- **Event blocking** — `stopImmediatePropagation()` in capture phase blocks the site's change/drop handlers.
-- **File replacement** — After redaction, a new `File` object is created from the redacted bytes and injected into the original input via `DataTransfer` API. The target site receives the secured file transparently.
-- **Progress reporting** — Real-time render %, OCR %, and redaction % per page.
-- **Skip button** — Users can bypass redaction at any time.
-- **Multi-file queue** — `AsyncQueue` with bounded concurrency (max 2 active files) prevents CPU pegging on bulk drops.
+**50+ file extensions** recognised. If it's text-based, it's covered.
+
+---
+
+## Key Features
+
+### Real-Time Text Protection
+- **Direct Nano redaction** in text fields via Chrome's Prompt API — zero IPC, instant
+- **Auto-redact on type/paste** with smart debouncing (configurable 500ms–5s)
+- **Submit interception** — catches Enter key, form submit, and send button clicks
+- **Conversational response guard** — detects when Nano goes off-script and returns original text
+
+### Upload Interception ("Security Handshake")
+- **Shadow DOM overlay** with scanning animation while processing
+- **File replacement** — redacted file injected via `DataTransfer` before the site sees it
+- **Multi-file queue** with bounded concurrency
+- **Skip button** — users can bypass at any time
 
 ### AI Chat Guard
-Automatically protects against PII being submitted to AI chat services.
-- **Auto-detects 30+ services** — ChatGPT, Claude, Gemini (all interfaces), Copilot, Grok, DeepSeek, Perplexity, Mistral, Poe, Character.AI, HuggingChat, Meta AI, and more.
-- **Custom AI domains** — Add internal or self-hosted AI services (e.g. `internal-ai.agency.gov.au`).
-- **Protection banner** — Visual indicator when active on an AI chat site.
-- **Respects site filtering** — Blacklisted sites are fully excluded, even if they're AI services.
-
-### Site Filtering
-- **All sites** (default) — Extension active everywhere.
-- **Whitelist mode** — Only active on listed sites (e.g. `*.gov.au`, `internal.agency.gov.au`).
-- **Blacklist mode** — Active everywhere except listed sites.
-- **Pattern support** — Exact domains, wildcard subdomains (`*.example.com`), dot-suffix (`.gov.au`), full URL prefixes (`https://portal.agency.gov.au/*`).
-
-### Auto-Redact
-Automatically redact PII as users type or paste, without requiring a button click.
-- **Debounced typing detection** — Waits for a pause (configurable 500ms–5s) before redacting.
-- **Immediate paste redaction** — Redacts pasted content right away.
-- **AI-site-only default** — Only activates on detected AI chat services unless globally enabled.
-
-### Submit Interception
-Intercepts form submissions and send actions to ensure redaction is complete.
-- **Enter key interception** — Catches Enter-to-send in chat UIs.
-- **Form submit interception** — Blocks form submission, redacts all text fields, then resubmits.
-- **Send button detection** — Heuristic detection of send/submit buttons (text content, `aria-label`, SVG icons, `data-testid`, `type=submit`).
-- **In-flight protection** — Blocks submission while any redaction is still processing.
-
-### Upload Interception
-Intercepts file uploads to redact documents before they leave the page.
-- **File input monitoring** — Catches `<input type="file">` changes and blocks propagation.
-- **Drag-and-drop interception** — Captures drop events with `preventDefault()` and `stopImmediatePropagation()`.
-- **File replacement** — Secured files injected into the original input via `DataTransfer`, then the event is re-dispatched.
-- **Confirmation dialog** — "Check & Redact" or "Skip (Upload as-is)".
-- **Supports** — DOCX, XLSX, PDF, CSV, JSON, XML, YAML, HTML, Markdown, TXT, code files, config files, images (PNG, JPG, GIF, WebP, BMP, TIFF), and ZIP archives.
-
-### Detection Engines
-- **Gemini Nano (Local AI)** — Chrome's built-in on-device model via the [Prompt API](https://developer.chrome.com/docs/ai/prompt-api) (`LanguageModel` global). Zero network calls. Runs directly in the content script for text fields (no IPC overhead) and via the offscreen document for background pipeline processing. The Prompt API is not available in service workers, so the extension uses context-appropriate execution: content scripts and the offscreen document both have direct access to `LanguageModel`.
-- **Regex Engine** — 17 built-in Australian PII patterns. Always available as fallback.
-- **Vector Name Detection** — Heuristic name detection using trigram similarity.
-- **Azure AI Language** — Microsoft's PII detection API with Australian entity support.
-- **Microsoft Purview** — M365 DLP sensitive information types and trainable classifiers.
-- **Organisation-Hosted Models** — Connect to your own infrastructure (vLLM, Ollama, TGI, Azure OpenAI, or custom PII APIs).
-
-### Document Redaction
-- **Word (.docx)** — Run-aware XML text replacement. Parses the DOCX ZIP, builds a character-offset map from `<w:t>` elements, runs PII detection, replaces PII with tokens in the XML, and repacks the ZIP. Handles PII spanning multiple formatting runs. Preserves all formatting, images, styles, and tables. Processes document.xml plus headers, footers, comments, and footnotes.
-- **Excel (.xlsx)** — Converts to CSV as a pre-step (preserving row/column structure), then redacts PII per cell. Output as redacted `.csv` with RFC 4180 quoting. Original tabular structure is maintained.
-- **PDF (text-based)** — Fast text extraction via pdf.js `getTextContent()` (no rendering or OCR). PII detection on extracted text. Outputs redacted text as `.txt` file.
-- **PDF (scanned)** — Full render pipeline: pdf.js renders pages to canvas (using `intent: 'print'` to bypass `requestAnimationFrame` in offscreen documents) → Tesseract.js OCR extracts text + word-level bounding boxes → PII detection → pixel-level black box redaction → image-only PDF reconstruction.
-- **PDF / DOCX / TXT (Azure native)** — Server-side redaction via Azure Language native document API. Azure handles OCR, text extraction, PII detection, and document reconstruction. Returns a redacted document in the original format.
-- **Images** — Local OCR via Tesseract.js. PII detection with character-position mapping to OCR bounding boxes. Pixel-level black box redaction on canvas. Output as redacted PNG.
-- **ZIP archives** — Extracts all entries, processes each supported text-based file through the PII pipeline, repacks with redacted contents. Binary files (images, PDFs) are kept as-is.
-- **All text-based formats** — JSON, CSV, TSV, XML, YAML, SQL, code files (.py, .js, .java, .go, etc.), config files (.env, .ini, .conf), logs, RTF, LaTeX, and more. Read as UTF-8, PII detected and replaced, output in the same format.
+- **Auto-detects 30+ AI services** — ChatGPT, Claude, Gemini, Copilot, Grok, DeepSeek, Perplexity, and more
+- **Custom AI domains** — add internal services (e.g. `internal-ai.agency.gov.au`)
+- **Protection banner** on detected AI sites
+- Enforces redaction before submit, upload, and paste
 
 ### Standalone Redaction Tool
-Accessible via **"Redact Files"** button in the extension popup. Opens a dedicated tab with:
-- **Drag-and-drop file zone** with multi-file support.
-- **File queue** with per-file status (pending / processing / done / error).
-- **Per-file results** showing match count, engine used, tier, pipeline steps, and redacted text preview.
-- **Download buttons** for individual files or batch download.
-- **Provider status** showing which detection engines are active.
-- Works with all supported document formats. No site interaction required.
+Click **"Redact Files"** in the popup to open a dedicated tab:
+- Drag-and-drop with multi-file batch processing
+- Per-file results: match count, engine, pipeline steps, text preview
+- Individual and bulk download of redacted files
+- Works independently of any website
+
+### Provably Secure Image/PDF Redaction
+- **Image-based flattening** — no hidden text layer in the output
+- Copy-paste and select-all **cannot recover** redacted content
+- The `pdf-lib` overlay approach (used by ~65% of government "redacted" PDFs) is **deliberately avoided**
+
+---
+
+## Detection Engines
+
+| Engine | Tier | Description |
+|--------|------|-------------|
+| **Gemini Nano** | Local | Chrome's on-device AI via the Prompt API. Zero network calls. |
+| **Regex Engine** | Local | 17 built-in Australian PII patterns. Always available. |
+| **Vector Names** | Local | Heuristic name detection via trigram similarity. |
+| **Azure AI Language** | Cloud | Microsoft's PII API with Australian entity support. Direct (API key) or Enterprise (OAuth2 PKCE) auth. |
+| **Azure Native Document** | Cloud | Server-side PDF/DOCX/TXT redaction via Azure Blob Storage. |
+| **Microsoft Purview** | Cloud | M365 DLP sensitive information types. |
+| **Hosted Models** | Hosted | Your infrastructure — vLLM, Ollama, TGI, Azure OpenAI, or custom PII APIs. |
 
 ### 17 Built-in PII Types (Australian Focus)
+
 | Category | Types |
 |----------|-------|
 | Contact | Email, Phone (AU), Phone (International), Street Address, Postcode |
@@ -147,193 +120,162 @@ Accessible via **"Redact Files"** button in the extension popup. Opens a dedicat
 | Identity | Passport, Driver Licence, Date of Birth |
 | Technical | IPv4, IPv6 |
 
-### Enterprise Features
-- **Provider hierarchy** — Local → Hosted → Cloud with automatic fallback.
-- **Multiple hosted providers** — Connect several organisation-hosted models simultaneously.
-- **OCR Extract server** — Optional containerised Tesseract 5 + Poppler for high-accuracy OCR.
-- **Azure PII** — Full Azure AI Language integration with Australian entity categories.
-- **Purview DLP** — Microsoft 365 sensitive information type detection.
-- **Belt-and-suspenders mode** — Run regex after AI for extra safety.
-- **Custom PII rules** — Add organisation-specific patterns via the settings page.
-- **Provider health monitoring** — Real-time status of all configured providers.
-- **Statistics tracking** — Redaction counts by engine, tier, document type, PII category, submits intercepted, uploads checked, and auto-redactions.
+Custom patterns can be added via the Settings page.
+
+---
 
 ## Installation
 
-1. Clone or download this repository.
-2. Open Chrome and navigate to `chrome://extensions`.
-3. Enable **Developer mode** (toggle in top-right).
-4. Click **Load unpacked** and select the extension directory.
-5. The shield icon appears in the toolbar.
-
-### Vendor Dependencies (PDF/Image Support)
-
-PDF and image redaction require pdf.js and Tesseract.js. Install them with:
-
 ```bash
-chmod +x vendor/setup.sh
-./vendor/setup.sh
+# 1. Clone the repo
+git clone https://github.com/bmaidev/looselipssinkships.extension.git
+
+# 2. Install vendor dependencies (PDF/image support)
+cd looselipssinkships.extension
+chmod +x vendor/setup.sh && ./vendor/setup.sh
+
+# 3. Load in Chrome
+#    → chrome://extensions → Enable Developer mode → Load unpacked
 ```
-
-This downloads ~15MB of vendor files (pdf.js, Tesseract.js WASM core, and English OCR trained data). The extension works without these files — PDF/image processing falls back to hosted/cloud providers.
-
-### OCR Container Setup
-
-For agencies wanting server-grade OCR accuracy or batch processing:
-
-```bash
-cd server/
-docker-compose up -d
-```
-
-Then in extension settings: **Hosted Providers** → Add new → **API Mode: OCR Extract Server** → Endpoint: `http://localhost:8000`.
-
-The container only extracts text + bounding boxes. All PII detection and redaction stays in the browser.
 
 **Requirements:**
-- Chrome 128+ (for Gemini Nano via the Prompt API; Chrome 136+ recommended for stability)
+- Chrome 128+ (Chrome 136+ recommended)
 - `chrome://flags/#optimization-guide-on-device-model` — Enabled
 - `chrome://flags/#prompt-api-for-gemini-nano` — Enabled
-- For PDF/image: run `vendor/setup.sh` (or configure hosted/cloud OCR)
-- For Azure/Purview: valid Azure subscription and credentials
-- For hosted models: network access to your organisation's endpoint
+
+The extension works without Nano — it falls back to regex. Vendor dependencies are optional — without them, PDF/image processing routes to hosted/cloud.
+
+---
 
 ## Configuration
 
-### Quick Start (Local Only)
-Works out of the box. Gemini Nano (via Chrome's Prompt API) + regex fallback requires no configuration beyond enabling the Chrome flags listed in Requirements. The green status dot in the popup confirms Nano is available. AI Chat Guard is enabled by default.
-
-### Site Filtering
-1. Open **Settings** → **Site Filtering**.
-2. Choose **Whitelist** to restrict to specific sites (e.g. `*.gov.au`), or **Blacklist** to exclude sites.
-3. Enter one pattern per line.
-
-### AI Chat Guard
-Enabled by default. On any detected AI service, the extension will:
-- Show a protection banner.
-- Auto-redact text before submission.
-- Intercept Enter/send to ensure redaction completes.
-- Check uploaded files for PII.
-
-To add internal AI services, go to **Settings** → **AI Chat Guard** → **Additional AI domains**.
-
-### Auto-Redact
-Off globally by default. Auto-activates on AI chat sites when AI Chat Guard is enabled.
-- To enable globally: **Settings** → **Auto-Redact** → uncheck "Only auto-redact on AI chat sites".
-- Adjust debounce timing to balance responsiveness vs. processing load.
+### Quick Start
+Works out of the box. Gemini Nano + regex with AI Chat Guard enabled by default. The green dot in the popup confirms Nano is available.
 
 ### Detection Modes
+
 | Mode | Behaviour |
 |------|-----------|
-| **Auto** (default) | Nano → Regex → Hosted → Cloud (progressive escalation) |
-| **AI Only** | AI providers across all tiers, no regex fallback |
-| **Regex Only** | Pattern matching only, no AI or cloud |
-| **Cloud Only** | Azure PII / Purview first, regex fallback if unavailable |
-
-In **Cloud Only** mode, all document types (including DOCX XML replacement) use the cloud provider for PII detection. The `engine` field in debug logs and results confirms which provider processed the text.
+| **Auto** (default) | Nano → Regex → Hosted → Cloud |
+| **AI Only** | AI providers across all tiers |
+| **Regex Only** | Pattern matching only |
+| **Cloud Only** | Azure PII / Purview first, regex fallback |
 
 ### Enterprise Setup
-1. Click the extension icon → **Settings**.
-2. Under **Processing Providers**, configure your providers:
-   - Enable/configure **Azure AI Language PII Detection** with your endpoint and API key.
-   - Enable/configure **Microsoft Purview DLP** with your tenant ID and app registration.
-   - Add **Hosted Providers** for organisation-hosted models (supports OpenAI-compatible APIs, custom PII detection APIs, and OCR Extract servers).
-3. Set **Detection Mode** to "Auto" for progressive local-first routing.
-4. Save settings. Providers reinitialise automatically.
 
-### Document Upload
-Enable "Redact File" buttons in settings to upload documents directly from any text field on any webpage. Extracted text is redacted through the same pipeline. PDFs and images are processed via local OCR (requires vendor setup) or hosted/cloud providers.
+Two authentication modes for Azure PII:
+
+| Mode | Auth | Secrets Stored | Setup |
+|------|------|----------------|-------|
+| **Direct** | API key | Key in settings | Paste endpoint + key |
+| **Enterprise** | Azure AD OAuth2 PKCE | None (short-lived tokens) | App Registration + sign-in |
+
+Enterprise mode provides: MFA, Conditional Access, per-user audit, automatic token refresh, and no stored credentials.
+
+**Azure Native Document Redaction** (server-side PDF/DOCX) is available with Azure Blob Storage:
+- **Direct mode**: SAS tokens for source/target containers
+- **Enterprise mode**: Language resource managed identity (zero SAS tokens)
+
+See [`enterprise/README.md`](enterprise/README.md) for full deployment guides (Intune, GPO, Google Workspace, and small-business remote config).
+
+### Managed Configuration
+
+Admins can push settings via Chrome's managed storage API and lock specific settings:
+
+```json
+{
+  "_policyVersion": 2,
+  "_locked": { "detectionMode": true, "providers.azure_pii": true },
+  "detectionMode": "cloud_only",
+  "providers": { "azure_pii": { "enabled": true, "connectionMode": "enterprise" } }
+}
+```
+
+Locked settings appear as disabled with an **Admin** badge in the options page.
+
+---
+
+## Privacy & Security
+
+- **Local-first.** Nano and regex run entirely on-device. Text field redaction happens in the content script — text never leaves the page context.
+- **No telemetry.** Zero analytics, zero phone-home.
+- **Enterprise providers are opt-in.** Cloud connections only activate when explicitly configured.
+- **Provably secure.** Image/PDF output has no hidden text layer. DOCX redaction removes PII from the XML. ZIP processing redacts every text file inside.
+- **Pre-send, pre-upload.** Redaction happens before content reaches the network — not after.
+- **Enterprise OAuth2.** Short-lived tokens, no stored API keys, MFA enforced, per-user audit trail.
+- **Managed identity for storage.** In enterprise mode, the Language resource accesses Blob Storage via its own identity — no SAS tokens in the extension.
+
+---
 
 ## File Structure
 
 ```
-├── manifest.json                    # Chrome extension manifest v3
-├── background.js                    # Service worker — message routing, providers, offscreen mgmt
-├── content.js                       # Content script — UI, guards, interception, direct Nano redaction
-├── content.css                      # Injected styles (buttons, banners, overlays)
-├── offscreen.html / offscreen.js    # Offscreen Document — Canvas/WASM, PDF/OCR, Nano proxy
-├── popup.html / popup.js            # Toolbar popup (status, stats, "Redact Files" launcher)
-├── redact.html / redact.js / .css  # Standalone document redaction tool (batch processing)
-├── options.html / options.js / .css # Full settings page
+├── manifest.json                    # MV3 manifest with managed storage schema
+├── background.js                    # Service worker — routing, providers, keep-alive
+├── content.js                       # Content script — guards, Nano, interception
+├── offscreen.html / offscreen.js    # Offscreen Document — Canvas, WASM, PDF, Nano proxy
+├── popup.html / popup.js            # Toolbar popup — status, stats, "Redact Files"
+├── redact.html / redact.js / .css   # Standalone batch redaction tool
+├── options.html / options.js / .css # Full settings page with managed lock visuals
+├── managed_schema.json              # Chrome managed storage JSON Schema
 ├── lib/
-│   ├── debug.js                     # Debug logger with subsystem tagging ([LLSS:*])
-│   ├── nano-session.js              # LanguageModel (Prompt API) session manager
-│   ├── site-filter.js               # URL matching, AI service detection
-│   ├── pii-types.js                 # 17 default PII type definitions
-│   ├── regex-engine.js              # Pattern-based redaction with overlap resolution
-│   ├── vector-engine.js             # Heuristic name detection (trigram similarity)
-│   ├── redaction-engine.js          # AI/regex/vector routing (legacy compat)
-│   ├── settings.js                  # Storage, migration (v1→v2→v3), debug toggle
-│   ├── pipeline.js                  # Progressive processing pipeline (auto/ai/regex/cloud modes)
+│   ├── debug.js                     # Debug logger ([LLSS:subsystem])
+│   ├── azure-auth.js                # OAuth2 PKCE for Azure AD
+│   ├── azure-native-doc.js          # Native document PII via Azure Blob Storage
+│   ├── nano-session.js              # LanguageModel session manager
+│   ├── pipeline.js                  # Progressive pipeline (auto/ai/regex/cloud)
+│   ├── settings.js                  # 4-tier merge (managed > remote > local > defaults)
+│   ├── pii-types.js                 # 17 Australian PII patterns
+│   ├── regex-engine.js              # Regex redaction with overlap resolution
+│   ├── vector-engine.js             # Trigram name detection
+│   ├── site-filter.js               # URL matching, 30+ AI service detection
 │   ├── providers/
-│   │   ├── base-provider.js         # Abstract provider interface
-│   │   ├── provider-registry.js     # Provider lifecycle + capability routing
-│   │   ├── local-ai-provider.js     # Gemini Nano — direct or proxy mode (LanguageModel API)
-│   │   ├── regex-provider.js        # Regex + vector (always available)
-│   │   ├── azure-pii-provider.js    # Azure AI Language PII Detection
+│   │   ├── base-provider.js         # Provider interface
+│   │   ├── provider-registry.js     # Lifecycle + routing
+│   │   ├── local-ai-provider.js     # Gemini Nano (direct or offscreen proxy)
+│   │   ├── regex-provider.js        # Regex + vector
+│   │   ├── azure-pii-provider.js    # Azure PII (direct API key or OAuth2)
 │   │   ├── purview-provider.js      # Microsoft Purview DLP
 │   │   └── hosted-model-provider.js # Org-hosted models + OCR Extract
 │   └── documents/
-│       ├── document-processor.js    # File parsing, ZIP reader, content type detection
+│       ├── document-processor.js    # 50+ file types, ZIP reader, XLSX→CSV
 │       ├── zip-writer.js            # ZIP builder (CompressionStream + CRC-32)
-│       ├── docx-redactor.js         # Run-aware XML redaction for DOCX files
-│       ├── pdf-renderer.js          # pdf.js wrapper — PDF pages to canvas
-│       ├── ocr-processor.js         # Tesseract.js — OCR with worker pool
-│       ├── pixel-redactor.js        # PII→bbox mapping, canvas redaction, PDF reconstruction
-│       └── async-queue.js           # FIFO task queue with concurrency control
+│       ├── docx-redactor.js         # Run-aware XML redaction
+│       ├── pdf-renderer.js          # pdf.js page rendering
+│       ├── ocr-processor.js         # Tesseract.js with worker pool
+│       ├── pixel-redactor.js        # PII→bbox mapping + canvas redaction
+│       └── async-queue.js           # Bounded concurrency task queue
+├── enterprise/
+│   ├── README.md                    # Deployment guide (Intune/GPO/Workspace)
+│   ├── workspace-config.json        # Google Workspace template
+│   ├── intune-policy.json           # Intune template
+│   └── small-business-config.json   # Remote config template
 ├── vendor/
 │   ├── setup.sh                     # Downloads pdf.js + Tesseract.js
-│   └── tesseract/                   # Tesseract.js WASM + trained data
-├── server/
-│   ├── Dockerfile                   # OCR container (Tesseract 5 + Poppler)
-│   ├── main.py                      # FastAPI — POST /extract endpoint
-│   ├── docker-compose.yml           # One-command deployment
-│   └── requirements.txt             # Python dependencies
-├── tests/
-│   ├── site-filter.test.js
-│   ├── provider-registry.test.js
-│   ├── document-processor.test.js
-│   ├── pipeline.test.js
-│   ├── regex-engine.test.js
-│   ├── vector-engine.test.js
-│   ├── pii-types.test.js
-│   ├── settings.test.js
-│   ├── pixel-redactor.test.js       # PII→bbox mapping, PDF builder
-│   ├── pdf-renderer.test.js
-│   ├── ocr-processor.test.js        # Worker pool exports
-│   ├── async-queue.test.js          # Concurrency, FIFO, callbacks
-│   ├── zip-writer.test.js           # ZIP builder, CRC-32, round-trip
-│   ├── docx-redactor.test.js        # Run mapping, XML redaction, multi-run spans
-│   ├── debug.test.js                # Logger enable/disable, subsystems
-│   └── nano-session.test.js         # Prompt builder, conversational guard
+│   ├── pdf-bridge.js                # ES module bridge for pdf.js
+│   └── tesseract/                   # WASM core + trained data
+├── tests/                           # 285 tests (Jest)
 └── icons/
 ```
+
+---
 
 ## Development
 
 ```bash
 npm install
-npm test              # Run all tests
+npm test              # 285 tests
 npm run test:watch    # Watch mode
 npm run test:coverage # Coverage report
 ```
 
-### Adding a New Provider
-
-1. Create a new class extending `BaseProvider` in `lib/providers/`.
-2. Implement `checkAvailability()`, `redactText()`, and optionally `redactDocument()`.
-3. Register it in `background.js`'s `initProviders()`.
-4. Add configuration UI to `options.html` / `options.js`.
-5. Add tests.
-
 ### Adding Custom PII Types
 
-Via the Settings page, or programmatically:
+Via Settings, or programmatically:
 ```javascript
 {
   id: "student_id",
   name: "Student ID",
-  description: "University student identifier",
   token: "[REDACTED_STUDENT_ID]",
   regex: "\\bSTU-\\d{6}\\b",
   flags: "gi",
@@ -342,32 +284,16 @@ Via the Settings page, or programmatically:
 }
 ```
 
-### Adding AI Chat Service Domains
-
-To detect a new AI service, add its domain to `AI_CHAT_DOMAINS` in `lib/site-filter.js`. Users can also add custom domains via the settings page without code changes.
-
-## Settings Schema
-
-Settings are stored in `chrome.storage.local` with automatic migration across versions.
+### Settings Schema
 
 | Version | Changes |
 |---------|---------|
-| v1 | Initial: detection mode, vector fallback, PII overrides |
-| v2 | Added: provider configuration, document upload |
-| v3 | Added: site filter, AI chat guard, auto-redact, submit/upload guard |
+| v1 | Detection mode, vector fallback, PII overrides |
+| v2 | Provider configuration, document upload |
+| v3 | Site filter, AI chat guard, auto-redact, submit/upload guard |
+| v4 | Azure connection mode (direct/enterprise), OAuth2 PKCE |
 
-## Privacy & Security
-
-- **Local-first by default.** Gemini Nano and regex run entirely on-device. Text field redaction via Nano happens directly in the content script — text never leaves the page context.
-- **No telemetry.** The extension collects no analytics and phones home to nowhere.
-- **Enterprise providers are opt-in.** Azure, Purview, and hosted model connections only activate when explicitly configured.
-- **Credentials stored locally.** API keys are saved in `chrome.storage.local` (not synced).
-- **Document processing is local.** DOCX, XLSX, HTML, Markdown, PDF, and images are all processed in the browser. DOCX redaction modifies the XML inside the ZIP — the original PII is removed from the file. PDF/image OCR runs in an Offscreen Document using WASM — no document content leaves the browser unless a hosted/cloud provider is explicitly configured.
-- **Provably secure redaction.** Scanned PDF and image output uses image-based flattening — there is no hidden text layer. The `pdf-lib` overlay approach (which 65% of government "redacted" PDFs use) is deliberately avoided. DOCX redaction replaces PII with visible tokens in the XML — the original text is genuinely removed.
-- **AI Chat Guard protects outbound data.** Redaction happens before text leaves the text field, not after.
-- **Submit interception is pre-send.** The extension blocks the submit action, redacts, then re-dispatches — content is never sent unredacted.
-- **Upload interception is pre-upload.** Files are intercepted, redacted, and replaced before the target site's handlers run. The original unredacted file never reaches the site's JavaScript.
-- **Context-appropriate execution.** The Prompt API (`LanguageModel`) is not available in MV3 service workers. The extension runs Nano in the correct contexts: content scripts for text fields (direct, zero IPC), offscreen document for pipeline/document processing, and popup for status checks.
+---
 
 ## License
 

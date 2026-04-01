@@ -29,6 +29,7 @@ const MODE_LABELS = {
   auto: { text: "Auto (Local First)", cls: "auto" },
   ai_only: { text: "AI Only", cls: "ai" },
   regex_only: { text: "Regex Only", cls: "regex" },
+  hosted_only: { text: "Hosted Only", cls: "ai" },
   cloud_only: { text: "Cloud Only", cls: "ai" },
 };
 

@@ -901,6 +901,49 @@ document.getElementById("btn-reset-stats").addEventListener("click", () => {
 document.getElementById("btn-add-hosted").addEventListener("click", () => openHostedModal());
 document.getElementById("hosted-modal-cancel").addEventListener("click", closeHostedModal);
 document.getElementById("hosted-modal-save").addEventListener("click", saveHostedModal);
+document.getElementById("hosted-modal-test").addEventListener("click", async () => {
+  const endpoint = document.getElementById("hosted-endpoint").value.trim();
+  const apiKey = document.getElementById("hosted-apikey").value;
+  const apiMode = document.getElementById("hosted-apimode").value;
+  const errEl = document.getElementById("hosted-modal-errors");
+
+  if (!endpoint) {
+    errEl.textContent = "Enter an endpoint URL first.";
+    errEl.style.color = "#dc2626";
+    return;
+  }
+
+  errEl.textContent = "Testing connection...";
+  errEl.style.color = "#6b7280";
+
+  try {
+    let checkUrl;
+    if (apiMode === "openai") {
+      checkUrl = `${endpoint.replace(/\/$/, "")}/models`;
+    } else {
+      checkUrl = endpoint.replace(/\/$/, "");
+    }
+
+    const headers = { "Content-Type": "application/json" };
+    if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const response = await fetch(checkUrl, { method: "GET", headers, signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      errEl.textContent = `Connected (HTTP ${response.status})`;
+      errEl.style.color = "#059669";
+    } else {
+      errEl.textContent = `HTTP ${response.status} — endpoint responded but returned an error`;
+      errEl.style.color = "#f59e0b";
+    }
+  } catch (err) {
+    errEl.textContent = err.name === "AbortError" ? "Connection timed out (10s)" : `Failed: ${err.message}`;
+    errEl.style.color = "#dc2626";
+  }
+});
 // ── Azure connection mode toggle and OAuth2 ──────────────────────────────────
 
 function updateAzureConnectionMode(mode) {

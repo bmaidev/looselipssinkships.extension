@@ -10,6 +10,7 @@ importScripts(
   "lib/settings.js",
   "lib/redaction-engine.js",
   "lib/site-filter.js",
+  "lib/ai-entity-parser.js",
   "lib/azure-auth.js",
   "lib/azure-native-doc.js",
   "lib/purview-gate.js",

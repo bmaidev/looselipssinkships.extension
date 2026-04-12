@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loose Lips Sink Ships — Enterprise PII Redaction for Chrome</title>
+<meta name="description" content="Local-first PII redaction for Chrome. Protect sensitive information before it leaves the browser. Built for Australian government and enterprise environments.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --navy:#1a3a5c;--navy-deep:#0f2a44;--navy-light:#244e78;
+  --green:#22c55e;--green-dark:#16a34a;--green-glow:rgba(34,197,94,.12);
+  --bg:#f0f2f5;--bg-warm:#f7f8fa;--white:#ffffff;
+  --text:#1a1a2e;--text-mid:#4b5563;--text-light:#6b7280;--text-faint:#9ca3af;
+  --border:#e5e7eb;--border-light:#f3f4f6;
+  --red:#dc2626;--amber:#f59e0b;
+  --radius:10px;
+}
+html{scroll-behavior:smooth;scroll-padding-top:80px}
+body{
+  font-family:'DM Sans',system-ui,sans-serif;
+  background:var(--bg);color:var(--text);
+  line-height:1.6;-webkit-font-smoothing:antialiased;
+}
+
+/* ── NAV ─────────────────────────────────────────────────── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:rgba(15,42,68,.97);backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.nav-inner{
+  max-width:1200px;margin:0 auto;padding:0 24px;
+  display:flex;align-items:center;justify-content:space-between;height:64px;
+}
+.nav-brand{
+  font-family:'Instrument Serif',serif;font-size:18px;color:var(--white);
+  letter-spacing:-.02em;text-decoration:none;
+}
+.nav-brand span{color:var(--green);font-style:italic}
+.nav-links{display:flex;gap:32px;list-style:none}
+.nav-links a{
+  color:rgba(255,255,255,.6);text-decoration:none;font-size:13px;
+  font-weight:500;letter-spacing:.4px;text-transform:uppercase;
+  transition:color .2s;
+}
+.nav-links a:hover{color:var(--white)}
+.nav-cta{
+  background:var(--green);color:var(--navy-deep);
+  padding:8px 20px;border-radius:6px;font-size:13px;font-weight:600;
+  text-decoration:none;transition:background .2s;letter-spacing:.3px;
+}
+.nav-cta:hover{background:#2dd66a}
+@media(max-width:768px){
+  .nav-links{display:none}
+  .nav-cta{font-size:12px;padding:6px 14px}
+}
+
+/* ── SHARED ──────────────────────────────────────────────── */
+.section{padding:120px 24px}
+.section-inner{max-width:1000px;margin:0 auto}
+.section-label{
+  font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;
+  color:var(--green);letter-spacing:2px;text-transform:uppercase;
+  margin-bottom:16px;display:flex;align-items:center;gap:8px;
+}
+.section-label::before{
+  content:'';width:24px;height:1px;background:var(--green);
+}
+.section-title{
+  font-family:'Instrument Serif',serif;font-size:clamp(32px,5vw,48px);
+  color:var(--navy);line-height:1.15;margin-bottom:20px;letter-spacing:-.02em;
+}
+.section-subtitle{
+  font-size:17px;color:var(--text-mid);max-width:640px;line-height:1.7;
+  margin-bottom:48px;
+}
+
+/* ── HERO ────────────────────────────────────────────────── */
+.hero{
+  padding:160px 24px 120px;
+  background:linear-gradient(175deg,var(--navy-deep) 0%,var(--navy) 40%,var(--navy-light) 100%);
+  position:relative;overflow:hidden;
+}
+.hero::before{
+  content:'';position:absolute;top:0;left:0;right:0;bottom:0;
+  background:
+    repeating-linear-gradient(90deg,rgba(255,255,255,.015) 0,rgba(255,255,255,.015) 1px,transparent 1px,transparent 80px),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.015) 0,rgba(255,255,255,.015) 1px,transparent 1px,transparent 80px);
+}
+.hero-inner{max-width:1000px;margin:0 auto;position:relative;z-index:1}
+.hero-eyebrow{
+  font-family:'JetBrains Mono',monospace;font-size:12px;
+  color:var(--green);letter-spacing:2.5px;text-transform:uppercase;
+  margin-bottom:24px;display:flex;align-items:center;gap:10px;
+}
+.hero-eyebrow::before{
+  content:'';width:8px;height:8px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 12px var(--green);animation:pulse-dot 2s ease infinite;
+}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
+.hero h1{
+  font-family:'Instrument Serif',serif;
+  font-size:clamp(40px,7vw,72px);color:var(--white);
+  line-height:1.05;letter-spacing:-.03em;margin-bottom:28px;
+  max-width:800px;
+}
+.hero h1 em{font-style:italic;color:var(--green)}
+.hero-sub{
+  font-size:19px;color:rgba(255,255,255,.55);
+  max-width:560px;line-height:1.7;margin-bottom:40px;
+}
+.hero-actions{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:64px}
+.btn-primary{
+  background:var(--green);color:var(--navy-deep);
+  padding:14px 32px;border-radius:8px;font-size:15px;font-weight:600;
+  text-decoration:none;transition:all .2s;letter-spacing:.2px;
+  display:inline-flex;align-items:center;gap:8px;
+}
+.btn-primary:hover{background:#2dd66a;transform:translateY(-1px)}
+.btn-secondary{
+  background:transparent;color:rgba(255,255,255,.7);
+  padding:14px 32px;border-radius:8px;font-size:15px;font-weight:500;
+  text-decoration:none;transition:all .2s;
+  border:1px solid rgba(255,255,255,.15);
+}
+.btn-secondary:hover{color:var(--white);border-color:rgba(255,255,255,.3)}
+
+/* ── STATS BAR ───────────────────────────────────────────── */
+.stats-bar{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+  background:rgba(255,255,255,.06);border-radius:12px;overflow:hidden;
+  border:1px solid rgba(255,255,255,.06);
+}
+.stat{
+  padding:28px 24px;text-align:center;
+  background:rgba(255,255,255,.03);
+}
+.stat-value{
+  font-family:'Instrument Serif',serif;font-size:36px;
+  color:var(--white);letter-spacing:-.02em;
+}
+.stat-label{
+  font-size:12px;color:rgba(255,255,255,.4);margin-top:4px;
+  letter-spacing:.5px;text-transform:uppercase;
+}
+@media(max-width:640px){
+  .stats-bar{grid-template-columns:repeat(2,1fr)}
+}
+
+/* ── FEATURES ────────────────────────────────────────────── */
+.features-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:20px;
+}
+.feature-card{
+  background:var(--white);border:1px solid var(--border);
+  border-radius:var(--radius);padding:32px 28px;
+  transition:border-color .2s,box-shadow .2s;
+}
+.feature-card:hover{
+  border-color:var(--green);
+  box-shadow:0 0 0 3px var(--green-glow);
+}
+.feature-icon{
+  width:40px;height:40px;border-radius:8px;
+  background:linear-gradient(135deg,var(--navy),var(--navy-light));
+  display:flex;align-items:center;justify-content:center;
+  color:var(--green);font-size:18px;margin-bottom:16px;
+}
+.feature-card h3{
+  font-size:16px;font-weight:600;color:var(--navy);margin-bottom:8px;
+}
+.feature-card p{font-size:14px;color:var(--text-mid);line-height:1.6}
+@media(max-width:900px){.features-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.features-grid{grid-template-columns:1fr}}
+
+/* ── FILE TYPES ──────────────────────────────────────────── */
+.file-types{
+  display:flex;flex-wrap:wrap;gap:8px;margin-top:24px;
+}
+.file-tag{
+  padding:4px 12px;border-radius:4px;font-size:12px;font-weight:500;
+  font-family:'JetBrains Mono',monospace;
+  background:var(--bg);color:var(--text-mid);border:1px solid var(--border);
+}
+.file-tag.highlight{background:var(--green-glow);color:var(--green-dark);border-color:var(--green)}
+
+/* ── CLASSIFICATION TABLE ────────────────────────────────── */
+.class-table{
+  width:100%;border-collapse:collapse;margin-top:24px;
+  font-size:14px;
+}
+.class-table th{
+  text-align:left;padding:12px 16px;font-size:11px;
+  letter-spacing:.5px;text-transform:uppercase;color:var(--text-faint);
+  border-bottom:2px solid var(--border);font-weight:600;
+}
+.class-table td{
+  padding:12px 16px;border-bottom:1px solid var(--border-light);
+  color:var(--text-mid);
+}
+.class-table tr:last-child td{border-bottom:none}
+.badge{
+  display:inline-block;padding:2px 10px;border-radius:4px;
+  font-size:11px;font-weight:700;letter-spacing:.3px;
+}
+.badge-green{background:#d1fae5;color:#065f46}
+.badge-amber{background:#fef3c7;color:#92400e}
+.badge-red{background:#fee2e2;color:#991b1b}
+
+/* ── PRIVACY / SUPPORT ───────────────────────────────────── */
+.prose{max-width:720px}
+.prose h3{
+  font-size:18px;font-weight:600;color:var(--navy);
+  margin:32px 0 12px;
+}
+.prose h3:first-child{margin-top:0}
+.prose p,.prose li{
+  font-size:15px;color:var(--text-mid);line-height:1.8;
+  margin-bottom:12px;
+}
+.prose ul{padding-left:20px}
+.prose li{margin-bottom:6px}
+.prose strong{color:var(--text);font-weight:600}
+.prose code{
+  font-family:'JetBrains Mono',monospace;font-size:13px;
+  background:var(--bg);padding:2px 6px;border-radius:3px;
+  color:var(--navy);
+}
+
+/* ── FAQ ─────────────────────────────────────────────────── */
+.faq-list{display:grid;gap:16px;max-width:720px}
+.faq-item{
+  background:var(--white);border:1px solid var(--border);
+  border-radius:var(--radius);overflow:hidden;
+}
+.faq-q{
+  padding:20px 24px;font-size:15px;font-weight:600;color:var(--navy);
+  cursor:pointer;display:flex;justify-content:space-between;align-items:center;
+}
+.faq-q::after{content:'+';font-size:20px;color:var(--text-faint);transition:transform .2s}
+.faq-item.open .faq-q::after{transform:rotate(45deg)}
+.faq-a{
+  padding:0 24px 20px;font-size:14px;color:var(--text-mid);
+  line-height:1.7;display:none;
+}
+.faq-item.open .faq-a{display:block}
+
+/* ── ENTERPRISE CARDS ────────────────────────────────────── */
+.ent-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:32px}
+.ent-card{
+  background:var(--white);border:1px solid var(--border);
+  border-radius:var(--radius);padding:28px;
+}
+.ent-card h3{font-size:16px;font-weight:600;color:var(--navy);margin-bottom:8px}
+.ent-card p{font-size:14px;color:var(--text-mid);line-height:1.6}
+.ent-card .tag{
+  display:inline-block;margin-top:12px;padding:3px 10px;
+  font-size:11px;font-weight:600;border-radius:4px;
+  background:var(--bg);color:var(--text-light);letter-spacing:.3px;
+}
+@media(max-width:640px){.ent-grid{grid-template-columns:1fr}}
+
+/* ── FOOTER ──────────────────────────────────────────────── */
+footer{
+  background:var(--navy-deep);padding:48px 24px;
+  border-top:1px solid rgba(255,255,255,.06);
+}
+.footer-inner{
+  max-width:1000px;margin:0 auto;
+  display:flex;justify-content:space-between;align-items:center;
+  flex-wrap:wrap;gap:16px;
+}
+.footer-brand{
+  font-family:'Instrument Serif',serif;font-size:16px;color:rgba(255,255,255,.4);
+}
+.footer-links{display:flex;gap:24px;list-style:none}
+.footer-links a{
+  color:rgba(255,255,255,.35);text-decoration:none;font-size:13px;
+  transition:color .2s;
+}
+.footer-links a:hover{color:rgba(255,255,255,.7)}
+.footer-copy{
+  width:100%;text-align:center;margin-top:24px;padding-top:24px;
+  border-top:1px solid rgba(255,255,255,.06);
+  font-size:12px;color:rgba(255,255,255,.2);
+}
+
+/* ── DIVIDER ─────────────────────────────────────────────── */
+.divider{
+  height:1px;background:var(--border);max-width:1000px;
+  margin:0 auto;
+}
+
+/* ── SECTION ALTERNATING BG ──────────────────────────────── */
+.section-alt{background:var(--white)}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     NAV
+     ═══════════════════════════════════════════════════════════ -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-brand">Loose Lips <span>Sink Ships</span></a>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#enterprise">Enterprise</a></li>
+      <li><a href="#privacy">Privacy</a></li>
+      <li><a href="#support">Support</a></li>
+    </ul>
+    <a href="https://chrome.google.com/webstore" class="nav-cta">Install Extension</a>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     HERO
+     ═══════════════════════════════════════════════════════════ -->
+<section class="hero" id="home">
+  <div class="hero-inner">
+    <div class="hero-eyebrow">Local-First PII Protection</div>
+    <h1>Zero PII leaves<br>the browser. <em>Ever.</em></h1>
+    <p class="hero-sub">Enterprise-grade redaction that runs entirely on-device. Every text field, every document, every upload &mdash; scanned for personally identifiable information before it reaches the network.</p>
+    <div class="hero-actions">
+      <a href="https://chrome.google.com/webstore" class="btn-primary">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0Zm3.5 8.5h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0v3h3a.5.5 0 0 1 0 1Z"/></svg>
+        Add to Chrome
+      </a>
+      <a href="https://github.com/bmaidev/looselipssinkships.extension" class="btn-secondary">View on GitHub</a>
+    </div>
+    <div class="stats-bar">
+      <div class="stat"><div class="stat-value">50+</div><div class="stat-label">File Types</div></div>
+      <div class="stat"><div class="stat-value">17</div><div class="stat-label">AU PII Patterns</div></div>
+      <div class="stat"><div class="stat-value">6</div><div class="stat-label">Detection Engines</div></div>
+      <div class="stat"><div class="stat-value">320</div><div class="stat-label">Tests Passing</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     FEATURES
+     ═══════════════════════════════════════════════════════════ -->
+<section class="section" id="features">
+  <div class="section-inner">
+    <div class="section-label">Capabilities</div>
+    <h2 class="section-title">Built for the worst-case scenario</h2>
+    <p class="section-subtitle">Every feature designed to prevent PII from leaving your organisation &mdash; whether typed into a chat, pasted into a form, or dragged into an AI service.</p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">&#x1f6e1;</div>
+        <h3>Real-Time Text Protection</h3>
+        <p>Auto-redacts as you type. Intercepts Enter, form submit, and send buttons. PII is replaced with tokens before the page can dispatch.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#x1f4c4;</div>
+        <h3>Document Redaction</h3>
+        <p>DOCX XML replacement preserving formatting. PDF text extraction and scanned-page OCR with pixel-level black box redaction. XLSX to CSV conversion.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#x1f5bc;</div>
+        <h3>Image OCR Redaction</h3>
+        <p>Tesseract.js extracts text from screenshots and photos. PII bounding boxes are mapped and covered with black rectangles. No hidden text layer.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#x1f916;</div>
+        <h3>AI Chat Guard</h3>
+        <p>Auto-detects 30+ AI services (ChatGPT, Claude, Gemini, Copilot, Grok). Enforces redaction before submit on all detected AI platforms.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#x1f512;</div>
+        <h3>Classification Gate</h3>
+        <p>Reads Microsoft Information Protection labels from documents. Blocks uploads of PROTECTED, SECRET, and TOP SECRET classified files outright.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#x2601;</div>
+        <h3>Azure PII Integration</h3>
+        <p>Azure AI Language with OAuth2 PKCE. Native document API for server-side PDF/DOCX redaction. Managed identity for zero stored credentials.</p>
+      </div>
+    </div>
+
+    <div style="margin-top:48px">
+      <h3 style="font-size:16px;font-weight:600;color:var(--navy);margin-bottom:4px">Supported File Types</h3>
+      <p style="font-size:14px;color:var(--text-mid);margin-bottom:16px">50+ formats recognised. If it&rsquo;s text-based, it&rsquo;s covered.</p>
+      <div class="file-types">
+        <span class="file-tag highlight">.docx</span>
+        <span class="file-tag highlight">.pdf</span>
+        <span class="file-tag highlight">.xlsx</span>
+        <span class="file-tag">.csv</span>
+        <span class="file-tag">.json</span>
+        <span class="file-tag">.xml</span>
+        <span class="file-tag">.yaml</span>
+        <span class="file-tag">.html</span>
+        <span class="file-tag">.md</span>
+        <span class="file-tag">.txt</span>
+        <span class="file-tag">.py</span>
+        <span class="file-tag">.js</span>
+        <span class="file-tag">.java</span>
+        <span class="file-tag">.sql</span>
+        <span class="file-tag">.env</span>
+        <span class="file-tag">.ini</span>
+        <span class="file-tag">.log</span>
+        <span class="file-tag highlight">.zip</span>
+        <span class="file-tag">.png</span>
+        <span class="file-tag">.jpg</span>
+        <span class="file-tag">.gif</span>
+        <span class="file-tag">.tiff</span>
+        <span class="file-tag">+30 more</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ENTERPRISE
+     ═══════════════════════════════════════════════════════════ -->
+<section class="section section-alt" id="enterprise">
+  <div class="section-inner">
+    <div class="section-label">Enterprise</div>
+    <h2 class="section-title">Designed for government &amp; enterprise</h2>
+    <p class="section-subtitle">Centrally managed configuration, Azure AD authentication, sensitivity classification enforcement, and deployment via GPO, Intune, or Google Workspace.</p>
+
+    <div class="ent-grid">
+      <div class="ent-card">
+        <h3>Managed Configuration</h3>
+        <p>Push settings via Chrome managed storage. Lock specific settings with an admin-only <code>_locked</code> map. Users see disabled controls with an "Admin" badge.</p>
+        <span class="tag">GPO &middot; Intune &middot; Workspace</span>
+      </div>
+      <div class="ent-card">
+        <h3>Azure AD OAuth2 PKCE</h3>
+        <p>No API keys stored anywhere. Users sign in via Azure AD popup. Short-lived tokens auto-refresh. MFA and Conditional Access policies apply.</p>
+        <span class="tag">Zero stored credentials</span>
+      </div>
+      <div class="ent-card">
+        <h3>Classification Gate</h3>
+        <p>Reads MSIP sensitivity labels from DOCX/XLSX files. Blocks PROTECTED and above from uploading to external services. Configurable blocked/warn lists.</p>
+        <span class="tag">Australian PSPF aligned</span>
+      </div>
+      <div class="ent-card">
+        <h3>Detection Modes</h3>
+        <p>Auto (local-first), AI Only, Regex Only, Hosted Only, Cloud Only. Route all traffic through your organisation&rsquo;s own infrastructure if required.</p>
+        <span class="tag">5 processing modes</span>
+      </div>
+    </div>
+
+    <div style="margin-top:48px">
+      <h3 style="font-size:16px;font-weight:600;color:var(--navy);margin-bottom:16px">Australian Government Classification Handling</h3>
+      <table class="class-table">
+        <thead>
+          <tr><th>Classification</th><th>Gate Action</th><th>Rationale</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>UNOFFICIAL</td><td><span class="badge badge-green">Allow</span></td><td>No restrictions</td></tr>
+          <tr><td>OFFICIAL</td><td><span class="badge badge-green">Allow</span></td><td>Standard business</td></tr>
+          <tr><td>OFFICIAL: Sensitive</td><td><span class="badge badge-amber">Warn</span></td><td>Caution advised</td></tr>
+          <tr><td>PROTECTED</td><td><span class="badge badge-red">Block</span></td><td>Must not leave controlled environment</td></tr>
+          <tr><td>SECRET</td><td><span class="badge badge-red">Block</span></td><td>Classified material</td></tr>
+          <tr><td>TOP SECRET</td><td><span class="badge badge-red">Block</span></td><td>Classified material</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PRIVACY POLICY
+     ═══════════════════════════════════════════════════════════ -->
+<section class="section" id="privacy">
+  <div class="section-inner">
+    <div class="section-label">Legal</div>
+    <h2 class="section-title">Privacy Policy</h2>
+    <p class="section-subtitle">Last updated: April 2026</p>
+
+    <div class="prose">
+      <h3>Overview</h3>
+      <p>Loose Lips Sink Ships ("the Extension") is a Chrome browser extension that detects and redacts personally identifiable information (PII) in text, documents, and images. This privacy policy explains what data the Extension accesses, how it is processed, and where it is stored.</p>
+
+      <h3>Data Processing</h3>
+      <p><strong>Local-first by default.</strong> The Extension processes all text and documents within the browser. When using the default configuration (Auto mode with Gemini Nano and regex), no data leaves the browser. All PII detection and redaction happens on-device.</p>
+      <p><strong>No telemetry.</strong> The Extension does not collect analytics, usage metrics, crash reports, or any form of telemetry. It does not phone home to any server.</p>
+      <p><strong>No user tracking.</strong> The Extension does not track browsing history, page visits, or user behaviour. It does not use cookies, fingerprinting, or any tracking mechanism.</p>
+
+      <h3>Data Accessed</h3>
+      <ul>
+        <li><strong>Text field content</strong> — The Extension reads text from input fields, textareas, and contenteditable elements on web pages for PII detection. This data is processed locally and never transmitted unless a cloud provider is explicitly configured.</li>
+        <li><strong>Uploaded files</strong> — When file upload interception is enabled, the Extension reads file content (DOCX, PDF, images, etc.) for PII scanning. Files are processed in the browser via an Offscreen Document.</li>
+        <li><strong>Page URL</strong> — Used to determine if the current site is an AI chat service (for AI Chat Guard) and to apply site filtering rules. URLs are checked locally against a built-in list and user-configured patterns.</li>
+      </ul>
+
+      <h3>Cloud Provider Usage (Optional)</h3>
+      <p>If the user or administrator explicitly configures a cloud provider, text or document content may be transmitted to:</p>
+      <ul>
+        <li><strong>Azure AI Language</strong> — Text is sent to the Azure PII detection API for entity recognition. Azure's privacy policy applies.</li>
+        <li><strong>Azure Blob Storage</strong> — When native document redaction is enabled, documents are uploaded to Azure Blob Storage for server-side processing.</li>
+        <li><strong>Microsoft Purview</strong> — When Purview DLP is configured, content may be sent to the Microsoft Graph API for classification.</li>
+        <li><strong>Organisation-hosted models</strong> — When hosted providers are configured, text is sent to the organisation's own endpoints.</li>
+      </ul>
+      <p><strong>No cloud provider is enabled by default.</strong> Users must explicitly configure endpoints and credentials before any data is transmitted externally.</p>
+
+      <h3>Data Storage</h3>
+      <ul>
+        <li><strong>Settings</strong> — Extension settings are stored in <code>chrome.storage.local</code> (browser profile, not synced across devices).</li>
+        <li><strong>API credentials</strong> — API keys (Direct mode) are stored in <code>chrome.storage.local</code>. OAuth2 tokens (Enterprise mode) are stored in <code>chrome.storage.session</code> (memory-only, cleared on browser close).</li>
+        <li><strong>Managed settings</strong> — Enterprise administrators may push configuration via <code>chrome.storage.managed</code> (read-only to the Extension).</li>
+        <li><strong>Statistics</strong> — Redaction counts (number of items redacted, by type) are stored locally. No PII content is stored in statistics.</li>
+        <li><strong>No PII is ever stored.</strong> The Extension processes PII in memory and immediately replaces it with redaction tokens. Original PII content is never persisted to disk or any storage mechanism.</li>
+      </ul>
+
+      <h3>Permissions</h3>
+      <ul>
+        <li><strong>storage</strong> — Save settings and statistics locally.</li>
+        <li><strong>activeTab</strong> — Access the current tab for content script injection.</li>
+        <li><strong>scripting</strong> — Inject content scripts for text field monitoring.</li>
+        <li><strong>offscreen</strong> — Create an offscreen document for PDF rendering and OCR (Canvas/WASM access).</li>
+        <li><strong>identity</strong> — Azure AD OAuth2 sign-in flow (Enterprise mode only).</li>
+        <li><strong>alarms</strong> — Periodic remote config refresh and token renewal.</li>
+      </ul>
+
+      <h3>Third-Party Services</h3>
+      <p>The Extension does not use any third-party analytics, advertising, or tracking services. Third-party libraries used (pdf.js, Tesseract.js) run entirely locally within the browser.</p>
+
+      <h3>Children's Privacy</h3>
+      <p>The Extension is designed for enterprise and government use. It is not directed at children under 13 and does not knowingly collect information from children.</p>
+
+      <h3>Changes to This Policy</h3>
+      <p>We may update this privacy policy from time to time. Changes will be posted on this page with an updated revision date. Continued use of the Extension after changes constitutes acceptance of the updated policy.</p>
+
+      <h3>Contact</h3>
+      <p>For privacy questions or concerns, contact us via the <a href="https://github.com/bmaidev/looselipssinkships.extension/issues" style="color:var(--navy)">GitHub Issues</a> page.</p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SUPPORT / FAQ
+     ═══════════════════════════════════════════════════════════ -->
+<section class="section section-alt" id="support">
+  <div class="section-inner">
+    <div class="section-label">Support</div>
+    <h2 class="section-title">Frequently Asked Questions</h2>
+    <p class="section-subtitle">Common questions about installation, configuration, and troubleshooting.</p>
+
+    <div class="faq-list">
+      <div class="faq-item">
+        <div class="faq-q">Does the extension send my data to the cloud?</div>
+        <div class="faq-a">No, not by default. All processing uses Gemini Nano (Chrome's built-in AI) and regex patterns, which run entirely on your device. Cloud providers (Azure PII, Purview) are only activated if you explicitly configure them in Settings.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">What Chrome version do I need?</div>
+        <div class="faq-a">Chrome 128 or later. Chrome 136+ is recommended for the best Gemini Nano stability. The extension works without Nano — it falls back to regex pattern matching. For PDF/image OCR, run <code>vendor/setup.sh</code> to install Tesseract.js.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">How do I enable Gemini Nano?</div>
+        <div class="faq-a">Go to <code>chrome://flags</code> and enable: (1) <code>#optimization-guide-on-device-model</code> and (2) <code>#prompt-api-for-gemini-nano</code>. Restart Chrome. The green dot in the extension popup confirms Nano is available.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">What PII types are detected?</div>
+        <div class="faq-a">17 built-in Australian patterns: Email, Phone (AU &amp; International), Street Address, Postcode, TFN, ABN, ACN, Credit Card, BSB, Bank Account, Medicare Number, Passport, Driver Licence, Date of Birth, IPv4, and IPv6. You can add custom patterns via the Settings page.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Can my organisation manage settings centrally?</div>
+        <div class="faq-a">Yes. The extension supports Chrome managed storage (chrome.storage.managed). Admins can push configuration and lock specific settings via GPO, Microsoft Intune, or Google Workspace Admin Console. See the Enterprise section for deployment guides.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">How does the classification gate work?</div>
+        <div class="faq-a">The extension reads Microsoft Information Protection (MSIP) sensitivity labels from DOCX and XLSX files. If a document is labelled PROTECTED, SECRET, or TOP SECRET (configurable), the upload is blocked outright with a red overlay. No skip option — the block is absolute.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Does it work on all websites?</div>
+        <div class="faq-a">By default, yes. You can restrict it to specific sites via whitelist mode (e.g., <code>*.gov.au</code>) or exclude sites via blacklist mode. AI Chat Guard automatically activates on 30+ detected AI services.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">How do I report a bug or request a feature?</div>
+        <div class="faq-a">Open an issue on the <a href="https://github.com/bmaidev/looselipssinkships.extension/issues" style="color:var(--navy)">GitHub Issues</a> page. Enable debug logging (Settings &rarr; Troubleshooting) and include the console output for bug reports.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     FOOTER
+     ═══════════════════════════════════════════════════════════ -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">Loose Lips Sink Ships</div>
+    <ul class="footer-links">
+      <li><a href="#privacy">Privacy Policy</a></li>
+      <li><a href="#support">Support</a></li>
+      <li><a href="#enterprise">Enterprise</a></li>
+      <li><a href="https://github.com/bmaidev/looselipssinkships.extension">GitHub</a></li>
+    </ul>
+    <div class="footer-copy">MIT License. Built for Australian government and enterprise environments.</div>
+  </div>
+</footer>
+
+<!-- ── FAQ Toggle ──────────────────────────────────────────── -->
+<script>
+document.querySelectorAll('.faq-q').forEach(q => {
+  q.addEventListener('click', () => {
+    const item = q.parentElement;
+    item.classList.toggle('open');
+  });
+});
+</script>
+</body>
+</html>

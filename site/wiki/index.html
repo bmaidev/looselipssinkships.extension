@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wiki — Loose Lips Sink Ships</title>
+<meta name="description" content="Comprehensive support documentation for the Loose Lips Sink Ships Chrome extension. Installation, configuration, enterprise deployment, and troubleshooting.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --navy:#1a3a5c;--navy-deep:#0f2a44;--navy-light:#244e78;
+  --green:#22c55e;--green-dark:#16a34a;--green-glow:rgba(34,197,94,.12);
+  --bg:#f0f2f5;--bg-warm:#f7f8fa;--white:#ffffff;
+  --text:#1a1a2e;--text-mid:#4b5563;--text-light:#6b7280;--text-faint:#9ca3af;
+  --border:#e5e7eb;--border-light:#f3f4f6;
+  --red:#dc2626;--amber:#f59e0b;
+  --radius:10px;
+  --sidebar-w:270px;
+}
+html{scroll-behavior:smooth;scroll-padding-top:80px}
+body{
+  font-family:'DM Sans',system-ui,sans-serif;
+  background:var(--bg);color:var(--text);
+  line-height:1.6;-webkit-font-smoothing:antialiased;
+}
+
+/* ── NAV ───────────────────────────────────────────────── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  background:rgba(15,42,68,.97);backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.nav-inner{
+  max-width:1400px;margin:0 auto;padding:0 24px;
+  display:flex;align-items:center;justify-content:space-between;height:64px;
+}
+.nav-brand{
+  font-family:'Instrument Serif',serif;font-size:18px;color:var(--white);
+  letter-spacing:-.02em;text-decoration:none;
+}
+.nav-brand span{color:var(--green);font-style:italic}
+.nav-links{display:flex;gap:24px;list-style:none;align-items:center}
+.nav-links a{
+  color:rgba(255,255,255,.6);text-decoration:none;font-size:13px;
+  font-weight:500;letter-spacing:.4px;text-transform:uppercase;
+  transition:color .2s;
+}
+.nav-links a:hover{color:var(--white)}
+.nav-cta{
+  background:var(--green);color:var(--navy-deep);
+  padding:8px 20px;border-radius:6px;font-size:13px;font-weight:600;
+  text-decoration:none;transition:background .2s;letter-spacing:.3px;
+}
+.nav-cta:hover{background:#2dd66a}
+.hamburger{
+  display:none;background:none;border:none;cursor:pointer;padding:4px;
+  color:var(--white);
+}
+.hamburger svg{display:block}
+@media(max-width:900px){
+  .nav-links{display:none}
+  .hamburger{display:block}
+}
+
+/* ── LAYOUT ────────────────────────────────────────────── */
+.wiki-layout{
+  display:flex;margin-top:64px;min-height:calc(100vh - 64px);
+}
+
+/* ── SIDEBAR ───────────────────────────────────────────── */
+.sidebar{
+  position:fixed;top:64px;left:0;bottom:0;
+  width:var(--sidebar-w);
+  background:var(--white);
+  border-right:1px solid var(--border);
+  overflow-y:auto;
+  padding:24px 0 80px;
+  z-index:100;
+  transition:transform .3s ease;
+}
+.sidebar-section{
+  margin-bottom:4px;
+}
+.sidebar-heading{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 20px;
+  font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--text-faint);cursor:pointer;user-select:none;
+  transition:color .15s;
+}
+.sidebar-heading:hover{color:var(--navy)}
+.sidebar-heading::after{
+  content:'';width:6px;height:6px;border-right:1.5px solid currentColor;
+  border-bottom:1.5px solid currentColor;transform:rotate(45deg);
+  transition:transform .2s;flex-shrink:0;
+}
+.sidebar-section.collapsed .sidebar-heading::after{
+  transform:rotate(-45deg);
+}
+.sidebar-links{
+  list-style:none;overflow:hidden;transition:max-height .3s ease;
+}
+.sidebar-section.collapsed .sidebar-links{
+  max-height:0 !important;
+}
+.sidebar-links a{
+  display:block;padding:5px 20px 5px 28px;
+  font-size:13px;color:var(--text-mid);text-decoration:none;
+  border-left:2px solid transparent;
+  transition:all .15s;
+}
+.sidebar-links a:hover{
+  color:var(--navy);background:var(--bg);border-left-color:var(--green);
+}
+.sidebar-links a.active{
+  color:var(--navy);font-weight:600;background:var(--green-glow);
+  border-left-color:var(--green);
+}
+
+/* ── CONTENT ───────────────────────────────────────────── */
+.content{
+  flex:1;margin-left:var(--sidebar-w);
+  padding:48px 48px 120px;
+  max-width:calc(100% - var(--sidebar-w));
+}
+.content-inner{
+  max-width:860px;
+}
+
+/* ── PROSE ─────────────────────────────────────────────── */
+.content h1{
+  font-family:'Instrument Serif',serif;font-size:clamp(32px,5vw,44px);
+  color:var(--navy);line-height:1.15;letter-spacing:-.02em;
+  margin-bottom:12px;
+}
+.content h2{
+  font-family:'Instrument Serif',serif;font-size:28px;
+  color:var(--navy);line-height:1.2;letter-spacing:-.01em;
+  margin:64px 0 16px;padding-top:24px;
+  border-top:1px solid var(--border);
+}
+.content h2:first-of-type{border-top:none;margin-top:32px}
+.content h3{
+  font-size:18px;font-weight:600;color:var(--navy);
+  margin:32px 0 10px;
+}
+.content h4{
+  font-size:15px;font-weight:600;color:var(--navy-light);
+  margin:24px 0 8px;
+}
+.content p,.content li{
+  font-size:15px;color:var(--text-mid);line-height:1.8;
+  margin-bottom:12px;
+}
+.content ul,.content ol{padding-left:20px;margin-bottom:16px}
+.content li{margin-bottom:6px}
+.content strong{color:var(--text);font-weight:600}
+.content a{color:var(--navy);text-decoration:underline;text-underline-offset:2px}
+.content a:hover{color:var(--green-dark)}
+
+.lead{
+  font-size:17px;color:var(--text-mid);max-width:640px;line-height:1.7;
+  margin-bottom:32px;
+}
+
+/* ── INLINE CODE ───────────────────────────────────────── */
+.content code{
+  font-family:'JetBrains Mono',monospace;font-size:13px;
+  background:var(--bg);padding:2px 6px;border-radius:3px;
+  color:var(--navy);
+}
+
+/* ── CODE BLOCK ────────────────────────────────────────── */
+pre{
+  background:var(--navy-deep);color:rgba(255,255,255,.85);
+  padding:20px 24px;border-radius:var(--radius);
+  overflow-x:auto;margin:16px 0 24px;
+  font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;
+  border:1px solid rgba(255,255,255,.06);
+}
+pre code{
+  background:none;padding:0;color:inherit;font-size:inherit;
+}
+.code-label{
+  font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;
+  color:var(--green);letter-spacing:1px;text-transform:uppercase;
+  margin-bottom:4px;display:block;
+}
+
+/* ── TABLES ────────────────────────────────────────────── */
+.wiki-table{
+  width:100%;border-collapse:collapse;margin:16px 0 24px;
+  font-size:14px;
+}
+.wiki-table th{
+  text-align:left;padding:12px 16px;font-size:11px;
+  letter-spacing:.5px;text-transform:uppercase;color:var(--text-faint);
+  border-bottom:2px solid var(--border);font-weight:600;
+  background:var(--bg-warm);
+}
+.wiki-table td{
+  padding:10px 16px;border-bottom:1px solid var(--border-light);
+  color:var(--text-mid);vertical-align:top;
+}
+.wiki-table tr:last-child td{border-bottom:none}
+.wiki-table tr:hover td{background:var(--bg-warm)}
+.wiki-table code{font-size:12px}
+
+/* ── BADGES ────────────────────────────────────────────── */
+.badge{
+  display:inline-block;padding:2px 10px;border-radius:4px;
+  font-size:11px;font-weight:700;letter-spacing:.3px;
+}
+.badge-green{background:#d1fae5;color:#065f46}
+.badge-amber{background:#fef3c7;color:#92400e}
+.badge-red{background:#fee2e2;color:#991b1b}
+.badge-blue{background:#dbeafe;color:#1e40af}
+.badge-gray{background:var(--bg);color:var(--text-light)}
+
+/* ── CALLOUT ───────────────────────────────────────────── */
+.callout{
+  padding:16px 20px;border-radius:var(--radius);margin:16px 0 24px;
+  font-size:14px;line-height:1.7;
+  border-left:3px solid;
+}
+.callout p{margin-bottom:4px}
+.callout p:last-child{margin-bottom:0}
+.callout-info{background:#eff6ff;border-color:#3b82f6;color:#1e40af}
+.callout-warn{background:#fffbeb;border-color:var(--amber);color:#92400e}
+.callout-danger{background:#fef2f2;border-color:var(--red);color:#991b1b}
+.callout-tip{background:#ecfdf5;border-color:var(--green);color:#065f46}
+
+/* ── STEP LIST ─────────────────────────────────────────── */
+.steps{counter-reset:step;list-style:none;padding-left:0;margin:16px 0 24px}
+.steps li{
+  counter-increment:step;padding:12px 0 12px 48px;position:relative;
+  font-size:14px;color:var(--text-mid);border-left:2px solid var(--border);
+  margin-left:16px;
+}
+.steps li::before{
+  content:counter(step);position:absolute;left:-15px;top:10px;
+  width:28px;height:28px;border-radius:50%;
+  background:var(--navy);color:var(--white);
+  font-size:12px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+}
+.steps li:last-child{border-left-color:transparent}
+
+/* ── SETTINGS TABLE ────────────────────────────────────── */
+.settings-table{
+  width:100%;border-collapse:collapse;margin:16px 0 24px;
+  font-size:13px;
+}
+.settings-table th{
+  text-align:left;padding:10px 12px;font-size:10px;
+  letter-spacing:.5px;text-transform:uppercase;color:var(--text-faint);
+  border-bottom:2px solid var(--border);font-weight:600;
+  background:var(--bg-warm);white-space:nowrap;
+}
+.settings-table td{
+  padding:8px 12px;border-bottom:1px solid var(--border-light);
+  color:var(--text-mid);vertical-align:top;
+}
+.settings-table tr:hover td{background:var(--bg-warm)}
+.settings-table code{font-size:11px;white-space:nowrap}
+.settings-table .type{
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  color:var(--green-dark);
+}
+
+/* ── BACK TO TOP ───────────────────────────────────────── */
+.back-to-top{
+  position:fixed;bottom:32px;right:32px;z-index:150;
+  width:44px;height:44px;border-radius:50%;
+  background:var(--navy);color:var(--white);
+  border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 12px rgba(0,0,0,.15);
+  opacity:0;transform:translateY(20px);
+  transition:opacity .3s,transform .3s,background .2s;
+  pointer-events:none;
+}
+.back-to-top.visible{
+  opacity:1;transform:translateY(0);pointer-events:auto;
+}
+.back-to-top:hover{background:var(--green-dark)}
+
+/* ── FOOTER ────────────────────────────────────────────── */
+footer{
+  background:var(--navy-deep);padding:48px 24px;
+  border-top:1px solid rgba(255,255,255,.06);
+  margin-left:var(--sidebar-w);
+}
+.footer-inner{
+  max-width:860px;margin:0 auto;
+  display:flex;justify-content:space-between;align-items:center;
+  flex-wrap:wrap;gap:16px;
+}
+.footer-brand{
+  font-family:'Instrument Serif',serif;font-size:16px;color:rgba(255,255,255,.4);
+}
+.footer-copy{
+  width:100%;text-align:center;margin-top:24px;padding-top:24px;
+  border-top:1px solid rgba(255,255,255,.06);
+  font-size:12px;color:rgba(255,255,255,.2);
+}
+.footer-copy a{color:rgba(255,255,255,.45);text-decoration:underline}
+
+/* ── SIDEBAR OVERLAY (mobile) ──────────────────────────── */
+.sidebar-overlay{
+  display:none;position:fixed;inset:0;z-index:99;
+  background:rgba(0,0,0,.4);backdrop-filter:blur(2px);
+}
+
+/* ── MOBILE ────────────────────────────────────────────── */
+@media(max-width:900px){
+  .sidebar{
+    transform:translateX(-100%);
+    z-index:150;width:280px;
+    box-shadow:4px 0 24px rgba(0,0,0,.15);
+  }
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-overlay.open{display:block}
+  .content{margin-left:0;padding:32px 20px 80px;max-width:100%}
+  footer{margin-left:0}
+  .content h2{font-size:24px}
+  .wiki-table,.settings-table{display:block;overflow-x:auto}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     NAV
+     ═══════════════════════════════════════════════════════ -->
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="nav-brand">Loose Lips <span>Sink Ships</span></a>
+    <ul class="nav-links">
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="#getting-started">Getting Started</a></li>
+      <li><a href="#enterprise-deployment">Enterprise</a></li>
+      <li><a href="#settings-reference">Settings</a></li>
+      <li><a href="#troubleshooting">Troubleshooting</a></li>
+    </ul>
+    <button class="hamburger" id="hamburger-btn" aria-label="Toggle sidebar">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </div>
+</nav>
+
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SIDEBAR
+     ═══════════════════════════════════════════════════════ -->
+<aside class="sidebar" id="sidebar">
+
+  <div class="sidebar-section">
+    <div class="sidebar-heading" data-section="getting-started">Getting Started</div>
+    <ul class="sidebar-links">
+      <li><a href="#getting-started">Overview</a></li>
+      <li><a href="#requirements">Requirements</a></li>
+      <li><a href="#installation">Installation</a></li>
+      <li><a href="#quick-start">Quick Start</a></li>
+    </ul>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-heading" data-section="detection-modes">Detection Modes</div>
+    <ul class="sidebar-links">
+      <li><a href="#detection-modes">Overview</a></li>
+      <li><a href="#mode-auto">Auto (default)</a></li>
+      <li><a href="#mode-ai-only">AI Only</a></li>
+      <li><a href="#mode-regex-only">Regex Only</a></li>
+      <li><a href="#mode-hosted-only">Hosted Only</a></li>
+      <li><a href="#mode-cloud-only">Cloud Only</a></li>
+    </ul>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-heading" data-section="providers">Providers</div>
+    <ul class="sidebar-links">
+      <li><a href="#providers">Overview</a></li>
+      <li><a href="#provider-gemini-nano">Gemini Nano</a></li>
+      <li><a href="#provider-regex">Regex Engine</a></li>
+      <li><a href="#provider-vector">Vector Names</a></li>
+      <li><a href="#provider-azure-pii">Azure PII</a></li>
+      <li><a href="#provider-purview">Purview DLP</a></li>
+      <li><a href="#provider-hosted">Hosted Models</a></li>
+    </ul>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-heading" data-section="pii-types">PII Types</div>
+    <ul class="sidebar-links">
+      <li><a href="#pii-types">Built-in Types</a></li>
+      <li><a href="#custom-pii-types">Custom Types</a></li>
+      <li><a href="#pii-type-overrides">Type Overrides</a></li>
+    </ul>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-heading" data-section="text-protection">Text Protection</div>
+    <ul class="sidebar-links">
+      <li><a href="#text-protection">Overview</a></li>
+      <li><a href="#auto-redact">Auto-Redact</a></li>
+      <li><a href="#submit-guard">Submit Guard</a></li>
+      <li><a href="#upload-guard">Upload Guard</a></li>
+    </ul>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-heading" data-section="ai-chat-guard">AI Chat Guard</div>
+    <ul class="sidebar-links">
+      <li><a href="#ai-chat-guard">How It Works</a></li>
+      <li><a href="#ai-services-detected">Services Detected</a></li>
+      <li><a href="#ai-custom-domains">Custom Domains</a></li>
+      <li><a href="#ai-protection-banner">Protection Banner</a></li>
+    </ul>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-heading" data-section="document-processing">Document Processing</div>
+    <ul class="sidebar-links">
+      <li><a href="#document-processing">Overview</a></li>
+      <li><a href="#doc-docx">DOCX</a></li>
+      <li><a href="#doc-xlsx">XLSX / CSV</a></li>
+      <li><a href="#doc-pdf">PDF</a></li>
+      <li><a href="#doc-images">Images</a></li>
+      <li><a href="#doc-zip">ZIP Archives</a></li>
+      <li><a href="#doc-text">Text-based Files</a></li>
+    </ul>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-heading" data-section="site-filtering">Site Filtering</div>
+    <ul class="sidebar-links">
+      <li><a href="#site-filtering">Modes</a></li>
+      <li><a href="#site-patterns">Pattern Syntax</a></li>
+    </ul>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-heading" data-section="standalone-tool">Standalone Tool</div>
+    <ul class="sidebar-links">
+      <li><a href="#standalone-tool">redact.html</a></li>
+    </ul>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-heading" data-section="classification-gate">Classification Gate</div>
+    <ul class="sidebar-links">
+      <li><a href="#classification-gate">Overview</a></li>
+      <li><a href="#msip-labels">MSIP Labels</a></li>
+      <li><a href="#pspf-table">PSPF Classifications</a></li>
+      <li><a href="#encrypted-blocking">Encrypted Files</a></li>
+    </ul>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-heading" data-section="enterprise-deployment">Enterprise Deployment</div>
+    <ul class="sidebar-links">
+      <li><a href="#enterprise-deployment">Overview</a></li>
+      <li><a href="#deploy-intune">Microsoft Intune</a></li>
+      <li><a href="#deploy-gpo">Group Policy (GPO)</a></li>
+      <li><a href="#deploy-workspace">Google Workspace</a></li>
+      <li><a href="#deploy-remote">Small Business (Remote)</a></li>
+    </ul>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-heading" data-section="managed-config">Managed Configuration</div>
+    <ul class="sidebar-links">
+      <li><a href="#managed-config">Merge Precedence</a></li>
+      <li><a href="#locked-settings">Locked Settings</a></li>
+      <li><a href="#policy-version">Policy Version</a></li>
+      <li><a href="#schema-versions">Schema Versions</a></li>
+    </ul>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-heading" data-section="azure-oauth">Azure OAuth2</div>
+    <ul class="sidebar-links">
+      <li><a href="#azure-oauth">Overview</a></li>
+      <li><a href="#azure-app-registration">App Registration</a></li>
+      <li><a href="#azure-pkce-flow">PKCE Flow</a></li>
+      <li><a href="#azure-token-management">Token Management</a></li>
+      <li><a href="#azure-sign-in-out">Sign In / Out</a></li>
+      <li><a href="#azure-managed-identity">Managed Identity</a></li>
+    </ul>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-heading" data-section="settings-reference">Settings Reference</div>
+    <ul class="sidebar-links">
+      <li><a href="#settings-reference">All Settings</a></li>
+      <li><a href="#settings-detection">Detection</a></li>
+      <li><a href="#settings-ui">UI</a></li>
+      <li><a href="#settings-site-filter">Site Filter</a></li>
+      <li><a href="#settings-ai-chat-guard">AI Chat Guard</a></li>
+      <li><a href="#settings-auto-redact">Auto-Redact</a></li>
+      <li><a href="#settings-submit-guard">Submit Guard</a></li>
+      <li><a href="#settings-upload-guard">Upload Guard</a></li>
+      <li><a href="#settings-providers">Providers</a></li>
+      <li><a href="#settings-debug">Debug</a></li>
+    </ul>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-heading" data-section="troubleshooting">Troubleshooting</div>
+    <ul class="sidebar-links">
+      <li><a href="#troubleshooting">Overview</a></li>
+      <li><a href="#debug-mode">Debug Mode</a></li>
+      <li><a href="#console-locations">Console Locations</a></li>
+      <li><a href="#common-errors">Common Errors</a></li>
+      <li><a href="#performance">Performance</a></li>
+    </ul>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-heading" data-section="security-privacy">Security &amp; Privacy</div>
+    <ul class="sidebar-links">
+      <li><a href="#security-privacy">Design Principles</a></li>
+      <li><a href="#no-telemetry">No Telemetry</a></li>
+      <li><a href="#provably-secure">Provably Secure</a></li>
+      <li><a href="#enterprise-security">Enterprise Security</a></li>
+    </ul>
+  </div>
+
+</aside>
+
+<!-- ═══════════════════════════════════════════════════════
+     CONTENT
+     ═══════════════════════════════════════════════════════ -->
+<main class="content">
+<div class="content-inner">
+
+<h1>Support Wiki</h1>
+<p class="lead">Comprehensive documentation for the Loose Lips Sink Ships Chrome extension. Covers installation, configuration, enterprise deployment, and every setting available.</p>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     1. GETTING STARTED
+     ══════════════════════════════════════════════════════════════════ -->
+<h2 id="getting-started">Getting Started</h2>
+
+<p>Loose Lips Sink Ships is a Chrome browser extension that detects and redacts personally identifiable information (PII) in text, documents, and images. It is designed for Australian government and enterprise environments where PII must never leave the browser unredacted.</p>
+
+<h3 id="requirements">Requirements</h3>
+<ul>
+  <li><strong>Google Chrome 128+</strong> (Chrome 136+ recommended for best Gemini Nano stability)</li>
+  <li><strong>Gemini Nano</strong> (optional) &mdash; enable in <code>chrome://flags</code> for on-device AI detection</li>
+  <li><strong>Tesseract.js + pdf.js</strong> (optional) &mdash; run <code>vendor/setup.sh</code> for PDF rendering and image OCR</li>
+  <li><strong>Azure subscription</strong> (optional) &mdash; only needed for Azure PII or Purview DLP integration</li>
+</ul>
+
+<h3 id="installation">Installation</h3>
+<h4>From Chrome Web Store</h4>
+<ol>
+  <li>Visit the <a href="https://chrome.google.com/webstore">Chrome Web Store listing</a></li>
+  <li>Click <strong>Add to Chrome</strong></li>
+  <li>Confirm the permissions dialog</li>
+  <li>The extension icon appears in your toolbar</li>
+</ol>
+
+<h4>Developer / Side-load Install</h4>
+<ol class="steps">
+  <li>Clone the repository: <code>git clone https://github.com/bmaidev/looselipssinkships.extension.git</code></li>
+  <li>Run <code>vendor/setup.sh</code> to download Tesseract.js and pdf.js dependencies</li>
+  <li>Open <code>chrome://extensions</code> and enable <strong>Developer mode</strong></li>
+  <li>Click <strong>Load unpacked</strong> and select the repository root folder</li>
+  <li>Verify the extension icon appears in your toolbar</li>
+</ol>
+
+<h4>Enable Gemini Nano (Optional)</h4>
+<ol class="steps">
+  <li>Navigate to <code>chrome://flags</code></li>
+  <li>Enable <code>#optimization-guide-on-device-model</code> &mdash; set to <strong>Enabled BypassPerfRequirement</strong></li>
+  <li>Enable <code>#prompt-api-for-gemini-nano</code> &mdash; set to <strong>Enabled</strong></li>
+  <li>Restart Chrome</li>
+  <li>The green dot in the extension popup confirms Nano is available</li>
+</ol>
+
+<h3 id="quick-start">Quick Start</h3>
+<p>After installation, the extension is active on all pages in <strong>Auto</strong> mode. Here is what happens by default:</p>
+<ul>
+  <li>A green <strong>Redact</strong> button appears on text fields and textareas</li>
+  <li>On AI chat sites (ChatGPT, Claude, Gemini, etc.), auto-redact and submit interception are active</li>
+  <li>Click the toolbar icon to see the popup with quick stats and detection status</li>
+  <li>Open the Settings page from the popup to configure providers, site filtering, and more</li>
+</ul>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     2. DETECTION MODES
+     ══════════════════════════════════════════════════════════════════ -->
+<h2 id="detection-modes">Detection Modes</h2>
+
+<p>The <code>detectionMode</code> setting controls which engines are used and in what order. The extension supports five modes, each with a different privacy and capability trade-off.</p>
+
+<h3 id="mode-auto">Auto <span class="badge badge-green">Default</span></h3>
+<p>Progressive escalation through all available tiers: <strong>Local &rarr; Hosted &rarr; Cloud</strong>.</p>
+<h4>Fallback chain</h4>
+<ol>
+  <li><strong>Gemini Nano</strong> (on-device AI) &mdash; tried first if enabled and available</li>
+  <li><strong>Regex + Vector</strong> &mdash; always-available local fallback; runs if Nano is unavailable or fails</li>
+  <li><strong>Hosted models</strong> &mdash; tried if configured and the above steps produced no result</li>
+  <li><strong>Cloud providers</strong> (Azure PII, Purview) &mdash; tried only if no hosted provider could handle the request</li>
+</ol>
+<p>If <code>regexAfterAi</code> is enabled (belt-and-suspenders mode), regex also runs as a second pass after Nano to catch anything the AI missed.</p>
+<div class="callout callout-tip"><p><strong>Best for:</strong> Most deployments. Maximises privacy by preferring local processing, but can escalate when higher-quality detection is needed.</p></div>
+
+<h3 id="mode-ai-only">AI Only</h3>
+<p>Uses only AI-capable providers. Will not fall back to regex.</p>
+<h4>Fallback chain</h4>
+<ol>
+  <li><strong>Gemini Nano</strong> (local AI)</li>
+  <li><strong>Hosted AI models</strong> (organisation-hosted LLMs with text capability)</li>
+  <li><strong>Cloud AI</strong> (Azure PII, which uses NLP-based entity recognition)</li>
+</ol>
+<p>Throws an error if no AI provider is available.</p>
+<div class="callout callout-info"><p><strong>Best for:</strong> Environments where regex false positives are unacceptable and AI-quality detection is required.</p></div>
+
+<h3 id="mode-regex-only">Regex Only</h3>
+<p>Uses only the built-in regex pattern engine. No data leaves the device under any circumstances.</p>
+<h4>Fallback chain</h4>
+<ol>
+  <li><strong>Regex engine</strong> &mdash; the sole provider; no escalation</li>
+</ol>
+<div class="callout callout-tip"><p><strong>Best for:</strong> Air-gapped networks, highest-security environments, or when deterministic pattern matching is preferred over probabilistic AI.</p></div>
+
+<h3 id="mode-hosted-only">Hosted Only</h3>
+<p>Routes all text through organisation-hosted models. Falls back to regex if no hosted provider is available.</p>
+<h4>Fallback chain</h4>
+<ol>
+  <li><strong>Hosted models</strong> (e.g., on-premises LLM)</li>
+  <li><strong>Regex engine</strong> (fallback if no hosted provider is reachable)</li>
+</ol>
+<div class="callout callout-info"><p><strong>Best for:</strong> Organisations that operate their own AI infrastructure and want all detection to go through their own endpoints.</p></div>
+
+<h3 id="mode-cloud-only">Cloud Only</h3>
+<p>Sends text directly to cloud providers. Falls back to regex if no cloud provider is available or configured.</p>
+<h4>Fallback chain</h4>
+<ol>
+  <li><strong>Cloud providers</strong> (Azure PII, Purview)</li>
+  <li><strong>Regex engine</strong> (fallback if cloud is unavailable)</li>
+</ol>
+<div class="callout callout-warn"><p><strong>Best for:</strong> Environments where Azure PII accuracy is paramount and cloud data transmission is acceptable. Note that text is sent to external Azure endpoints.</p></div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     3. PROVIDERS
+     ══════════════════════════════════════════════════════════════════ -->
+<h2 id="providers">Providers</h2>
+
+<p>Providers are organised into three tiers: <strong>Local</strong>, <strong>Hosted</strong>, and <strong>Cloud</strong>. The pipeline always prefers the highest-privacy tier first.</p>
+
+<h3 id="provider-gemini-nano">Gemini Nano <span class="badge badge-green">Local</span></h3>
+<p>Chrome's built-in on-device language model. Runs entirely within the browser with no network requests.</p>
+<ul>
+  <li><strong>Tier:</strong> Local</li>
+  <li><strong>Requires:</strong> Chrome 128+, flags enabled (see <a href="#installation">Installation</a>)</li>
+  <li><strong>Capabilities:</strong> Text PII detection via prompt-based entity extraction</li>
+  <li><strong>Session timeout:</strong> Configurable via <code>sessionTimeoutMinutes</code> (default 5 min)</li>
+  <li><strong>Limitations:</strong> Smaller context window than cloud models; may miss complex or ambiguous PII</li>
+</ul>
+
+<h3 id="provider-regex">Regex Engine <span class="badge badge-green">Local</span></h3>
+<p>Pattern-based detection using the 17 built-in Australian PII type definitions. Always available as a fallback.</p>
+<ul>
+  <li><strong>Tier:</strong> Local</li>
+  <li><strong>Requires:</strong> Nothing &mdash; always available</li>
+  <li><strong>Capabilities:</strong> Text PII detection with character-position-accurate matches</li>
+  <li><strong>Strengths:</strong> Deterministic, fast, no false negatives for well-structured PII (phone numbers, TFNs, etc.)</li>
+  <li><strong>Limitations:</strong> Cannot detect PII by context alone (e.g., an unstructured name in prose)</li>
+</ul>
+
+<h3 id="provider-vector">Vector Names <span class="badge badge-green">Local</span></h3>
+<p>Cosine-similarity name detection using a vector embedding approach. Runs alongside regex when <code>enableVectorFallback</code> is <code>true</code>.</p>
+<ul>
+  <li><strong>Tier:</strong> Local</li>
+  <li><strong>Threshold:</strong> Configurable via <code>vectorThreshold</code> (default 0.45, range 0&ndash;1)</li>
+  <li><strong>Strengths:</strong> Catches personal names that regex cannot match (fuzzy matching)</li>
+  <li><strong>Limitations:</strong> Higher false-positive rate than regex; threshold tuning may be required</li>
+</ul>
+
+<h3 id="provider-azure-pii">Azure PII <span class="badge badge-blue">Cloud</span></h3>
+<p>Azure AI Language PII detection service. Supports both API key (Direct) and OAuth2 (Enterprise) authentication.</p>
+
+<h4>Direct Mode (API Key)</h4>
+<table class="wiki-table">
+  <thead><tr><th>Field</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>endpoint</code></td><td>Azure Language resource endpoint URL (e.g., <code>https://myresource.cognitiveservices.azure.com</code>)</td></tr>
+    <tr><td><code>apiKey</code></td><td>API key from the Azure portal &mdash; stored in <code>chrome.storage.local</code></td></tr>
+    <tr><td><code>apiVersion</code></td><td>API version string (default <code>2023-04-01</code>)</td></tr>
+    <tr><td><code>language</code></td><td>Language code (default <code>en</code>)</td></tr>
+    <tr><td><code>domain</code></td><td>Detection domain: <code>none</code> (general) or <code>phi</code> (health)</td></tr>
+    <tr><td><code>categoriesFilter</code></td><td>Array of entity categories to detect (empty = all)</td></tr>
+  </tbody>
+</table>
+
+<h4>Enterprise Mode (OAuth2)</h4>
+<table class="wiki-table">
+  <thead><tr><th>Field</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>connectionMode</code></td><td>Set to <code>enterprise</code></td></tr>
+    <tr><td><code>tenantId</code></td><td>Azure AD tenant ID (GUID)</td></tr>
+    <tr><td><code>clientId</code></td><td>App Registration client ID (GUID)</td></tr>
+    <tr><td><code>endpoint</code></td><td>Azure Language resource endpoint URL</td></tr>
+  </tbody>
+</table>
+<p>In Enterprise mode, the user signs in via Azure AD popup (PKCE flow). No API key is stored. See <a href="#azure-oauth">Azure OAuth2</a> for full setup.</p>
+
+<h4>Native Document Redaction</h4>
+<p>When <code>nativeDocEnabled</code> is <code>true</code>, Azure handles OCR, text extraction, PII detection, and document reconstruction server-side. Supports PDF, DOCX, and TXT files.</p>
+<table class="wiki-table">
+  <thead><tr><th>Field</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>sourceContainerUrl</code></td><td>Blob storage URL for uploads. Direct: URL with SAS (read+list). Enterprise: plain URL.</td></tr>
+    <tr><td><code>targetContainerUrl</code></td><td>Blob storage URL for results. Direct: URL with SAS (write+list). Enterprise: plain URL.</td></tr>
+    <tr><td><code>redactionPolicy</code></td><td><code>characterMask</code>, <code>entityMask</code>, or <code>noMask</code></td></tr>
+  </tbody>
+</table>
+
+<h3 id="provider-purview">Purview DLP <span class="badge badge-blue">Cloud</span></h3>
+<p>Microsoft Purview Data Loss Prevention via the Microsoft Graph API. Provides sensitivity label evaluation and DLP policy checking.</p>
+<table class="wiki-table">
+  <thead><tr><th>Field</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>tenantId</code></td><td>Azure AD tenant ID</td></tr>
+    <tr><td><code>clientId</code></td><td>App Registration client ID</td></tr>
+    <tr><td><code>clientSecret</code></td><td>Client secret (for application auth)</td></tr>
+    <tr><td><code>accessToken</code></td><td>Pre-obtained access token (alternative to client secret)</td></tr>
+    <tr><td><code>graphEndpoint</code></td><td>Graph API endpoint (default <code>https://graph.microsoft.com/beta</code>)</td></tr>
+    <tr><td><code>useDelegatedAuth</code></td><td>Use delegated (user) auth instead of application auth</td></tr>
+    <tr><td><code>dlpPolicyId</code></td><td>Specific DLP policy ID to evaluate against</td></tr>
+    <tr><td><code>sensitiveInfoTypes</code></td><td>Array of sensitive information type IDs to detect</td></tr>
+  </tbody>
+</table>
+<p>The Purview provider also powers the <a href="#classification-gate">Classification Gate</a>.</p>
+
+<h3 id="provider-hosted">Hosted Models <span class="badge badge-amber">Hosted</span></h3>
+<p>Organisation-hosted LLMs or OCR endpoints. Multiple instances can be configured. The extension connects to your own infrastructure.</p>
+<table class="wiki-table">
+  <thead><tr><th>Field</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>providerId</code></td><td>Unique identifier (e.g., <code>agency_llm</code>)</td></tr>
+    <tr><td><code>displayName</code></td><td>Human-readable name shown in UI</td></tr>
+    <tr><td><code>endpoint</code></td><td>API base URL (e.g., <code>https://internal-llm.agency.gov.au/v1</code>)</td></tr>
+    <tr><td><code>apiKey</code></td><td>API key for authentication</td></tr>
+    <tr><td><code>apiMode</code></td><td><code>openai</code> (chat completions API) or <code>ocr_extract</code> (OCR endpoint)</td></tr>
+    <tr><td><code>model</code></td><td>Model identifier (e.g., <code>llama-3-70b</code>)</td></tr>
+    <tr><td><code>maxTokens</code></td><td>Maximum tokens for response (default 4096)</td></tr>
+    <tr><td><code>temperature</code></td><td>Sampling temperature (default 0.0 for deterministic output)</td></tr>
+    <tr><td><code>timeout</code></td><td>Request timeout in milliseconds (default 30000)</td></tr>
+    <tr><td><code>customHeaders</code></td><td>Additional HTTP headers as key-value object</td></tr>
+    <tr><td><code>capabilities</code></td><td>Array of capabilities: <code>["text"]</code>, <code>["text","document"]</code></td></tr>
+    <tr><td><code>priority</code></td><td>Numeric priority (higher = tried first, default 30)</td></tr>
+  </tbody>
+</table>
+
+<pre><code>// Example hosted provider configuration
+{
+  "enabled": true,
+  "providerId": "agency_llm",
+  "displayName": "Agency LLM (On-Prem)",
+  "endpoint": "https://internal-llm.agency.gov.au/v1",
+  "apiKey": "",
+  "apiMode": "openai",
+  "model": "llama-3-70b",
+  "maxTokens": 4096,
+  "temperature": 0.0,
+  "timeout": 30000,
+  "customHeaders": {},
+  "capabilities": ["text"],
+  "priority": 30
+}</code></pre>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     4. PII TYPES
+     ══════════════════════════════════════════════════════════════════ -->
+<h2 id="pii-types">PII Types</h2>
+
+<p>The extension ships with 17 built-in PII type definitions optimised for Australian data formats. Each type has an ID, display name, regex pattern, redaction token, and category.</p>
+
+<table class="wiki-table">
+  <thead><tr><th>ID</th><th>Name</th><th>Token</th><th>Category</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>email</code></td><td>Email Address</td><td><code>[REDACTED_EMAIL]</code></td><td>Contact</td><td>Standard email addresses (user@domain.tld)</td></tr>
+    <tr><td><code>phone_au</code></td><td>Phone Number (AU)</td><td><code>[REDACTED_PHONE]</code></td><td>Contact</td><td>Australian phone numbers: 04xx, (0x) xxxx xxxx, +61</td></tr>
+    <tr><td><code>phone_intl</code></td><td>Phone Number (Intl)</td><td><code>[REDACTED_PHONE]</code></td><td>Contact</td><td>International phone numbers with country code</td></tr>
+    <tr><td><code>tfn</code></td><td>Tax File Number</td><td><code>[REDACTED_TFN]</code></td><td>Financial</td><td>Australian 8-9 digit tax file number</td></tr>
+    <tr><td><code>abn</code></td><td>Australian Business Number</td><td><code>[REDACTED_ABN]</code></td><td>Financial</td><td>11-digit ABN</td></tr>
+    <tr><td><code>acn</code></td><td>Australian Company Number</td><td><code>[REDACTED_ACN]</code></td><td>Financial</td><td>9-digit ACN (with ACN prefix)</td></tr>
+    <tr><td><code>medicare</code></td><td>Medicare Number</td><td><code>[REDACTED_MEDICARE]</code></td><td>Health</td><td>Australian Medicare card number (10-11 digits)</td></tr>
+    <tr><td><code>credit_card</code></td><td>Credit Card Number</td><td><code>[REDACTED_CARD]</code></td><td>Financial</td><td>Visa, Mastercard, Amex card numbers</td></tr>
+    <tr><td><code>bsb</code></td><td>BSB Number</td><td><code>[REDACTED_BSB]</code></td><td>Financial</td><td>Bank state branch number (6 digits with dash)</td></tr>
+    <tr><td><code>bank_account</code></td><td>Bank Account Number</td><td><code>[REDACTED_ACCOUNT]</code></td><td>Financial</td><td>6-10 digits following account/acct context</td></tr>
+    <tr><td><code>passport</code></td><td>Passport Number</td><td><code>[REDACTED_PASSPORT]</code></td><td>Identity</td><td>Australian passport (letter + 7 digits) and common formats</td></tr>
+    <tr><td><code>drivers_licence</code></td><td>Driver Licence Number</td><td><code>[REDACTED_LICENCE]</code></td><td>Identity</td><td>Australian driver licence numbers (varies by state)</td></tr>
+    <tr><td><code>dob</code></td><td>Date of Birth</td><td><code>[REDACTED_DOB]</code></td><td>Identity</td><td>Common date formats with DOB context</td></tr>
+    <tr><td><code>street_address</code></td><td>Street Address</td><td><code>[REDACTED_ADDRESS]</code></td><td>Contact</td><td>Australian-style street addresses (number + street name + type)</td></tr>
+    <tr><td><code>postcode_au</code></td><td>Australian Postcode</td><td><code>[REDACTED_POSTCODE]</code></td><td>Contact</td><td>4-digit postcode when preceded by state abbreviation</td></tr>
+    <tr><td><code>ip_address</code></td><td>IP Address (v4)</td><td><code>[REDACTED_IP]</code></td><td>Technical</td><td>IPv4 addresses</td></tr>
+    <tr><td><code>ipv6_address</code></td><td>IPv6 Address</td><td><code>[REDACTED_IP]</code></td><td>Technical</td><td>IPv6 addresses</td></tr>
+  </tbody>
+</table>
+
+<h3 id="custom-pii-types">Custom PII Types</h3>
+<p>Add your own PII types via the Settings page or managed configuration. Custom types are appended to the built-in list.</p>
+<pre><code>// Example custom type in settings
+{
+  "customPiiTypes": [
+    {
+      "id": "custom_employee_id",
+      "name": "Employee ID",
+      "description": "Agency employee identifiers (EMP-XXXXX)",
+      "token": "[REDACTED_EMPID]",
+      "enabled": true,
+      "regex": "EMP-\\d{5}",
+      "flags": "gi",
+      "category": "custom"
+    }
+  ]
+}</code></pre>
+<p>Requirements for custom types:</p>
+<ul>
+  <li><strong>id</strong> &mdash; unique string identifier (auto-generated as <code>custom_</code> + name if not provided)</li>
+  <li><strong>name</strong> &mdash; human-readable display name</li>
+  <li><strong>token</strong> &mdash; redaction replacement text, must be in <code>[BRACKETS]</code></li>
+  <li><strong>regex</strong> &mdash; valid JavaScript regular expression (tested before saving)</li>
+  <li><strong>flags</strong> &mdash; regex flags (typically <code>gi</code> for global case-insensitive)</li>
+</ul>
+
+<h3 id="pii-type-overrides">Type Overrides</h3>
+<p>Override properties of built-in types without replacing them entirely. Useful for disabling specific types or changing their tokens.</p>
+<pre><code>// Disable TFN detection and change email token
+{
+  "piiTypeOverrides": {
+    "tfn": { "enabled": false },
+    "email": { "token": "[EMAIL_REMOVED]" }
+  }
+}</code></pre>
+<p>Overrides are merged at load time. The <code>id</code> field can never be overridden.</p>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     5. TEXT PROTECTION
+     ══════════════════════════════════════════════════════════════════ -->
+<h2 id="text-protection">Text Protection</h2>
+
+<p>Three complementary systems protect text input across all web pages. They can be used independently or together.</p>
+
+<h3 id="auto-redact">Auto-Redact</h3>
+<p>Automatically scans and redacts PII as users type or paste content, without requiring a button click.</p>
+<table class="settings-table">
+  <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>autoRedact.enabled</code></td><td class="type">boolean</td><td><code>false</code></td><td>Master toggle. Off by default; auto-enabled on AI chat sites if <code>aiChatGuard.autoRedactOnAiSites</code> is true.</td></tr>
+    <tr><td><code>autoRedact.debounceMs</code></td><td class="type">number</td><td><code>2500</code></td><td>Milliseconds to wait after typing pauses before scanning.</td></tr>
+    <tr><td><code>autoRedact.onPaste</code></td><td class="type">boolean</td><td><code>true</code></td><td>Immediately redact pasted content (no debounce).</td></tr>
+    <tr><td><code>autoRedact.onlyOnAiSites</code></td><td class="type">boolean</td><td><code>true</code></td><td>Only auto-redact on detected AI chat sites (safer default).</td></tr>
+  </tbody>
+</table>
+
+<h3 id="submit-guard">Submit Guard</h3>
+<p>Intercepts form submissions and Enter-key presses to ensure redaction completes before data is sent.</p>
+<table class="settings-table">
+  <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>submitGuard.enabled</code></td><td class="type">boolean</td><td><code>true</code></td><td>Master toggle for submit interception.</td></tr>
+    <tr><td><code>submitGuard.interceptEnter</code></td><td class="type">boolean</td><td><code>true</code></td><td>Intercept Enter key in textareas (common in chat UIs).</td></tr>
+    <tr><td><code>submitGuard.interceptFormSubmit</code></td><td class="type">boolean</td><td><code>true</code></td><td>Intercept HTML form submit events.</td></tr>
+    <tr><td><code>submitGuard.interceptSendButtons</code></td><td class="type">boolean</td><td><code>true</code></td><td>Intercept click events on send/submit buttons.</td></tr>
+    <tr><td><code>submitGuard.onlyOnAiSites</code></td><td class="type">boolean</td><td><code>true</code></td><td>Only active on detected AI chat sites by default.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="upload-guard">Upload Guard</h3>
+<p>Intercepts file input changes to scan and redact documents before they are uploaded.</p>
+<table class="settings-table">
+  <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>uploadGuard.enabled</code></td><td class="type">boolean</td><td><code>true</code></td><td>Master toggle for upload interception.</td></tr>
+    <tr><td><code>uploadGuard.onlyOnAiSites</code></td><td class="type">boolean</td><td><code>true</code></td><td>Only active on detected AI chat sites by default.</td></tr>
+    <tr><td><code>uploadGuard.confirmBeforeUpload</code></td><td class="type">boolean</td><td><code>true</code></td><td>Show a confirmation dialog before allowing upload after redaction.</td></tr>
+  </tbody>
+</table>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     6. AI CHAT GUARD
+     ══════════════════════════════════════════════════════════════════ -->
+<h2 id="ai-chat-guard">AI Chat Guard</h2>
+
+<p>The AI Chat Guard is a specialised protection layer that activates automatically when you visit any known AI chat service. It ensures PII is redacted before text can be submitted to AI platforms.</p>
+
+<h3>How It Works</h3>
+<p>When you navigate to a page matching a known AI chat domain:</p>
+<ol>
+  <li>The extension detects the AI service via URL pattern matching against 30+ built-in domains</li>
+  <li>A <strong>protection banner</strong> is injected at the top of the page indicating the guard is active</li>
+  <li><strong>Auto-redact</strong> activates on all text fields (if <code>autoRedactOnAiSites</code> is enabled)</li>
+  <li><strong>Submit interception</strong> blocks form submission and Enter key until redaction completes</li>
+  <li><strong>Upload interception</strong> scans files before they can be attached</li>
+</ol>
+
+<h3 id="ai-services-detected">Services Detected</h3>
+<p>The following AI chat services are detected automatically:</p>
+<table class="wiki-table">
+  <thead><tr><th>Service</th><th>Domains</th></tr></thead>
+  <tbody>
+    <tr><td>OpenAI / ChatGPT</td><td><code>chat.openai.com</code>, <code>chatgpt.com</code>, <code>*.openai.com</code></td></tr>
+    <tr><td>Anthropic / Claude</td><td><code>claude.ai</code>, <code>*.anthropic.com</code></td></tr>
+    <tr><td>Google Gemini</td><td><code>gemini.google.com</code>, <code>aistudio.google.com</code>, <code>bard.google.com</code>, <code>notebooklm.google.com</code></td></tr>
+    <tr><td>Microsoft Copilot</td><td><code>copilot.microsoft.com</code>, <code>copilot.cloud.microsoft</code>, <code>*.copilot.microsoft.com</code>, <code>bing.com/chat</code>, <code>edgeservices.bing.com</code></td></tr>
+    <tr><td>X / Grok</td><td><code>grok.x.ai</code>, <code>x.com/i/grok</code></td></tr>
+    <tr><td>Meta AI</td><td><code>meta.ai</code>, <code>*.meta.ai</code></td></tr>
+    <tr><td>Perplexity</td><td><code>perplexity.ai</code>, <code>*.perplexity.ai</code></td></tr>
+    <tr><td>Mistral</td><td><code>chat.mistral.ai</code>, <code>*.mistral.ai</code></td></tr>
+    <tr><td>HuggingChat</td><td><code>huggingface.co/chat</code></td></tr>
+    <tr><td>Cohere</td><td><code>coral.cohere.com</code>, <code>dashboard.cohere.com</code></td></tr>
+    <tr><td>DeepSeek</td><td><code>chat.deepseek.com</code>, <code>*.deepseek.com</code></td></tr>
+    <tr><td>Poe</td><td><code>poe.com</code></td></tr>
+    <tr><td>You.com</td><td><code>you.com</code></td></tr>
+    <tr><td>Pi</td><td><code>pi.ai</code></td></tr>
+    <tr><td>Character.AI</td><td><code>character.ai</code>, <code>*.character.ai</code></td></tr>
+    <tr><td>Replika</td><td><code>replika.ai</code></td></tr>
+    <tr><td>Jasper</td><td><code>app.jasper.ai</code></td></tr>
+    <tr><td>Inflection</td><td><code>inflection.ai</code></td></tr>
+    <tr><td>Local / Self-hosted</td><td><code>localhost</code>, <code>127.0.0.1</code></td></tr>
+  </tbody>
+</table>
+
+<h3 id="ai-custom-domains">Custom Domains</h3>
+<p>Add additional domains to the AI chat guard via the <code>aiChatGuard.customAiDomains</code> array:</p>
+<pre><code>{
+  "aiChatGuard": {
+    "customAiDomains": [
+      "internal-ai.agency.gov.au",
+      "*.llm.myorg.com"
+    ]
+  }
+}</code></pre>
+
+<h3 id="ai-protection-banner">Protection Banner</h3>
+<p>When the AI Chat Guard is active, a banner is injected at the top of the page. The banner:</p>
+<ul>
+  <li>Indicates that PII protection is active</li>
+  <li>Is controlled by the <code>aiChatGuard.showAiBanner</code> setting (default <code>true</code>)</li>
+  <li>Cannot be dismissed by the page's JavaScript (injected via content script)</li>
+</ul>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     7. DOCUMENT PROCESSING
+     ══════════════════════════════════════════════════════════════════ -->
+<h2 id="document-processing">Document Processing</h2>
+
+<p>The extension processes 50+ file formats. Documents are handled by format-specific processors with a shared pipeline.</p>
+
+<h3 id="doc-docx">DOCX (Word)</h3>
+<p>DOCX files are ZIP archives containing XML. The extension:</p>
+<ol>
+  <li>Unzips the DOCX container</li>
+  <li>Parses the XML content (<code>word/document.xml</code>)</li>
+  <li>Runs PII detection on extracted text</li>
+  <li>Performs <strong>in-place XML replacement</strong> &mdash; PII tokens replace original text within the XML nodes</li>
+  <li>Re-zips to produce a valid <code>.docx</code> file with formatting preserved</li>
+</ol>
+<div class="callout callout-tip"><p>DOCX redaction preserves fonts, styles, tables, headers, footers, and other formatting. The output is a fully valid Word document.</p></div>
+
+<h3 id="doc-xlsx">XLSX / CSV</h3>
+<p><strong>XLSX:</strong> Extracted as XML (similar to DOCX), converted to CSV, and redacted as text. The output is a redacted CSV file (format conversion preserves data but not Excel formatting).</p>
+<p><strong>CSV:</strong> Processed as plain text with PII detection applied to cell contents.</p>
+
+<h3 id="doc-pdf">PDF</h3>
+<p>PDFs are handled through multiple paths depending on the document type:</p>
+
+<h4>Text-based PDFs</h4>
+<ol>
+  <li>pdf.js renders each page in an offscreen document</li>
+  <li>Text is extracted with character positions</li>
+  <li>PII detection runs on the extracted text</li>
+  <li>If bounding boxes are available, black rectangles are drawn over PII regions</li>
+  <li>Pages are flattened to images to prevent hidden text layer extraction</li>
+</ol>
+
+<h4>Scanned PDFs (OCR)</h4>
+<ol>
+  <li>pdf.js renders each page as a canvas image</li>
+  <li>Tesseract.js OCR extracts text with word-level bounding boxes</li>
+  <li>PII detection maps matches to OCR bounding boxes</li>
+  <li>Black rectangles are drawn over PII regions at the pixel level</li>
+  <li>Redacted pages are reassembled into a new PDF</li>
+</ol>
+
+<h4>Azure Native Document (Cloud)</h4>
+<p>When <code>nativeDocEnabled</code> is true, PDFs can be uploaded to Azure for server-side processing:</p>
+<ol>
+  <li>File is uploaded to Azure Blob Storage (source container)</li>
+  <li>Azure Language API processes the document (OCR + PII detection + redaction)</li>
+  <li>Redacted file is downloaded from the target container</li>
+</ol>
+
+<h3 id="doc-images">Images</h3>
+<p>PNG, JPEG, GIF, WebP, BMP, and TIFF images are supported:</p>
+<ol>
+  <li>Image is loaded into an offscreen canvas</li>
+  <li>Tesseract.js extracts text with word-level bounding boxes</li>
+  <li>PII matches are mapped to bounding box coordinates</li>
+  <li>Black rectangles are drawn over PII regions</li>
+  <li>Redacted image is exported as PNG</li>
+</ol>
+<div class="callout callout-info"><p>There is no hidden text layer in redacted images. PII is permanently destroyed at the pixel level.</p></div>
+
+<h3 id="doc-zip">ZIP Archives</h3>
+<p>ZIP files are processed recursively:</p>
+<ol>
+  <li>Archive is extracted to enumerate all entries</li>
+  <li>Each text-based entry is individually redacted (using regex)</li>
+  <li>Binary entries (images, PDFs) are kept as-is</li>
+  <li>Redacted entries are repacked into a new ZIP archive</li>
+</ol>
+
+<h3 id="doc-text">Text-based Files</h3>
+<p>The following file types are processed as plain text with PII detection applied directly:</p>
+<p><code>.txt</code>, <code>.csv</code>, <code>.json</code>, <code>.jsonl</code>, <code>.xml</code>, <code>.yaml</code>, <code>.yml</code>, <code>.toml</code>, <code>.ini</code>, <code>.cfg</code>, <code>.conf</code>, <code>.env</code>, <code>.log</code>, <code>.md</code>, <code>.rst</code>, <code>.adoc</code>, <code>.tex</code>, <code>.rtf</code>, <code>.html</code>, <code>.htm</code>, <code>.py</code>, <code>.rb</code>, <code>.php</code>, <code>.js</code>, <code>.ts</code>, <code>.jsx</code>, <code>.tsx</code>, <code>.java</code>, <code>.cs</code>, <code>.go</code>, <code>.rs</code>, <code>.swift</code>, <code>.kt</code>, <code>.scala</code>, <code>.c</code>, <code>.cpp</code>, <code>.h</code>, <code>.hpp</code>, <code>.sql</code>, <code>.sh</code>, <code>.bash</code>, <code>.zsh</code>, <code>.ps1</code>, <code>.r</code>, <code>.m</code>, <code>.pl</code>, and more.</p>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     8. SITE FILTERING
+     ══════════════════════════════════════════════════════════════════ -->
+<h2 id="site-filtering">Site Filtering</h2>
+
+<p>Control which websites the extension activates on. Three modes are available:</p>
+
+<table class="wiki-table">
+  <thead><tr><th>Mode</th><th>Behaviour</th></tr></thead>
+  <tbody>
+    <tr><td><code>all</code> <span class="badge badge-green">Default</span></td><td>Extension is active on all sites</td></tr>
+    <tr><td><code>whitelist</code></td><td>Extension is active <strong>only</strong> on listed sites</td></tr>
+    <tr><td><code>blacklist</code></td><td>Extension is active everywhere <strong>except</strong> listed sites</td></tr>
+  </tbody>
+</table>
+
+<div class="callout callout-warn"><p>If a site is filtered out (blacklisted or not whitelisted), the AI Chat Guard is also disabled on that site. The extension is fully inactive.</p></div>
+
+<h3 id="site-patterns">Pattern Syntax</h3>
+<p>Patterns support several formats:</p>
+<table class="wiki-table">
+  <thead><tr><th>Pattern</th><th>Example</th><th>Matches</th></tr></thead>
+  <tbody>
+    <tr><td>Exact domain</td><td><code>example.com</code></td><td>Only <code>example.com</code></td></tr>
+    <tr><td>Wildcard subdomain</td><td><code>*.example.com</code></td><td><code>sub.example.com</code>, <code>a.b.example.com</code>, <code>example.com</code></td></tr>
+    <tr><td>Suffix match</td><td><code>*.gov.au</code></td><td>All Australian government sites</td></tr>
+    <tr><td>Full URL prefix</td><td><code>https://portal.agency.gov.au/*</code></td><td>All pages under that path</td></tr>
+    <tr><td>Dot prefix</td><td><code>.gov.au</code></td><td>Any hostname ending in <code>.gov.au</code></td></tr>
+  </tbody>
+</table>
+
+<pre><code>// Whitelist example: only government sites
+{
+  "siteFilter": {
+    "mode": "whitelist",
+    "whitelist": [
+      "*.gov.au",
+      "*.defence.gov.au",
+      "https://portal.internal.agency.gov.au/*"
+    ]
+  }
+}
+
+// Blacklist example: disable on internal tools
+{
+  "siteFilter": {
+    "mode": "blacklist",
+    "blacklist": [
+      "jira.internal.com",
+      "confluence.internal.com"
+    ]
+  }
+}</code></pre>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     9. STANDALONE TOOL
+     ══════════════════════════════════════════════════════════════════ -->
+<h2 id="standalone-tool">Standalone Tool (redact.html)</h2>
+
+<p>The extension includes a standalone redaction tool at <code>redact.html</code> in the extension root. It provides a full-page interface for bulk document redaction.</p>
+
+<h3>How to Access</h3>
+<ul>
+  <li>Click the extension toolbar icon and select <strong>Open Redact Tool</strong></li>
+  <li>Or navigate directly to <code>chrome-extension://&lt;extension-id&gt;/redact.html</code></li>
+</ul>
+
+<h3>Features</h3>
+<ul>
+  <li><strong>Drag-and-drop</strong> &mdash; drop files directly onto the page for processing</li>
+  <li><strong>Batch processing</strong> &mdash; queue multiple files; they are processed sequentially</li>
+  <li><strong>Download results</strong> &mdash; redacted files are available for download individually</li>
+  <li><strong>Text input</strong> &mdash; paste text directly for instant redaction</li>
+  <li>Supports all document types the extension handles (DOCX, PDF, images, text files, ZIP)</li>
+</ul>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     10. CLASSIFICATION GATE
+     ══════════════════════════════════════════════════════════════════ -->
+<h2 id="classification-gate">Classification Gate</h2>
+
+<p>The Classification Gate prevents classified or sensitive documents from being uploaded to external services. It reads Microsoft Information Protection (MSIP) sensitivity labels embedded in DOCX and XLSX files.</p>
+
+<h3 id="msip-labels">MSIP Label Detection</h3>
+<p>OOXML files (DOCX, XLSX) store MSIP labels in <code>docProps/custom.xml</code> as key-value properties:</p>
+<pre><code>MSIP_Label_{GUID}_Enabled = true
+MSIP_Label_{GUID}_Name = "PROTECTED"
+MSIP_Label_{GUID}_SiteId = {tenant GUID}
+MSIP_Label_{GUID}_Method = Standard | Privileged
+MSIP_Label_{GUID}_ContentBits = 8</code></pre>
+<p>The gate reads these properties locally (Layer 1) without any API call. An optional Layer 2 check uses the Microsoft Graph API for deeper policy evaluation.</p>
+
+<h4>Gate Evaluation Flow</h4>
+<ol class="steps">
+  <li>Extract MSIP labels from the file's custom properties (local, instant)</li>
+  <li>Check if any label matches the <code>blockedLabels</code> list &mdash; if yes, <strong>block</strong> the upload</li>
+  <li>Check if the file is encrypted (ContentBits &amp; 0x8) and <code>blockEncrypted</code> is true &mdash; if yes, <strong>block</strong></li>
+  <li>Check if any label matches the <code>warnLabels</code> list &mdash; if yes, show <strong>warning</strong> but allow</li>
+  <li>Optionally query Graph API for additional policy evaluation (<code>checkViaApi</code>)</li>
+  <li>If no restrictions are found, <strong>allow</strong> the upload</li>
+</ol>
+
+<h3 id="pspf-table">Australian PSPF Classification Table</h3>
+<p>The following table shows the recommended gate configuration aligned with the Australian Government Protective Security Policy Framework (PSPF):</p>
+
+<table class="wiki-table">
+  <thead><tr><th>Classification</th><th>Gate Action</th><th>Rationale</th></tr></thead>
+  <tbody>
+    <tr><td><strong>UNOFFICIAL</strong></td><td><span class="badge badge-green">Allow</span></td><td>No protective marking. No restrictions on sharing.</td></tr>
+    <tr><td><strong>OFFICIAL</strong></td><td><span class="badge badge-green">Allow</span></td><td>Standard business information. Low business impact if compromised.</td></tr>
+    <tr><td><strong>OFFICIAL: Sensitive</strong></td><td><span class="badge badge-amber">Warn</span></td><td>Sensitive business information. Caution advised before sharing externally. User is warned but may proceed.</td></tr>
+    <tr><td><strong>PROTECTED</strong></td><td><span class="badge badge-red">Block</span></td><td>Valuable or sensitive information. Must not leave controlled environment. Upload is blocked with no override.</td></tr>
+    <tr><td><strong>SECRET</strong></td><td><span class="badge badge-red">Block</span></td><td>Classified material. Compromise could cause serious damage to national security. Upload is blocked absolutely.</td></tr>
+    <tr><td><strong>TOP SECRET</strong></td><td><span class="badge badge-red">Block</span></td><td>Classified material. Compromise could cause exceptionally grave damage to national security. Upload is blocked absolutely.</td></tr>
+  </tbody>
+</table>
+
+<pre><code>// Recommended enterprise configuration
+{
+  "providers": {
+    "purview": {
+      "gateEnabled": true,
+      "blockedLabels": ["PROTECTED", "SECRET", "TOP SECRET"],
+      "warnLabels": ["OFFICIAL:Sensitive", "OFFICIAL: Sensitive"],
+      "blockEncrypted": true
+    }
+  }
+}</code></pre>
+
+<h3 id="encrypted-blocking">Encrypted File Blocking</h3>
+<p>When <code>blockEncrypted</code> is <code>true</code> (default), files with the MSIP encryption bit set (ContentBits &amp; 0x8) are blocked regardless of their label name. This prevents Rights Management (RMS) protected documents from being uploaded.</p>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     11. ENTERPRISE DEPLOYMENT
+     ══════════════════════════════════════════════════════════════════ -->
+<h2 id="enterprise-deployment">Enterprise Deployment</h2>
+
+<p>The extension supports four deployment methods for organisations of all sizes. Each pushes configuration to <code>chrome.storage.managed</code> (or equivalent), which the extension reads at startup.</p>
+
+<h3 id="deploy-intune">Microsoft Intune</h3>
+<p>For organisations using Microsoft Endpoint Manager / Intune to manage Chrome on Windows, macOS, or ChromeOS devices.</p>
+<ol class="steps">
+  <li>In the <strong>Microsoft Intune admin center</strong>, navigate to <strong>Devices &rarr; Configuration profiles</strong></li>
+  <li>Create a new profile: <strong>Windows 10 and later &rarr; Templates &rarr; Administrative templates (custom)</strong></li>
+  <li>Add an OMA-URI setting for Chrome managed extensions:
+    <br><code>./Device/Vendor/MSFT/Policy/Config/Chrome~Policy~googlechrome~Extensions/ExtensionSettings</code></li>
+  <li>Set the value to a JSON string containing your extension ID and managed storage policy:
+<pre><code>{
+  "&lt;extension-id&gt;": {
+    "installation_mode": "force_installed",
+    "update_url": "https://clients2.google.com/service/update2/crx",
+    "managed_storage": {
+      "detectionMode": "auto",
+      "providers": {
+        "azure_pii": {
+          "enabled": true,
+          "connectionMode": "enterprise",
+          "tenantId": "YOUR_TENANT_ID",
+          "clientId": "YOUR_CLIENT_ID",
+          "endpoint": "https://your-resource.cognitiveservices.azure.com"
+        },
+        "purview": {
+          "gateEnabled": true,
+          "blockedLabels": ["PROTECTED", "SECRET", "TOP SECRET"],
+          "warnLabels": ["OFFICIAL:Sensitive"],
+          "blockEncrypted": true
+        }
+      },
+      "siteFilter": {
+        "mode": "whitelist",
+        "whitelist": ["*.gov.au"]
+      },
+      "_locked": {
+        "detectionMode": true,
+        "providers.azure_pii": true,
+        "providers.purview.gateEnabled": true,
+        "siteFilter": true
+      },
+      "_policyVersion": "2024.10.1"
+    }
+  }
+}</code></pre>
+  </li>
+  <li>Assign the profile to the target device groups</li>
+  <li>Devices receive the policy on next sync (typically within 15 minutes)</li>
+</ol>
+
+<h3 id="deploy-gpo">Group Policy (GPO)</h3>
+<p>For organisations using Active Directory Group Policy to manage Chrome on Windows devices.</p>
+<ol class="steps">
+  <li>Download the <a href="https://chromeenterprise.google/browser/download/">Chrome ADMX templates</a> and add to your Central Store</li>
+  <li>Open <strong>Group Policy Management Editor</strong></li>
+  <li>Navigate to <strong>Computer Configuration &rarr; Administrative Templates &rarr; Google Chrome &rarr; Extensions</strong></li>
+  <li>Open <strong>Configure extension management settings</strong></li>
+  <li>Paste the same JSON structure as the Intune example above, with your extension ID as the key</li>
+  <li>For managed storage specifically, create a registry key at:
+    <br><code>HKLM\SOFTWARE\Policies\Google\Chrome\3rdparty\extensions\&lt;extension-id&gt;\policy</code></li>
+  <li>Add REG_SZ values for each top-level setting, or use a single JSON blob via the <code>ExtensionSettings</code> policy</li>
+  <li>Run <code>gpupdate /force</code> on target machines or wait for the next GP refresh cycle</li>
+</ol>
+
+<h3 id="deploy-workspace">Google Workspace</h3>
+<p>For organisations using Google Workspace (formerly G Suite) to manage Chrome on ChromeOS or managed Chrome browsers.</p>
+<ol class="steps">
+  <li>Sign in to the <strong>Google Admin Console</strong> at <code>admin.google.com</code></li>
+  <li>Navigate to <strong>Devices &rarr; Chrome &rarr; Apps &amp; extensions</strong></li>
+  <li>Select the target organisational unit (OU)</li>
+  <li>Click the <strong>+</strong> button and add the extension by ID from the Chrome Web Store</li>
+  <li>Set installation policy to <strong>Force install</strong></li>
+  <li>Under <strong>Policy for extensions</strong>, paste the managed storage JSON configuration</li>
+  <li>Save and wait for devices in the OU to sync (typically within a few hours)</li>
+</ol>
+
+<h3 id="deploy-remote">Small Business (Remote Config)</h3>
+<p>For organisations without MDM or managed Chrome browsers. Uses a JSON file hosted on any HTTPS server.</p>
+<ol class="steps">
+  <li>Create a JSON configuration file with your desired settings (same schema as managed storage)</li>
+  <li>Host it on any HTTPS endpoint accessible to your users (e.g., <code>https://config.yourcompany.com/llss-config.json</code>)</li>
+  <li>In the extension settings, set the <strong>Config URL</strong> field to the JSON URL:
+<pre><code>{
+  "configUrl": "https://config.yourcompany.com/llss-config.json"
+}</code></pre>
+  </li>
+  <li>The extension fetches the config on startup and caches it in <code>chrome.storage.local</code></li>
+  <li>Remote config supports the same <code>_locked</code> and <code>_policyVersion</code> fields as managed storage</li>
+  <li>To update settings, simply update the hosted JSON file &mdash; the extension will pick up changes on next restart</li>
+</ol>
+<div class="callout callout-info"><p>Remote config has <strong>lower precedence</strong> than managed storage but higher than local user settings. If both are present, managed storage wins.</p></div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     12. MANAGED CONFIGURATION
+     ══════════════════════════════════════════════════════════════════ -->
+<h2 id="managed-config">Managed Configuration</h2>
+
+<p>The extension merges settings from four sources in a strict precedence order.</p>
+
+<h3>Merge Precedence</h3>
+<p>Settings are merged from lowest to highest priority:</p>
+<ol>
+  <li><strong>Defaults</strong> &mdash; hardcoded <code>DEFAULT_SETTINGS</code> in the extension code</li>
+  <li><strong>Local user settings</strong> &mdash; stored in <code>chrome.storage.local</code> (user-editable)</li>
+  <li><strong>Remote config</strong> &mdash; fetched from <code>configUrl</code> (small business deployment)</li>
+  <li><strong>Managed storage</strong> &mdash; pushed via <code>chrome.storage.managed</code> (enterprise MDM) &mdash; <strong>highest priority</strong></li>
+</ol>
+<p>Each layer deep-merges into the previous. Arrays are replaced, not concatenated. The final merged object includes a <code>_meta</code> property with lock information.</p>
+
+<h3 id="locked-settings">Locked Settings (<code>_locked</code>)</h3>
+<p>The <code>_locked</code> map is an object where keys are dot-separated setting paths and values are booleans. Locked settings:</p>
+<ul>
+  <li>Cannot be changed by the user in the Settings UI (controls are disabled with an "Admin" badge)</li>
+  <li>Are stripped from local storage on save (so the managed value always wins on reload)</li>
+  <li>Support parent-path locking &mdash; locking <code>aiChatGuard</code> locks all sub-keys like <code>aiChatGuard.enabled</code></li>
+</ul>
+<pre><code>{
+  "_locked": {
+    "detectionMode": true,
+    "providers.azure_pii": true,
+    "aiChatGuard": true,
+    "siteFilter.mode": true
+  }
+}</code></pre>
+
+<h3 id="policy-version">Policy Version (<code>_policyVersion</code>)</h3>
+<p>An optional string (e.g., <code>"2024.10.1"</code>) attached to the merged <code>_meta</code>. Useful for administrators to track which policy version is deployed. Displayed in the extension's Settings page for troubleshooting.</p>
+
+<h3 id="schema-versions">Schema Versions</h3>
+<p>The extension migrates settings automatically as the schema evolves:</p>
+<table class="wiki-table">
+  <thead><tr><th>Version</th><th>Changes</th></tr></thead>
+  <tbody>
+    <tr><td><strong>v1</strong></td><td>Initial schema. Basic detection settings, PII types, UI toggles.</td></tr>
+    <tr><td><strong>v2</strong></td><td>Added <code>providers</code> object (local_ai, regex, azure_pii, purview, hosted). Added <code>enableDocumentUpload</code>.</td></tr>
+    <tr><td><strong>v3</strong></td><td>Added <code>siteFilter</code>, <code>aiChatGuard</code>, <code>autoRedact</code>, <code>submitGuard</code>, <code>uploadGuard</code> sections.</td></tr>
+    <tr><td><strong>v4</strong></td><td>Migrated <code>useManagedIdentity</code> boolean to <code>connectionMode</code> string (<code>"direct"</code>/<code>"enterprise"</code>) in Azure PII.</td></tr>
+    <tr><td><strong>v5</strong></td><td>Added Classification Gate fields to Purview: <code>gateEnabled</code>, <code>blockedLabels</code>, <code>warnLabels</code>, <code>blockEncrypted</code>.</td></tr>
+  </tbody>
+</table>
+<p>Current schema version: <strong>5</strong> (stored as <code>schemaVersion: 5</code> in settings). Migration is automatic and non-destructive.</p>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     13. AZURE OAUTH2
+     ══════════════════════════════════════════════════════════════════ -->
+<h2 id="azure-oauth">Azure OAuth2</h2>
+
+<p>Enterprise mode uses Azure AD OAuth2 with PKCE for secure, credential-free authentication to Azure Cognitive Services.</p>
+
+<h3 id="azure-app-registration">App Registration Setup</h3>
+<ol class="steps">
+  <li>In the <strong>Azure Portal</strong>, go to <strong>Azure Active Directory &rarr; App registrations &rarr; New registration</strong></li>
+  <li>Set the name (e.g., "LLSS Chrome Extension") and select <strong>Single tenant</strong> or <strong>Multi-tenant</strong> as needed</li>
+  <li>Set the <strong>Redirect URI</strong> type to <strong>Web</strong> and enter the value from <code>chrome.identity.getRedirectURL()</code>
+    <br>(format: <code>https://&lt;extension-id&gt;.chromiumapp.org/</code>)</li>
+  <li>Under <strong>Authentication</strong>, enable <strong>Allow public client flows</strong> (required for PKCE)</li>
+  <li>Under <strong>API permissions</strong>, add <strong>Azure Cognitive Services &rarr; user_impersonation</strong> (delegated)</li>
+  <li>If using Azure Blob Storage for native documents, also add <strong>Azure Storage &rarr; user_impersonation</strong></li>
+  <li>Grant admin consent for the tenant</li>
+  <li>Copy the <strong>Application (client) ID</strong> and <strong>Directory (tenant) ID</strong> into the extension settings</li>
+</ol>
+
+<h3 id="azure-pkce-flow">PKCE Flow</h3>
+<p>The extension uses the Authorization Code Flow with Proof Key for Code Exchange (PKCE):</p>
+<ol>
+  <li><strong>Code verifier</strong> &mdash; 32 random bytes, base64url-encoded</li>
+  <li><strong>Code challenge</strong> &mdash; SHA-256 hash of the verifier, base64url-encoded (S256 method)</li>
+  <li><strong>Authorization request</strong> &mdash; <code>chrome.identity.launchWebAuthFlow()</code> opens the Azure AD login popup with the challenge</li>
+  <li><strong>Authorization code</strong> &mdash; extracted from the callback URL, validated against the state parameter</li>
+  <li><strong>Token exchange</strong> &mdash; POST to <code>/oauth2/v2.0/token</code> with the code and verifier</li>
+  <li><strong>Tokens stored</strong> &mdash; access token, refresh token, and ID token saved to <code>chrome.storage.session</code> (memory-only)</li>
+</ol>
+<div class="callout callout-tip"><p>Tokens are stored in <code>chrome.storage.session</code>, which is memory-only and cleared when the browser closes. No credentials are ever written to disk.</p></div>
+
+<h3 id="azure-token-management">Token Management</h3>
+<ul>
+  <li><strong>Auto-refresh:</strong> An alarm is scheduled to refresh the access token 5 minutes before expiry</li>
+  <li><strong>Scope:</strong> <code>https://cognitiveservices.azure.com/.default offline_access openid profile</code></li>
+  <li><strong>Alternate scopes:</strong> For Azure Storage access, the extension requests <code>https://storage.azure.com/.default</code> using the stored refresh token</li>
+  <li><strong>Token cache:</strong> Alternate scope tokens are cached in <code>chrome.storage.session</code> with expiry tracking</li>
+  <li><strong>Failure recovery:</strong> If refresh fails, tokens are cleared and the user must sign in again</li>
+</ul>
+
+<h3 id="azure-sign-in-out">Sign In / Sign Out</h3>
+<pre><code>// Sign in (from background script or popup)
+const userInfo = await LLSS_AzureAuth.signIn(tenantId, clientId);
+// Returns: { name: "Jane Smith", email: "jane@agency.gov.au", tenantId: "..." }
+
+// Get token for API calls
+const token = await LLSS_AzureAuth.getAccessToken(tenantId, clientId);
+
+// Check status
+const signedIn = await LLSS_AzureAuth.isSignedIn();
+
+// Sign out (clears all tokens)
+await LLSS_AzureAuth.signOut();</code></pre>
+
+<h3 id="azure-managed-identity">Managed Identity for Storage</h3>
+<p>In Enterprise mode with native document redaction:</p>
+<ul>
+  <li>The Azure Language resource uses a <strong>managed identity</strong> to access Blob Storage (no SAS tokens needed)</li>
+  <li>Admin grants the Language resource <strong>Storage Blob Data Reader</strong> on the source container and <strong>Storage Blob Data Contributor</strong> on the target container</li>
+  <li>The extension uses the user's OAuth2 token (with storage scope) to upload/download files</li>
+  <li>The Language resource accesses the same containers via its managed identity when processing the job</li>
+</ul>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     14. SETTINGS REFERENCE
+     ══════════════════════════════════════════════════════════════════ -->
+<h2 id="settings-reference">Settings Reference</h2>
+
+<p>Complete reference for every setting in <code>DEFAULT_SETTINGS</code>. Settings are organised by section.</p>
+
+<h3 id="settings-detection">Detection</h3>
+<table class="settings-table">
+  <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>detectionMode</code></td><td class="type">string</td><td><code>"auto"</code></td><td>Detection mode: <code>"auto"</code>, <code>"ai_only"</code>, <code>"regex_only"</code>, <code>"cloud_only"</code>, or <code>"hosted_only"</code>.</td></tr>
+    <tr><td><code>enableVectorFallback</code></td><td class="type">boolean</td><td><code>true</code></td><td>Run the vector name detector alongside regex fallback.</td></tr>
+    <tr><td><code>vectorThreshold</code></td><td class="type">number</td><td><code>0.45</code></td><td>Confidence threshold for vector name detection (0 to 1).</td></tr>
+    <tr><td><code>regexAfterAi</code></td><td class="type">boolean</td><td><code>false</code></td><td>Belt-and-suspenders: also run regex after AI to catch anything missed.</td></tr>
+    <tr><td><code>customPiiTypes</code></td><td class="type">array</td><td><code>[]</code></td><td>Custom PII type definitions (merged with built-in defaults).</td></tr>
+    <tr><td><code>piiTypeOverrides</code></td><td class="type">object</td><td><code>{}</code></td><td>Override properties on built-in PII types (e.g., <code>{ "email": { "enabled": false } }</code>).</td></tr>
+    <tr><td><code>sessionTimeoutMinutes</code></td><td class="type">number</td><td><code>5</code></td><td>Idle timeout in minutes before destroying the Gemini Nano AI session.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="settings-ui">UI</h3>
+<table class="settings-table">
+  <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>showRedactButton</code></td><td class="type">boolean</td><td><code>true</code></td><td>Show the green Redact button on all textareas and text inputs.</td></tr>
+    <tr><td><code>enableContentEditable</code></td><td class="type">boolean</td><td><code>true</code></td><td>Also attach to contenteditable elements (rich text editors).</td></tr>
+    <tr><td><code>enableDocumentUpload</code></td><td class="type">boolean</td><td><code>true</code></td><td>Show the document upload button alongside the text redact button.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="settings-site-filter">Site Filter</h3>
+<table class="settings-table">
+  <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>siteFilter.mode</code></td><td class="type">string</td><td><code>"all"</code></td><td>Filter mode: <code>"all"</code>, <code>"whitelist"</code>, or <code>"blacklist"</code>.</td></tr>
+    <tr><td><code>siteFilter.whitelist</code></td><td class="type">array</td><td><code>[]</code></td><td>URL patterns for whitelist mode.</td></tr>
+    <tr><td><code>siteFilter.blacklist</code></td><td class="type">array</td><td><code>[]</code></td><td>URL patterns for blacklist mode.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="settings-ai-chat-guard">AI Chat Guard</h3>
+<table class="settings-table">
+  <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>aiChatGuard.enabled</code></td><td class="type">boolean</td><td><code>true</code></td><td>Master toggle for AI chat protection.</td></tr>
+    <tr><td><code>aiChatGuard.autoRedactOnAiSites</code></td><td class="type">boolean</td><td><code>true</code></td><td>Auto-redact text before it can be submitted to AI services.</td></tr>
+    <tr><td><code>aiChatGuard.blockSubmitUntilRedacted</code></td><td class="type">boolean</td><td><code>true</code></td><td>Block form submission until redaction completes on AI chat sites.</td></tr>
+    <tr><td><code>aiChatGuard.interceptUploads</code></td><td class="type">boolean</td><td><code>true</code></td><td>Intercept file uploads on AI chat sites for scanning.</td></tr>
+    <tr><td><code>aiChatGuard.customAiDomains</code></td><td class="type">array</td><td><code>[]</code></td><td>Additional domains to treat as AI chat services.</td></tr>
+    <tr><td><code>aiChatGuard.showAiBanner</code></td><td class="type">boolean</td><td><code>true</code></td><td>Show a protection banner on detected AI chat sites.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="settings-auto-redact">Auto-Redact</h3>
+<table class="settings-table">
+  <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>autoRedact.enabled</code></td><td class="type">boolean</td><td><code>false</code></td><td>Auto-redact PII as users type or paste. Off by default.</td></tr>
+    <tr><td><code>autoRedact.debounceMs</code></td><td class="type">number</td><td><code>2500</code></td><td>Debounce delay in ms before redacting after typing pauses.</td></tr>
+    <tr><td><code>autoRedact.onPaste</code></td><td class="type">boolean</td><td><code>true</code></td><td>Immediately redact pasted content (no debounce).</td></tr>
+    <tr><td><code>autoRedact.onlyOnAiSites</code></td><td class="type">boolean</td><td><code>true</code></td><td>Only auto-redact on detected AI chat sites.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="settings-submit-guard">Submit Guard</h3>
+<table class="settings-table">
+  <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>submitGuard.enabled</code></td><td class="type">boolean</td><td><code>true</code></td><td>Master toggle for submit interception.</td></tr>
+    <tr><td><code>submitGuard.interceptEnter</code></td><td class="type">boolean</td><td><code>true</code></td><td>Intercept Enter key in textareas.</td></tr>
+    <tr><td><code>submitGuard.interceptFormSubmit</code></td><td class="type">boolean</td><td><code>true</code></td><td>Intercept HTML form submit events.</td></tr>
+    <tr><td><code>submitGuard.interceptSendButtons</code></td><td class="type">boolean</td><td><code>true</code></td><td>Intercept click on send/submit buttons.</td></tr>
+    <tr><td><code>submitGuard.onlyOnAiSites</code></td><td class="type">boolean</td><td><code>true</code></td><td>Only active on detected AI chat sites.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="settings-upload-guard">Upload Guard</h3>
+<table class="settings-table">
+  <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>uploadGuard.enabled</code></td><td class="type">boolean</td><td><code>true</code></td><td>Master toggle for upload interception.</td></tr>
+    <tr><td><code>uploadGuard.onlyOnAiSites</code></td><td class="type">boolean</td><td><code>true</code></td><td>Only active on detected AI chat sites.</td></tr>
+    <tr><td><code>uploadGuard.confirmBeforeUpload</code></td><td class="type">boolean</td><td><code>true</code></td><td>Show confirmation dialog before allowing upload.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="settings-providers">Providers</h3>
+
+<h4>Local AI (Gemini Nano)</h4>
+<table class="settings-table">
+  <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>providers.local_ai.enabled</code></td><td class="type">boolean</td><td><code>true</code></td><td>Use Gemini Nano when available.</td></tr>
+  </tbody>
+</table>
+
+<h4>Regex</h4>
+<table class="settings-table">
+  <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>providers.regex.enabled</code></td><td class="type">boolean</td><td><code>true</code></td><td>Always-available regex fallback.</td></tr>
+  </tbody>
+</table>
+
+<h4>Azure PII</h4>
+<table class="settings-table">
+  <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>providers.azure_pii.enabled</code></td><td class="type">boolean</td><td><code>false</code></td><td>Enable Azure AI Language PII detection.</td></tr>
+    <tr><td><code>providers.azure_pii.endpoint</code></td><td class="type">string</td><td><code>""</code></td><td>Azure Language resource endpoint URL.</td></tr>
+    <tr><td><code>providers.azure_pii.apiKey</code></td><td class="type">string</td><td><code>""</code></td><td>API key (Direct mode only).</td></tr>
+    <tr><td><code>providers.azure_pii.apiVersion</code></td><td class="type">string</td><td><code>"2023-04-01"</code></td><td>API version string.</td></tr>
+    <tr><td><code>providers.azure_pii.language</code></td><td class="type">string</td><td><code>"en"</code></td><td>Detection language code.</td></tr>
+    <tr><td><code>providers.azure_pii.domain</code></td><td class="type">string</td><td><code>"none"</code></td><td>Detection domain: <code>"none"</code> (general) or <code>"phi"</code> (health).</td></tr>
+    <tr><td><code>providers.azure_pii.categoriesFilter</code></td><td class="type">array</td><td><code>[]</code></td><td>Entity categories to detect (empty = all).</td></tr>
+    <tr><td><code>providers.azure_pii.connectionMode</code></td><td class="type">string</td><td><code>"direct"</code></td><td><code>"direct"</code> (API key) or <code>"enterprise"</code> (OAuth2 PKCE).</td></tr>
+    <tr><td><code>providers.azure_pii.tenantId</code></td><td class="type">string</td><td><code>""</code></td><td>Azure AD tenant ID (Enterprise mode).</td></tr>
+    <tr><td><code>providers.azure_pii.clientId</code></td><td class="type">string</td><td><code>""</code></td><td>App Registration client ID (Enterprise mode).</td></tr>
+    <tr><td><code>providers.azure_pii.nativeDocEnabled</code></td><td class="type">boolean</td><td><code>false</code></td><td>Enable server-side document redaction via Azure.</td></tr>
+    <tr><td><code>providers.azure_pii.sourceContainerUrl</code></td><td class="type">string</td><td><code>""</code></td><td>Blob storage URL for source uploads.</td></tr>
+    <tr><td><code>providers.azure_pii.targetContainerUrl</code></td><td class="type">string</td><td><code>""</code></td><td>Blob storage URL for redacted results.</td></tr>
+    <tr><td><code>providers.azure_pii.redactionPolicy</code></td><td class="type">string</td><td><code>"entityMask"</code></td><td>Redaction policy: <code>"characterMask"</code>, <code>"entityMask"</code>, or <code>"noMask"</code>.</td></tr>
+  </tbody>
+</table>
+
+<h4>Purview DLP</h4>
+<table class="settings-table">
+  <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>providers.purview.enabled</code></td><td class="type">boolean</td><td><code>false</code></td><td>Enable Microsoft Purview DLP.</td></tr>
+    <tr><td><code>providers.purview.tenantId</code></td><td class="type">string</td><td><code>""</code></td><td>Azure AD tenant ID.</td></tr>
+    <tr><td><code>providers.purview.clientId</code></td><td class="type">string</td><td><code>""</code></td><td>App Registration client ID.</td></tr>
+    <tr><td><code>providers.purview.clientSecret</code></td><td class="type">string</td><td><code>""</code></td><td>Client secret for application auth.</td></tr>
+    <tr><td><code>providers.purview.accessToken</code></td><td class="type">string</td><td><code>""</code></td><td>Pre-obtained access token (alternative).</td></tr>
+    <tr><td><code>providers.purview.graphEndpoint</code></td><td class="type">string</td><td><code>"https://graph.microsoft.com/beta"</code></td><td>Graph API endpoint URL.</td></tr>
+    <tr><td><code>providers.purview.useDelegatedAuth</code></td><td class="type">boolean</td><td><code>false</code></td><td>Use delegated (user) auth instead of application auth.</td></tr>
+    <tr><td><code>providers.purview.dlpPolicyId</code></td><td class="type">string</td><td><code>""</code></td><td>Specific DLP policy ID to evaluate.</td></tr>
+    <tr><td><code>providers.purview.sensitiveInfoTypes</code></td><td class="type">array</td><td><code>[]</code></td><td>Sensitive info type IDs to detect.</td></tr>
+    <tr><td><code>providers.purview.gateEnabled</code></td><td class="type">boolean</td><td><code>false</code></td><td>Enable Classification Gate (pre-upload label check).</td></tr>
+    <tr><td><code>providers.purview.blockedLabels</code></td><td class="type">array</td><td><code>[]</code></td><td>Sensitivity label names to block (e.g., <code>["PROTECTED","SECRET"]</code>).</td></tr>
+    <tr><td><code>providers.purview.warnLabels</code></td><td class="type">array</td><td><code>[]</code></td><td>Sensitivity label names to warn but allow.</td></tr>
+    <tr><td><code>providers.purview.blockedSensitivity</code></td><td class="type">number</td><td><code>0</code></td><td>Block labels with sensitivity >= this value (0 = disabled).</td></tr>
+    <tr><td><code>providers.purview.blockEncrypted</code></td><td class="type">boolean</td><td><code>true</code></td><td>Block files with encryption/RMS markers.</td></tr>
+    <tr><td><code>providers.purview.checkViaApi</code></td><td class="type">boolean</td><td><code>false</code></td><td>Also evaluate via Graph API (requires auth).</td></tr>
+  </tbody>
+</table>
+
+<h4>Hosted Models</h4>
+<table class="settings-table">
+  <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>providers.hosted</code></td><td class="type">array</td><td><code>[]</code></td><td>Array of hosted model configurations. Each entry follows the schema described in the <a href="#provider-hosted">Hosted Models</a> section.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="settings-debug">Debug &amp; Misc</h3>
+<table class="settings-table">
+  <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>debugMode</code></td><td class="type">boolean</td><td><code>false</code></td><td>Output detailed diagnostics to the browser console.</td></tr>
+    <tr><td><code>configUrl</code></td><td class="type">string</td><td><code>""</code></td><td>Remote configuration URL (for small-business deployment without MDM).</td></tr>
+    <tr><td><code>schemaVersion</code></td><td class="type">number</td><td><code>3</code></td><td>Settings schema version. Auto-migrated on load. Do not set manually.</td></tr>
+  </tbody>
+</table>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     15. TROUBLESHOOTING
+     ══════════════════════════════════════════════════════════════════ -->
+<h2 id="troubleshooting">Troubleshooting</h2>
+
+<h3 id="debug-mode">Debug Mode</h3>
+<p>Enable debug logging to get detailed diagnostics from every subsystem:</p>
+<ol>
+  <li>Open the extension <strong>Settings</strong> page</li>
+  <li>Scroll to the <strong>Troubleshooting</strong> section</li>
+  <li>Toggle <strong>Debug mode</strong> on</li>
+  <li>All subsystems will output <code>[LLSS:subsystem]</code> prefixed messages to the console</li>
+</ol>
+<p>Subsystem labels include: <code>nano</code>, <code>regex</code>, <code>vector</code>, <code>pipeline</code>, <code>azure-auth</code>, <code>azure-pii</code>, <code>purview-gate</code>, <code>document</code>, <code>offscreen</code>, <code>content-script</code>, and more.</p>
+<div class="callout callout-info"><p>Error-level messages (<code>LLSS_debug.error()</code>) are <strong>always</strong> output regardless of debug mode, so critical failures are always visible.</p></div>
+
+<h3 id="console-locations">Console Locations</h3>
+<p>Chrome extensions have three separate console contexts. You need to check the right one:</p>
+
+<table class="wiki-table">
+  <thead><tr><th>Console</th><th>How to Open</th><th>What It Shows</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Page Console</strong></td>
+      <td>Right-click page &rarr; Inspect &rarr; Console tab</td>
+      <td>Content script logs, redact button interactions, auto-redact, submit/upload guard events, AI chat guard banner</td>
+    </tr>
+    <tr>
+      <td><strong>Service Worker Console</strong></td>
+      <td><code>chrome://extensions</code> &rarr; find extension &rarr; click "service worker" link</td>
+      <td>Background script logs, pipeline execution, provider availability, Azure auth, token refresh, alarm events, managed config loading</td>
+    </tr>
+    <tr>
+      <td><strong>Offscreen Console</strong></td>
+      <td><code>chrome://extensions</code> &rarr; find extension &rarr; click "offscreen.html" link (when active)</td>
+      <td>PDF rendering, Tesseract.js OCR, pixel redaction, canvas operations, worker pool status</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="common-errors">Common Errors &amp; Solutions</h3>
+
+<table class="wiki-table">
+  <thead><tr><th>Error</th><th>Cause</th><th>Solution</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>No redaction providers available</code></td>
+      <td>All configured providers are disabled or unavailable</td>
+      <td>Ensure at least <code>providers.regex.enabled</code> is true. Check that Gemini Nano flags are enabled if using AI mode.</td>
+    </tr>
+    <tr>
+      <td><code>Provider 'local_ai' is not available</code></td>
+      <td>Gemini Nano is not enabled or the model is not downloaded</td>
+      <td>Enable Chrome flags (<code>#optimization-guide-on-device-model</code> and <code>#prompt-api-for-gemini-nano</code>), restart Chrome, and wait for the model to download.</td>
+    </tr>
+    <tr>
+      <td><code>Token exchange failed: HTTP 400</code></td>
+      <td>Azure AD app registration misconfigured</td>
+      <td>Verify redirect URI matches <code>chrome.identity.getRedirectURL()</code>. Ensure "Allow public client flows" is enabled. Check client ID and tenant ID.</td>
+    </tr>
+    <tr>
+      <td><code>State mismatch &mdash; possible CSRF attack</code></td>
+      <td>Auth flow interrupted or replayed</td>
+      <td>Try signing in again. If persistent, clear extension data and re-authenticate.</td>
+    </tr>
+    <tr>
+      <td><code>Token refresh failed &mdash; sign in again</code></td>
+      <td>Refresh token expired or revoked</td>
+      <td>Sign out and sign in again. Check Azure AD Conditional Access policies for session lifetime limits.</td>
+    </tr>
+    <tr>
+      <td><code>Not signed in to Azure AD</code></td>
+      <td>Enterprise mode requires OAuth2 but user has not signed in</td>
+      <td>Open the popup or settings page and click the Azure AD Sign In button.</td>
+    </tr>
+    <tr>
+      <td><code>No API key configured</code></td>
+      <td>Direct mode Azure PII requires an API key</td>
+      <td>Enter the API key from Azure portal in Settings &rarr; Providers &rarr; Azure PII &rarr; API Key.</td>
+    </tr>
+    <tr>
+      <td><code>Document processing failed</code></td>
+      <td>No provider could handle the document format</td>
+      <td>Check the pipeline steps in the error message. Ensure <code>vendor/setup.sh</code> has been run for PDF/image support. Check the offscreen console for OCR errors.</td>
+    </tr>
+    <tr>
+      <td><code>ZIP processing not available</code></td>
+      <td>ZIP parser module not loaded</td>
+      <td>Ensure all extension files are intact. Reload the extension from <code>chrome://extensions</code>.</td>
+    </tr>
+    <tr>
+      <td><code>Offscreen document not available</code></td>
+      <td>Chrome did not create the offscreen document</td>
+      <td>Reload the extension. Check <code>chrome://extensions</code> for error badges. Ensure the <code>offscreen</code> permission is in manifest.json.</td>
+    </tr>
+    <tr>
+      <td><code>Graph API evaluation failed: 403</code></td>
+      <td>Purview API permissions insufficient</td>
+      <td>Ensure the app registration has the required Graph API permissions and admin consent has been granted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="performance">Performance Issues</h3>
+<ul>
+  <li><strong>Slow OCR:</strong> Tesseract.js OCR can take 5-15 seconds per page. This is normal for on-device processing. Consider Azure native documents for faster processing of large PDFs.</li>
+  <li><strong>High memory on large PDFs:</strong> Each page is rendered as a full canvas. Close other tabs if Chrome runs low on memory. The worker pool limits concurrent operations.</li>
+  <li><strong>Debounce too aggressive:</strong> If auto-redact interferes with typing, increase <code>autoRedact.debounceMs</code> (default 2500ms).</li>
+  <li><strong>Extension slows page load:</strong> Ensure <code>siteFilter</code> is configured to limit activation to relevant sites rather than running on all pages.</li>
+  <li><strong>Gemini Nano slow on first use:</strong> The model is loaded on demand. First inference may take a few seconds; subsequent calls are faster within the session timeout window.</li>
+</ul>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     16. SECURITY & PRIVACY
+     ══════════════════════════════════════════════════════════════════ -->
+<h2 id="security-privacy">Security &amp; Privacy</h2>
+
+<h3>Design Principles</h3>
+<ul>
+  <li><strong>Local-first:</strong> All detection and redaction runs on-device by default. No data leaves the browser unless a cloud provider is explicitly configured by the user or administrator.</li>
+  <li><strong>Zero stored PII:</strong> The extension never persists PII to disk. Text is processed in memory and immediately replaced with redaction tokens.</li>
+  <li><strong>No background data collection:</strong> The extension does not maintain persistent connections, background sync, or any form of data exfiltration channel.</li>
+</ul>
+
+<h3 id="no-telemetry">No Telemetry</h3>
+<ul>
+  <li>No analytics, usage metrics, or crash reports are collected</li>
+  <li>No phone-home requests to any server</li>
+  <li>No user tracking, cookies, or fingerprinting</li>
+  <li>Third-party libraries (pdf.js, Tesseract.js) run entirely locally</li>
+  <li>Statistics (redaction counts) are stored in <code>chrome.storage.local</code> &mdash; never transmitted</li>
+</ul>
+
+<h3 id="provably-secure">Provably Secure Redaction</h3>
+<ul>
+  <li><strong>Text redaction:</strong> PII is replaced with bracketed tokens (e.g., <code>[REDACTED_EMAIL]</code>). The original text is overwritten in the DOM.</li>
+  <li><strong>Image redaction:</strong> Black rectangles are drawn directly over PII regions on the canvas. There is no hidden text layer. The original pixel data is permanently destroyed.</li>
+  <li><strong>PDF flattening:</strong> Redacted PDFs are flattened to images to prevent extraction of a hidden text layer from the original PDF structure.</li>
+  <li><strong>DOCX XML replacement:</strong> PII is replaced within the XML nodes of the DOCX file. The redacted document is a valid Word file with tokens in place of PII.</li>
+</ul>
+
+<h3 id="enterprise-security">Enterprise Mode Security</h3>
+<ul>
+  <li><strong>OAuth2 PKCE:</strong> No client secrets stored in the extension. PKCE prevents authorization code interception.</li>
+  <li><strong>Session-only tokens:</strong> All OAuth2 tokens are stored in <code>chrome.storage.session</code> (memory-only, cleared on browser close).</li>
+  <li><strong>Managed identity:</strong> Azure native document processing uses managed identity for storage access. No SAS tokens or storage keys are stored in the extension.</li>
+  <li><strong>Locked settings:</strong> Administrators can lock critical settings via <code>_locked</code> map so users cannot disable protection.</li>
+  <li><strong>Classification gate:</strong> Prevents classified documents from being uploaded, even if the user attempts to bypass redaction.</li>
+  <li><strong>API key storage:</strong> In Direct mode, API keys are stored in <code>chrome.storage.local</code> (per-profile, not synced). Enterprise mode eliminates API keys entirely.</li>
+</ul>
+
+
+</div><!-- /content-inner -->
+</main>
+
+<!-- ═══════════════════════════════════════════════════════
+     FOOTER
+     ═══════════════════════════════════════════════════════ -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">Loose Lips Sink Ships &mdash; Support Wiki</div>
+    <div class="footer-copy">
+      A product of <a href="https://blackmountainai.com.au">Black Mountain AI</a> &middot; MIT License &middot; Built for Australian government and enterprise environments.
+    </div>
+  </div>
+</footer>
+
+<!-- ── BACK TO TOP ─────────────────────────────────────── -->
+<button class="back-to-top" id="back-to-top" aria-label="Back to top">
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 12 10 7 15 12"/></svg>
+</button>
+
+<!-- ═══════════════════════════════════════════════════════
+     JAVASCRIPT
+     ═══════════════════════════════════════════════════════ -->
+<script>
+(function() {
+  'use strict';
+
+  // ── Sidebar collapse ──────────────────────────────────
+  document.querySelectorAll('.sidebar-heading').forEach(function(heading) {
+    heading.addEventListener('click', function() {
+      var section = heading.parentElement;
+      section.classList.toggle('collapsed');
+    });
+  });
+
+  // ── Mobile hamburger ──────────────────────────────────
+  var hamburger = document.getElementById('hamburger-btn');
+  var sidebar = document.getElementById('sidebar');
+  var overlay = document.getElementById('sidebar-overlay');
+
+  function toggleMobileSidebar() {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('open');
+  }
+
+  hamburger.addEventListener('click', toggleMobileSidebar);
+  overlay.addEventListener('click', toggleMobileSidebar);
+
+  // Close sidebar on link click (mobile)
+  sidebar.querySelectorAll('a').forEach(function(link) {
+    link.addEventListener('click', function() {
+      if (window.innerWidth <= 900) {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('open');
+      }
+    });
+  });
+
+  // ── Back to top button ────────────────────────────────
+  var backToTop = document.getElementById('back-to-top');
+
+  window.addEventListener('scroll', function() {
+    if (window.scrollY > 400) {
+      backToTop.classList.add('visible');
+    } else {
+      backToTop.classList.remove('visible');
+    }
+  });
+
+  backToTop.addEventListener('click', function() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // ── Active sidebar link tracking ──────────────────────
+  var sidebarLinks = sidebar.querySelectorAll('a[href^="#"]');
+  var headings = [];
+
+  sidebarLinks.forEach(function(link) {
+    var id = link.getAttribute('href').substring(1);
+    var el = document.getElementById(id);
+    if (el) headings.push({ el: el, link: link });
+  });
+
+  function updateActiveLink() {
+    var scrollPos = window.scrollY + 120;
+    var active = null;
+
+    for (var i = headings.length - 1; i >= 0; i--) {
+      if (headings[i].el.offsetTop <= scrollPos) {
+        active = headings[i];
+        break;
+      }
+    }
+
+    sidebarLinks.forEach(function(link) {
+      link.classList.remove('active');
+    });
+
+    if (active) {
+      active.link.classList.add('active');
+      // Expand parent section if collapsed
+      var section = active.link.closest('.sidebar-section');
+      if (section && section.classList.contains('collapsed')) {
+        section.classList.remove('collapsed');
+      }
+    }
+  }
+
+  window.addEventListener('scroll', updateActiveLink);
+  updateActiveLink();
+})();
+</script>
+</body>
+</html>

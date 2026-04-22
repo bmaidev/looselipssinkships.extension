@@ -2,11 +2,10 @@
   "manifest_version": 3,
   "name": "Loose Lips Sink Ships",
   "version": "4.0.0",
-  "description": "Enterprise PII redaction with local-first processing. PDF and image redaction via OCR. Supports Chrome Gemini Nano, regex fallback, Azure AI Language, Microsoft Purview, and organisation-hosted models.",
+  "description": "Enterprise last-mile PII Interception & redaction with local-first processing.",
   "permissions": [
     "storage",
     "activeTab",
-    "scripting",
     "offscreen",
     "alarms",
     "identity"

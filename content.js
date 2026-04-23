@@ -77,27 +77,68 @@
     }
   }
 
+  // ── Smart routing thresholds ──────────────────────────────────────────
+  const AI_SHORT_THRESHOLD = 200;   // chars — below this, regex only (instant)
+  const AI_TIMEOUT_MS = 3000;       // ms — AI must respond within this or regex wins
+
   /**
-   * Redact text using the best available path:
-   *   1. Direct Nano (LanguageModel in content script) — fastest, no IPC
-   *   2. Background service worker (pipeline with offscreen proxy)
+   * Redact text using smart routing by text length:
+   *   Short (<200 chars):  regex only (instant)
+   *   Medium (200-1000):   AI with 3s timeout, regex fallback
+   *   Long (>1000):        regex first, AI optional via background
+   *
+   * In non-auto modes, routing is handled by the background pipeline.
    */
   async function redactText(text) {
     const dbg = typeof LLSS_debug !== "undefined" ? LLSS_debug : null;
-    // Try direct Nano first (only if mode allows AI and belt-and-suspenders
-    // is off — when regexAfterAi is on we need the full background pipeline).
     const mode = cachedSettings.detectionMode || "auto";
-    if (mode !== "regex_only" && mode !== "cloud_only" && mode !== "hosted_only" && !cachedSettings.regexAfterAi) {
-      const nanoResult = await tryNanoRedact(text);
+
+    // Non-auto modes go straight to background pipeline
+    if (mode !== "auto") {
+      if (dbg) dbg.log("redact", `${mode} mode → background pipeline`);
+      return _sendToBackground(text);
+    }
+
+    // Auto mode: smart routing by text length
+    const len = text.length;
+
+    // Short text: regex only (instant)
+    if (len < AI_SHORT_THRESHOLD) {
+      if (dbg) dbg.log("redact", `Short text (${len} chars) → regex only`);
+      return _sendToBackground(text);
+    }
+
+    // Medium/long text: try AI with timeout, regex fallback
+    if (!cachedSettings.regexAfterAi) {
+      const nanoResult = await _tryNanoWithTimeout(text);
       if (nanoResult) {
-        if (dbg) dbg.log("redact", "Used direct Nano path (no IPC)");
+        if (dbg) dbg.log("redact", `AI completed (${len} chars)`);
         return nanoResult;
       }
     }
 
-    // Fall back to background pipeline (handles regex fallback, belt-and-
-    // suspenders, hosted/cloud escalation, and stats recording).
-    if (dbg) dbg.log("redact", "Falling back to background pipeline", { mode, regexAfterAi: !!cachedSettings.regexAfterAi });
+    // AI unavailable/timed out/belt-and-suspenders — use background pipeline
+    if (dbg) dbg.log("redact", `Background pipeline (${len} chars)`);
+    return _sendToBackground(text);
+  }
+
+  /**
+   * Try direct Nano with a timeout. Returns null if Nano is unavailable
+   * or takes too long.
+   */
+  async function _tryNanoWithTimeout(text) {
+    const nanoPromise = tryNanoRedact(text);
+    if (!nanoPromise) return null; // Nano unavailable
+
+    // Race AI against a timeout
+    const timeoutPromise = new Promise((resolve) => {
+      setTimeout(() => resolve(null), AI_TIMEOUT_MS);
+    });
+
+    return Promise.race([nanoPromise, timeoutPromise]);
+  }
+
+  function _sendToBackground(text) {
     return new Promise((resolve) => {
       chrome.runtime.sendMessage({ type: "REDACT", text }, resolve);
     });

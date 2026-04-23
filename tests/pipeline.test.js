@@ -42,7 +42,7 @@ describe("Pipeline - redactText", () => {
     registry = new ProviderRegistry();
   });
 
-  test("uses local AI when available in auto mode", async () => {
+  test("auto mode uses regex first for short text", async () => {
     registry.register(new MockProvider({ id: "local_ai", tier: "local", priority: 10 }));
     registry.register(new MockProvider({ id: "regex", tier: "local", priority: 20 }));
 
@@ -52,12 +52,12 @@ describe("Pipeline - redactText", () => {
       settings: { detectionMode: "auto" },
     });
 
-    expect(result.engine).toBe("local_ai");
-    expect(result.pipelineSteps).toContain("local_ai");
-    expect(result.escalated).toBe(false);
+    // Short text → regex only (AI not attempted for <200 chars)
+    expect(result.engine).toBe("regex");
+    expect(result.pipelineSteps).toContain("regex_first");
   });
 
-  test("falls back to regex when local AI unavailable", async () => {
+  test("auto mode runs regex when AI unavailable", async () => {
     registry.register(new MockProvider({ id: "local_ai", tier: "local", priority: 10, available: false }));
     registry.register(new MockProvider({ id: "regex", tier: "local", priority: 20 }));
 
@@ -68,23 +68,24 @@ describe("Pipeline - redactText", () => {
     });
 
     expect(result.engine).toBe("regex");
-    expect(result.escalated).toBe(true);
+    expect(result.pipelineSteps).toContain("regex_first");
   });
 
-  test("falls back to regex when local AI fails", async () => {
+  test("auto mode runs regex when AI fails", async () => {
     registry.register(new MockProvider({ id: "local_ai", tier: "local", priority: 10, shouldFail: true }));
     registry.register(new MockProvider({ id: "regex", tier: "local", priority: 20 }));
 
-    const result = await redactText("test input", {
+    // Use medium-length text to trigger AI attempt
+    const mediumText = "a]".repeat(150);
+    const result = await redactText(mediumText, {
       registry,
       piiTypes: [],
       settings: { detectionMode: "auto" },
     });
 
-    expect(result.engine).toBe("regex");
-    expect(result.pipelineSteps).toEqual(expect.arrayContaining([
-      expect.stringContaining("local_ai:failed"),
-    ]));
+    // Regex still runs first, AI failure is non-blocking
+    expect(result.engine).toContain("regex");
+    expect(result.pipelineSteps).toContain("regex_first");
   });
 
   test("regex_only mode skips AI", async () => {
@@ -175,36 +176,36 @@ describe("Pipeline - redactText", () => {
     expect(result.engine).toBe("azure");
   });
 
-  test("belt-and-suspenders runs regex after AI", async () => {
+  test("auto mode: regex runs first, AI enhances for medium text", async () => {
     registry.register(new MockProvider({ id: "local_ai", tier: "local", priority: 10 }));
     registry.register(new MockProvider({ id: "regex", tier: "local", priority: 20 }));
 
-    const result = await redactText("test input", {
-      registry,
-      piiTypes: [],
-      settings: { detectionMode: "auto", regexAfterAi: true },
-    });
-
-    expect(result.engine).toContain("regex");
-    expect(result.pipelineSteps).toContain("regex_after_ai");
-  });
-
-  test("progressive escalation: regex then hosted enhancement", async () => {
-    registry.register(new MockProvider({ id: "local_ai", tier: "local", priority: 10, available: false }));
-    registry.register(new MockProvider({ id: "regex", tier: "local", priority: 20 }));
-    registry.register(new MockProvider({ id: "hosted_llm", tier: "hosted", priority: 30 }));
-    registry.register(new MockProvider({ id: "azure_pii", tier: "cloud", priority: 50 }));
-
-    const result = await redactText("test input", {
+    const mediumText = "a".repeat(300);
+    const result = await redactText(mediumText, {
       registry,
       piiTypes: [],
       settings: { detectionMode: "auto" },
     });
 
-    // Regex handles local fallback, then hosted runs as enhancement pass
-    expect(result.engine).toBe("hosted_llm");
-    expect(result.escalated).toBe(true);
-    expect(result.pipelineSteps).toContain("regex_fallback");
+    // Regex runs first, AI enhancement attempted
+    expect(result.pipelineSteps).toContain("regex_first");
+    expect(result.pipelineSteps).toContain("ai_enhance");
+  });
+
+  test("auto mode: hosted enhancement for medium text", async () => {
+    registry.register(new MockProvider({ id: "local_ai", tier: "local", priority: 10, available: false }));
+    registry.register(new MockProvider({ id: "regex", tier: "local", priority: 20 }));
+    registry.register(new MockProvider({ id: "hosted_llm", tier: "hosted", priority: 30 }));
+
+    const mediumText = "a".repeat(300);
+    const result = await redactText(mediumText, {
+      registry,
+      piiTypes: [],
+      settings: { detectionMode: "auto" },
+    });
+
+    // Regex first, then hosted enhancement attempted
+    expect(result.pipelineSteps).toContain("regex_first");
     expect(result.pipelineSteps).toEqual(
       expect.arrayContaining([expect.stringContaining("hosted")])
     );

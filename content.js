@@ -160,6 +160,37 @@
   refreshSettings();
   setInterval(refreshSettings, 30000);
 
+  // ── Voice-capture detection bridge ────────────────────────────────────────
+  // Receives observe-only detections from the MAIN-world voice detector
+  // (lib/voice-detector.js) and forwards leak-risk signals. Attaches once.
+  // Disable via managed/remote config: voiceDetection.enabled = false.
+  function setupVoiceDetectionBridge() {
+    window.addEventListener("message", (event) => {
+      if (event.source !== window) return;
+      const data = event.data;
+      if (!data || data.source !== "llss-voice-detector" || !data.detection) return;
+      if (cachedSettings.voiceDetection?.enabled === false) return;
+
+      const { type, leakRisk } = data.detection;
+      if (typeof LLSS_debug !== "undefined") {
+        LLSS_debug.warn("voice", `Detected ${type}`, { leakRisk, href: data.href });
+      }
+      // Only the audio-leaves-the-page signal is recorded; local speech
+      // recognition keeps audio inside the browser engine (informational).
+      if (leakRisk) {
+        try {
+          chrome.runtime.sendMessage({
+            type: "RECORD_VOICE_CAPTURE_DETECTED",
+            detail: type,
+          });
+        } catch {
+          /* background may be asleep; detection is best-effort */
+        }
+      }
+    }, true);
+  }
+  setupVoiceDetectionBridge();
+
   function updatePageProtection() {
     chrome.runtime.sendMessage({
       type: "CHECK_SITE",

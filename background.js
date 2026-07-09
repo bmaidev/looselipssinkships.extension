@@ -499,6 +499,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       return true;
     }
 
+    case "RECORD_VOICE_CAPTURE_DETECTED": {
+      LLSS_loadStats().then(async (stats) => {
+        stats.voiceCapturesDetected = (stats.voiceCapturesDetected || 0) + 1;
+        if (typeof chrome !== "undefined" && chrome.storage) {
+          chrome.storage.local.set({ llss_stats: stats });
+        }
+        sendResponse({ success: true });
+      });
+      return true;
+    }
+
     case "DESTROY_SESSION": {
       const localAi = registry.get("local_ai");
       if (localAi) localAi.destroy();

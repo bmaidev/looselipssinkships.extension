@@ -341,6 +341,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             engine: result.engine,
             tier: result.tier,
             matchCount: result.matches?.length || 0,
+            matches: result.matches || [],
             pipelineSteps: result.pipelineSteps,
             escalated: result.escalated,
           });

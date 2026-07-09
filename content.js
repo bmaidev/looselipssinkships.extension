@@ -72,6 +72,7 @@
         engine: result.engine,
         tier: "local",
         matchCount: result.matches?.length || 0,
+        matches: result.matches || [],
       };
     } catch (err) {
       if (dbg) dbg.warn("nano", "Direct Nano redact failed, falling back:", err);
@@ -91,7 +92,31 @@
    *
    * In non-auto modes, routing is handled by the background pipeline.
    */
+  // Per-tab vault for reversible tokenization. Memory-only, cleared on tab
+  // close; accumulates across submits so a value keeps the same token across
+  // the conversation. Never persisted, never sent anywhere.
+  const reversibleVault =
+    (typeof LLSS_tokenVault !== "undefined") ? LLSS_tokenVault.createVault() : null;
+
   async function redactText(text) {
+    const result = await _redactTextInner(text);
+    return _maybeTokenize(text, result);
+  }
+
+  // When reversible tokenization is on, re-express the redaction as unique,
+  // stable tokens ([[EMAIL_1]] …) instead of generic masks, using the match
+  // list. Falls back silently to the generic redaction if anything is missing.
+  function _maybeTokenize(originalText, result) {
+    if (!result || !result.success) return result;
+    if (cachedSettings.reversibleTokenization?.enabled !== true) return result;
+    if (typeof LLSS_tokenVault === "undefined" || !reversibleVault) return result;
+    if (!Array.isArray(result.matches) || result.matches.length === 0) return result;
+    const tok = LLSS_tokenVault.tokenize(originalText, result.matches, reversibleVault);
+    if (tok.applied.length === 0) return result;
+    return { ...result, redacted: tok.text, reversible: true, tokensApplied: tok.applied.length };
+  }
+
+  async function _redactTextInner(text) {
     const dbg = typeof LLSS_debug !== "undefined" ? LLSS_debug : null;
     const mode = cachedSettings.detectionMode || "auto";
 

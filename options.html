@@ -392,6 +392,16 @@
       </label>
     </section>
 
+    <!-- Reversible Tokenization -->
+    <section class="card" data-cat="protection">
+      <h2>Reversible Tokenization</h2>
+      <p class="help">Replace PII with unique, numbered tokens (<code>[[EMAIL_1]]</code>, <code>[[PERSON_1]]</code>) instead of generic masks. The mapping is kept in memory only, so the AI can reason over the placeholders. <strong>Experimental — outbound only:</strong> tokens currently appear in the AI's reply; automatic restoration on the way back is a later phase. When off, PII is masked irreversibly (the safer default).</p>
+      <label class="checkbox-label">
+        <input type="checkbox" id="reversibleTokenizationEnabled">
+        <span><strong>Use reversible tokens instead of masks</strong></span>
+      </label>
+    </section>
+
     <!-- Voice Capture Detection -->
     <section class="card" data-cat="voice">
       <h2>Voice Dictation Detection</h2>

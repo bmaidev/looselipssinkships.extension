@@ -33,6 +33,8 @@
         "voiceDictation": { "type": "boolean" },
         "voiceDictation.enabled": { "type": "boolean" },
         "voiceDictation.suppressNativeMic": { "type": "boolean" },
+        "reversibleTokenization": { "type": "boolean" },
+        "reversibleTokenization.enabled": { "type": "boolean" },
         "providers": { "type": "boolean" },
         "providers.local_ai": { "type": "boolean" },
         "providers.azure_pii": { "type": "boolean" },
@@ -160,6 +162,13 @@
       "properties": {
         "enabled": { "type": "boolean" },
         "suppressNativeMic": { "type": "boolean" }
+      }
+    },
+    "reversibleTokenization": {
+      "type": "object",
+      "description": "Replace PII with unique reversible tokens instead of generic masks.",
+      "properties": {
+        "enabled": { "type": "boolean" }
       }
     },
     "providers": {

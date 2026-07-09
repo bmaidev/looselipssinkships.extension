@@ -101,6 +101,10 @@ function populateUI() {
   document.getElementById("voiceDictationEnabled").checked = vdict.enabled !== false;
   document.getElementById("voiceDictationSuppress").checked = vdict.suppressNativeMic !== false;
 
+  // Reversible tokenization.
+  document.getElementById("reversibleTokenizationEnabled").checked =
+    (s.reversibleTokenization || {}).enabled === true;
+
   // Provider configuration.
   const providers = s.providers || {};
   document.getElementById("provider-local-ai").checked = providers.local_ai?.enabled !== false;
@@ -186,6 +190,7 @@ const SETTING_MAP = {
   "voiceDetection.warnOnLeak":       { type: "checkbox", id: "voiceDetectionWarn" },
   "voiceDictation.enabled":          { type: "checkbox", id: "voiceDictationEnabled" },
   "voiceDictation.suppressNativeMic":{ type: "checkbox", id: "voiceDictationSuppress" },
+  "reversibleTokenization.enabled":  { type: "checkbox", id: "reversibleTokenizationEnabled" },
   "providers.local_ai":              { type: "checkbox", id: "provider-local-ai" },
   "providers.azure_pii":             { type: "section", id: "azure-config" },
   "providers.azure_pii.enabled":     { type: "checkbox", id: "provider-azure-pii" },
@@ -856,6 +861,12 @@ function saveSettings() {
     ...(currentSettings.voiceDictation || {}),
     enabled: document.getElementById("voiceDictationEnabled").checked,
     suppressNativeMic: document.getElementById("voiceDictationSuppress").checked,
+  };
+
+  // Reversible tokenization
+  currentSettings.reversibleTokenization = {
+    ...(currentSettings.reversibleTokenization || {}),
+    enabled: document.getElementById("reversibleTokenizationEnabled").checked,
   };
 
   // Remote config URL

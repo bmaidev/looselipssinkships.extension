@@ -295,6 +295,24 @@ Via Settings, or programmatically:
 
 ---
 
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup,
+test, and PR guidelines. Security issues should be reported privately per
+[SECURITY.md](SECURITY.md).
+
+---
+
 ## License
 
-MIT
+[Functional Source License, Version 1.1, MIT Future License](LICENSE.md)
+(FSL-1.1-MIT) © Black Mountain AI
+
+In plain terms: the source is available and **free to use, modify, and
+self-host** — including internal commercial use inside your organisation. What
+you may not do is resell the Software (or a substantially similar product or
+service) in competition with us. Each release automatically converts to the
+**MIT license two years** after it is published.
+
+Bundled third-party components (pdf.js, Tesseract.js) are Apache-2.0 licensed —
+see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -39,7 +39,7 @@ All PII detection runs on your device by default — using Chrome's built-in Gem
 • API credentials stored in memory-only session storage (Enterprise mode)
 • 320 automated tests
 
-Open source (MIT License): https://github.com/bmaidev/looselipssinkships.extension
+Source available (Functional Source License): https://github.com/bmaidev/looselipssinkships.extension
 
 ## Category
 Productivity

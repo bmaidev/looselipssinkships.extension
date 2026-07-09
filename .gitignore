@@ -1,4 +1,7 @@
 node_modules/
 coverage/
+dist/
 *.log
 .DS_Store
+.claude/settings.local.json
+BACKLOG.md

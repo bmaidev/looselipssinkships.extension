@@ -359,14 +359,23 @@
       return;
     }
 
-    // Not recording → check availability, then start.
+    // Not recording → ensure the on-device model is ready, then start.
     try {
-      const cap = await transcriber.checkAvailability(dictationLang);
-      if (cap.needsInstall) {
-        setDictationStatus('Downloading language pack…');
-        await transcriber.installLanguagePack(dictationLang);
-      } else if (cap.unsupported) {
-        setDictationStatus('On-device dictation is not available for this language.');
+      btnDictate.disabled = true;
+      setDictationStatus('Checking on-device speech model…');
+      const status = await transcriber.ensureReady(dictationLang, {
+        onProgress: (state) => setDictationStatus(`Preparing on-device model (${state})…`),
+      });
+      btnDictate.disabled = false;
+      if (!status.ready) {
+        if (status.reason === 'unsupported') {
+          setDictationStatus(`On-device dictation isn't available for ${dictationLang} in this browser.`);
+        } else {
+          setDictationStatus(
+            "On-device speech model isn't installed yet. Enable it in Chrome: " +
+            "Settings → Accessibility → Live Caption (English), then try again."
+          );
+        }
         return;
       }
 
@@ -383,6 +392,7 @@
     } catch (err) {
       setDictationStatus('Could not start dictation: ' + (err?.message || err));
       btnDictate.textContent = 'Start dictation';
+      btnDictate.disabled = false;
       dictationSession = null;
     }
   }

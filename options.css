@@ -15,6 +15,105 @@ body {
   padding: 24px 20px 80px;
 }
 
+/* ── App shell: sidebar + main ──────────────────────────────────────────── */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  align-items: stretch;
+}
+
+.sidebar {
+  width: 232px;
+  flex-shrink: 0;
+  background: #12283f;
+  color: #cbd5e1;
+  padding: 20px 14px;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 14px;
+}
+
+.sidebar-logo { font-size: 22px; line-height: 1; }
+.sidebar-title { font-size: 14px; font-weight: 700; color: #fff; letter-spacing: -0.01em; }
+.sidebar-sub { font-size: 11px; color: #7e93ab; margin-top: 1px; }
+
+.side-nav { display: flex; flex-direction: column; gap: 2px; }
+
+.side-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  background: transparent;
+  color: #b6c4d6;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.side-nav-item:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+
+.side-nav-item.active {
+  background: #22c55e;
+  color: #0f2a44;
+  font-weight: 600;
+}
+
+.side-ico { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.main-inner {
+  width: 100%;
+  max-width: 720px;
+  padding: 28px 28px 96px;
+}
+
+.main-head { margin-bottom: 20px; }
+.main-head h1 { font-size: 22px; font-weight: 700; color: #1a3a5c; }
+
+/* Category filtering: sections whose category isn't active are hidden. */
+.card[data-cat] { display: block; }
+.card[data-cat].cat-hidden { display: none; }
+
+@media (max-width: 820px) {
+  .app-shell { flex-direction: column; }
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    padding: 12px;
+  }
+  .sidebar-head { display: none; }
+  .side-nav { flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  .side-nav-item { width: auto; padding: 7px 12px; font-size: 12px; }
+  .main-inner { padding: 20px 16px 96px; }
+  .save-bar { left: 0; }
+}
+
 header {
   text-align: center;
   margin-bottom: 24px;
@@ -266,7 +365,7 @@ textarea.input {
 .save-bar {
   position: fixed;
   bottom: 0;
-  left: 0;
+  left: 232px;
   right: 0;
   display: flex;
   align-items: center;

@@ -1107,5 +1107,46 @@ document.getElementById("hosted-modal-overlay").addEventListener("click", (e) =>
   if (e.target.id === "hosted-modal-overlay") closeHostedModal();
 });
 
+// ── Category navigation ─────────────────────────────────────────────────────
+// The settings are grouped into categories; the sidebar shows one at a time.
+function setupCategoryNav() {
+  const CAT_TITLES = {
+    general: "General",
+    providers: "Processing Providers",
+    protection: "AI Chat Protection",
+    voice: "Voice Dictation",
+    documents: "Documents",
+    rules: "PII Detection Rules",
+    enterprise: "Enterprise & Remote Config",
+    diagnostics: "Diagnostics",
+  };
+  const navItems = Array.from(document.querySelectorAll(".side-nav-item"));
+  const sections = Array.from(document.querySelectorAll(".card[data-cat]"));
+  const titleEl = document.getElementById("panel-title");
+
+  function activate(cat) {
+    if (!CAT_TITLES[cat]) cat = "general";
+    sections.forEach((sec) => {
+      sec.classList.toggle("cat-hidden", sec.dataset.cat !== cat);
+    });
+    navItems.forEach((n) => n.classList.toggle("active", n.dataset.target === cat));
+    if (titleEl) titleEl.textContent = CAT_TITLES[cat];
+    try { localStorage.setItem("llss_settings_cat", cat); } catch { /* ignore */ }
+    window.scrollTo({ top: 0 });
+  }
+
+  navItems.forEach((n) => {
+    n.addEventListener("click", () => activate(n.dataset.target));
+  });
+
+  let initial = "general";
+  try {
+    const saved = localStorage.getItem("llss_settings_cat");
+    if (saved && CAT_TITLES[saved]) initial = saved;
+  } catch { /* ignore */ }
+  activate(initial);
+}
+setupCategoryNav();
+
 // Initialise.
 init();

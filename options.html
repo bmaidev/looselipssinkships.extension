@@ -370,6 +370,20 @@
       </label>
     </section>
 
+    <!-- Voice Capture Detection -->
+    <section class="card">
+      <h2>Voice Dictation Detection</h2>
+      <p class="help">Detects when a site captures your microphone for dictation and uploads the audio off-device — spoken PII that would otherwise bypass text redaction. Detection is local and observe-only; no audio is recorded or sent anywhere. Works on any site, with no domain list.</p>
+      <label class="checkbox-label">
+        <input type="checkbox" id="voiceDetectionEnabled">
+        <span><strong>Detect microphone dictation uploads</strong></span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="voiceDetectionWarn">
+        <span>Warn me when a site uploads dictation audio</span>
+      </label>
+    </section>
+
     <!-- Document Upload -->
     <section class="card">
       <h2>Document Processing</h2>

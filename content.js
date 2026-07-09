@@ -186,8 +186,28 @@
         } catch {
           /* background may be asleep; detection is best-effort */
         }
+        // Optional user-facing warning (off by default).
+        if (cachedSettings.voiceDetection?.warnOnLeak === true) {
+          maybeWarnVoiceLeak();
+        }
       }
     }, true);
+  }
+
+  // Rate-limited warning so a chatty page can't spam toasts.
+  let lastVoiceWarnAt = 0;
+  function maybeWarnVoiceLeak() {
+    const nowTs = Date.now();
+    if (nowTs - lastVoiceWarnAt < 15000) return;
+    lastVoiceWarnAt = nowTs;
+    try {
+      showToast(
+        document.body,
+        "This site is uploading your dictation audio. Spoken PII may bypass redaction — type sensitive details instead."
+      );
+    } catch {
+      /* toast is best-effort */
+    }
   }
   setupVoiceDetectionBridge();
 

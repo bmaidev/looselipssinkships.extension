@@ -91,6 +91,11 @@ function populateUI() {
   document.getElementById("uploadGuardOnlyAi").checked = ug.onlyOnAiSites !== false;
   document.getElementById("uploadGuardConfirm").checked = ug.confirmBeforeUpload !== false;
 
+  // Voice capture detection.
+  const vd = s.voiceDetection || {};
+  document.getElementById("voiceDetectionEnabled").checked = vd.enabled !== false;
+  document.getElementById("voiceDetectionWarn").checked = vd.warnOnLeak === true;
+
   // Provider configuration.
   const providers = s.providers || {};
   document.getElementById("provider-local-ai").checked = providers.local_ai?.enabled !== false;
@@ -172,6 +177,8 @@ const SETTING_MAP = {
   "uploadGuard.enabled":             { type: "checkbox", id: "uploadGuardEnabled" },
   "uploadGuard.onlyOnAiSites":       { type: "checkbox", id: "uploadGuardOnlyAi" },
   "uploadGuard.confirmBeforeUpload":  { type: "checkbox", id: "uploadGuardConfirm" },
+  "voiceDetection.enabled":          { type: "checkbox", id: "voiceDetectionEnabled" },
+  "voiceDetection.warnOnLeak":       { type: "checkbox", id: "voiceDetectionWarn" },
   "providers.local_ai":              { type: "checkbox", id: "provider-local-ai" },
   "providers.azure_pii":             { type: "section", id: "azure-config" },
   "providers.azure_pii.enabled":     { type: "checkbox", id: "provider-azure-pii" },
@@ -828,6 +835,13 @@ function saveSettings() {
     enabled: document.getElementById("uploadGuardEnabled").checked,
     onlyOnAiSites: document.getElementById("uploadGuardOnlyAi").checked,
     confirmBeforeUpload: document.getElementById("uploadGuardConfirm").checked,
+  };
+
+  // Voice capture detection
+  currentSettings.voiceDetection = {
+    ...(currentSettings.voiceDetection || {}),
+    enabled: document.getElementById("voiceDetectionEnabled").checked,
+    warnOnLeak: document.getElementById("voiceDetectionWarn").checked,
   };
 
   // Remote config URL

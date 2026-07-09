@@ -32,6 +32,7 @@
         "voiceDetection.warnOnLeak": { "type": "boolean" },
         "voiceDictation": { "type": "boolean" },
         "voiceDictation.enabled": { "type": "boolean" },
+        "voiceDictation.suppressNativeMic": { "type": "boolean" },
         "providers": { "type": "boolean" },
         "providers.local_ai": { "type": "boolean" },
         "providers.azure_pii": { "type": "boolean" },
@@ -157,7 +158,8 @@
       "type": "object",
       "description": "Inline on-device voice dictation on AI-chat composers.",
       "properties": {
-        "enabled": { "type": "boolean" }
+        "enabled": { "type": "boolean" },
+        "suppressNativeMic": { "type": "boolean" }
       }
     },
     "providers": {

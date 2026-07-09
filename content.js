@@ -231,8 +231,45 @@
         // Composers may have been wrapped before we knew this was an AI site —
         // attach the inline dictation mic button to any that are missing it.
         refreshInlineDictation();
+        applyNativeMicSuppression();
       }
     });
+  }
+
+  // ── Native mic suppression ────────────────────────────────────────────────
+  // Hide the site's own dictation/microphone button on AI sites so the leaky
+  // (audio-uploading) path can't be used by accident. Implemented as injected
+  // CSS matching specific aria-label substrings — self-applying across SPA
+  // re-renders, specific enough to avoid unrelated controls, and excludes our
+  // own button. Toggle: voiceDictation.suppressNativeMic.
+  const NATIVE_MIC_STYLE_ID = "llss-native-mic-suppress";
+
+  function applyNativeMicSuppression() {
+    const shouldSuppress =
+      isAiSite &&
+      cachedSettings.voiceDictation?.enabled !== false &&
+      cachedSettings.voiceDictation?.suppressNativeMic !== false;
+
+    const existing = document.getElementById(NATIVE_MIC_STYLE_ID);
+    if (!shouldSuppress) {
+      if (existing) existing.remove();
+      return;
+    }
+    if (existing) return;
+
+    const sel = (label) =>
+      `button[aria-label*="${label}" i]:not(.${DICTATE_CLASS}), [role="button"][aria-label*="${label}" i]:not(.${DICTATE_CLASS})`;
+    const style = document.createElement("style");
+    style.id = NATIVE_MIC_STYLE_ID;
+    style.textContent = [
+      sel("dictation"),
+      sel("dictate"),
+      sel("microphone"),
+      sel("press and hold to record"),
+      sel("voice input"),
+      sel("voice typing"),
+    ].join(",\n") + " { display: none !important; }";
+    (document.head || document.documentElement).appendChild(style);
   }
 
   // Attach the dictation mic to already-wrapped composers (used once AI-site

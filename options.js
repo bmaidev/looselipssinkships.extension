@@ -99,6 +99,7 @@ function populateUI() {
   // Inline voice dictation.
   const vdict = s.voiceDictation || {};
   document.getElementById("voiceDictationEnabled").checked = vdict.enabled !== false;
+  document.getElementById("voiceDictationSuppress").checked = vdict.suppressNativeMic !== false;
 
   // Provider configuration.
   const providers = s.providers || {};
@@ -184,6 +185,7 @@ const SETTING_MAP = {
   "voiceDetection.enabled":          { type: "checkbox", id: "voiceDetectionEnabled" },
   "voiceDetection.warnOnLeak":       { type: "checkbox", id: "voiceDetectionWarn" },
   "voiceDictation.enabled":          { type: "checkbox", id: "voiceDictationEnabled" },
+  "voiceDictation.suppressNativeMic":{ type: "checkbox", id: "voiceDictationSuppress" },
   "providers.local_ai":              { type: "checkbox", id: "provider-local-ai" },
   "providers.azure_pii":             { type: "section", id: "azure-config" },
   "providers.azure_pii.enabled":     { type: "checkbox", id: "provider-azure-pii" },
@@ -853,6 +855,7 @@ function saveSettings() {
   currentSettings.voiceDictation = {
     ...(currentSettings.voiceDictation || {}),
     enabled: document.getElementById("voiceDictationEnabled").checked,
+    suppressNativeMic: document.getElementById("voiceDictationSuppress").checked,
   };
 
   // Remote config URL

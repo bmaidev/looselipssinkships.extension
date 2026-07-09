@@ -368,12 +368,15 @@
       });
       btnDictate.disabled = false;
       if (!status.ready) {
-        if (status.reason === 'unsupported') {
-          setDictationStatus(`On-device dictation isn't available for ${dictationLang} in this browser.`);
+        if (status.reason === 'timeout') {
+          setDictationStatus('The on-device model is still downloading. Give it a minute, then try again.');
         } else {
+          // unsupported or install_unavailable — the on-device recognizer
+          // can't be enabled in this browser build.
           setDictationStatus(
-            "On-device speech model isn't installed yet. Enable it in Chrome: " +
-            "Settings → Accessibility → Live Caption (English), then try again."
+            "On-device dictation isn't available in this browser yet — Chrome's " +
+            "local speech model can't be enabled here. Your audio is never sent " +
+            "anywhere, so dictation stays disabled rather than falling back to the cloud."
           );
         }
         return;

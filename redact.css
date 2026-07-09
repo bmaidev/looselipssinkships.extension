@@ -342,3 +342,29 @@ header h1 {
   animation: spin 0.6s linear infinite;
   vertical-align: middle;
 }
+
+/* On-device dictation */
+.dictation-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.dictation-status {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.dictation-output {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 14px;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  resize: vertical;
+  background: #f9fafb;
+  color: #111827;
+}

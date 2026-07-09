@@ -309,6 +309,106 @@
   btnClear.addEventListener('click', clearFiles);
   btnDownloadAll.addEventListener('click', downloadAll);
 
+  // ── On-device dictation ─────────────────────────────────────────────────
+  // Transcribes microphone input locally via Chrome's built-in recognizer,
+  // then redacts the transcript through the normal pipeline. Audio stays on
+  // the device. Shown only when the on-device recognizer is present.
+
+  const dictationCard = document.getElementById('dictation-card');
+  const btnDictate = document.getElementById('btn-dictate');
+  const dictationStatus = document.getElementById('dictation-status');
+  const dictationOutput = document.getElementById('dictation-output');
+  const btnDictationCopy = document.getElementById('btn-dictation-copy');
+  const transcriber = (typeof LLSS_voiceTranscriber !== 'undefined') ? LLSS_voiceTranscriber : null;
+
+  let dictationSession = null;
+  let dictationLang = 'en-US';
+
+  function setDictationStatus(text) {
+    if (dictationStatus) dictationStatus.textContent = text || '';
+  }
+
+  if (transcriber && transcriber.isSupported()) {
+    dictationCard.hidden = false;
+    // Pull the configured language (falls back to en-US).
+    chrome.runtime.sendMessage({ type: 'GET_SETTINGS' }, (response) => {
+      const lang = response?.settings?.voiceDetection?.language;
+      if (lang) dictationLang = lang;
+    });
+    btnDictate.addEventListener('click', toggleDictation);
+    btnDictationCopy.addEventListener('click', () => {
+      navigator.clipboard.writeText(dictationOutput.value || '').then(
+        () => setDictationStatus('Copied.'),
+        () => setDictationStatus('Copy failed.')
+      );
+    });
+  }
+
+  async function toggleDictation() {
+    if (dictationSession) {
+      // Currently recording → stop and redact.
+      btnDictate.disabled = true;
+      setDictationStatus('Finishing…');
+      const session = dictationSession;
+      dictationSession = null;
+      session.stop();
+      const transcript = await session.done;
+      await redactAndShowTranscript(transcript);
+      btnDictate.textContent = 'Start dictation';
+      btnDictate.disabled = false;
+      return;
+    }
+
+    // Not recording → check availability, then start.
+    try {
+      const cap = await transcriber.checkAvailability(dictationLang);
+      if (cap.needsInstall) {
+        setDictationStatus('Downloading language pack…');
+        await transcriber.installLanguagePack(dictationLang);
+      } else if (cap.unsupported) {
+        setDictationStatus('On-device dictation is not available for this language.');
+        return;
+      }
+
+      dictationOutput.value = '';
+      btnDictationCopy.hidden = true;
+      setDictationStatus('Listening… speak now, then click Stop.');
+      btnDictate.textContent = 'Stop dictation';
+
+      dictationSession = await transcriber.startDictation({
+        lang: dictationLang,
+        onPartial: (interim) => setDictationStatus('Listening… ' + interim),
+        onError: (err) => setDictationStatus('Error: ' + err.message),
+      });
+    } catch (err) {
+      setDictationStatus('Could not start dictation: ' + (err?.message || err));
+      btnDictate.textContent = 'Start dictation';
+      dictationSession = null;
+    }
+  }
+
+  async function redactAndShowTranscript(transcript) {
+    if (!transcript) {
+      setDictationStatus('No speech detected.');
+      return;
+    }
+    setDictationStatus('Redacting…');
+    try {
+      const response = await chrome.runtime.sendMessage({ type: 'REDACT', text: transcript });
+      if (response?.success) {
+        dictationOutput.value = response.redacted;
+        btnDictationCopy.hidden = false;
+        setDictationStatus(`Redacted — ${response.matchCount || 0} item(s) removed (${response.engine || 'local'}).`);
+      } else {
+        dictationOutput.value = transcript;
+        setDictationStatus('Redaction failed; showing raw transcript. Review before use.');
+      }
+    } catch (err) {
+      dictationOutput.value = transcript;
+      setDictationStatus('Redaction unavailable; showing raw transcript. Review before use.');
+    }
+  }
+
   // ── Utility ────────────────────────────────────────────────────────────
 
   function escapeHtml(str) {

@@ -4,6 +4,8 @@ const {
   classifyAvailability,
   joinTranscript,
   isSupported,
+  pickEngine,
+  cleanTranscript,
 } = require("../lib/voice-transcriber");
 
 describe("normalizeLang", () => {
@@ -86,5 +88,49 @@ describe("isSupported", () => {
     function FakeSR() {}
     FakeSR.prototype.processLocally = false;
     expect(isSupported({ webkitSpeechRecognition: FakeSR })).toBe(true);
+  });
+});
+
+describe("pickEngine", () => {
+  test("prefers Web Speech when ready", () => {
+    expect(pickEngine({ webSpeechReady: true, nanoReady: true })).toBe("webspeech");
+  });
+  test("falls back to Nano when Web Speech is not ready", () => {
+    expect(pickEngine({ webSpeechReady: false, nanoReady: true })).toBe("nano");
+  });
+  test("returns null when nothing is ready", () => {
+    expect(pickEngine({ webSpeechReady: false, nanoReady: false })).toBeNull();
+  });
+  test("handles missing input", () => {
+    expect(pickEngine(null)).toBeNull();
+    expect(pickEngine(undefined)).toBeNull();
+  });
+});
+
+describe("cleanTranscript", () => {
+  test("passes through a plain transcript", () => {
+    expect(cleanTranscript("my tax file number is 123 456 789"))
+      .toBe("my tax file number is 123 456 789");
+  });
+  test("strips a leading 'Transcription:' label", () => {
+    expect(cleanTranscript("Transcription: hello there")).toBe("hello there");
+    expect(cleanTranscript("transcript - hello")).toBe("hello");
+  });
+  test("strips a conversational preamble", () => {
+    expect(cleanTranscript("Here's the transcription: hello")).toBe("hello");
+    expect(cleanTranscript("Here is the transcription: hello")).toBe("hello");
+  });
+  test("strips a single layer of wrapping quotes", () => {
+    expect(cleanTranscript('"hello world"')).toBe("hello world");
+    expect(cleanTranscript("“hello”")).toBe("hello");
+  });
+  test("does not strip internal quotes", () => {
+    expect(cleanTranscript('she said "hi" to me')).toBe('she said "hi" to me');
+  });
+  test("trims whitespace and handles non-strings", () => {
+    expect(cleanTranscript("   spaced   ")).toBe("spaced");
+    expect(cleanTranscript(null)).toBe("");
+    expect(cleanTranscript(undefined)).toBe("");
+    expect(cleanTranscript(42)).toBe("");
   });
 });

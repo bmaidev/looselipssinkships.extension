@@ -343,3 +343,13 @@
   0%, 100% { box-shadow: 0 0 0 0 rgba(192, 57, 43, 0.5); }
   50% { box-shadow: 0 0 0 5px rgba(192, 57, 43, 0); }
 }
+
+/* Floating dictation button — tracks the composer's corner (set via JS). */
+.llss-dictate-floating {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: auto;
+  right: auto;
+  z-index: 2147483000;
+}

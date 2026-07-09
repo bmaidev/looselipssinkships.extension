@@ -319,9 +319,48 @@
     if (!shouldShowInlineDictation()) return;
     if (wrapper.dataset.llssDictate === "attached") return;
     wrapper.dataset.llssDictate = "attached";
+
+    // Float the button and track the composer's bottom-right corner. AI
+    // composers wrap a very short editable node (≈22px when empty), so
+    // anchoring absolutely inside the wrapper makes the button overflow. A
+    // fixed, rect-tracked button stays correctly placed as the composer grows.
     const btn = createDictationButton();
-    wrapper.appendChild(btn);
+    btn.classList.add("llss-dictate-floating");
+    document.body.appendChild(btn);
     btn.addEventListener("click", () => toggleInlineDictation(el, btn));
+
+    const reposition = () => positionFloatingDictation(el, btn, reposition);
+    reposition();
+    window.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    el.addEventListener("input", reposition);
+    el.addEventListener("focus", reposition, true);
+    try {
+      const ro = new ResizeObserver(reposition);
+      ro.observe(el);
+    } catch { /* ResizeObserver unavailable — event listeners still cover it */ }
+  }
+
+  function positionFloatingDictation(el, btn, reposition) {
+    // Clean up if the composer was removed (SPA navigation).
+    if (!el.isConnected) {
+      btn.remove();
+      window.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+      return;
+    }
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) { btn.style.display = "none"; return; }
+    btn.style.display = "";
+    const SIZE = 26;
+    // Bottom-right of the composer, offset left to clear the site's own send
+    // controls, clamped to stay on-screen.
+    let top = r.bottom - SIZE - 4;
+    let left = r.right - SIZE - 52;
+    top = Math.min(Math.max(top, 8), window.innerHeight - SIZE - 8);
+    left = Math.min(Math.max(left, 8), window.innerWidth - SIZE - 8);
+    btn.style.top = `${top}px`;
+    btn.style.left = `${left}px`;
   }
 
   const inlineRecorders = new WeakMap();

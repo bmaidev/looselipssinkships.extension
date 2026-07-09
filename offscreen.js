@@ -136,6 +136,12 @@
           .catch((err) => sendResponse({ error: err?.message || String(err) }));
         return true;
 
+      case 'TRANSCRIBE_AUDIO':
+        handleTranscribeAudio(message)
+          .then(sendResponse)
+          .catch((err) => sendResponse({ error: err?.message || String(err) }));
+        return true;
+
       // ── Nano proxy messages (from service worker) ─────────────────────
       case 'NANO_CHECK_AVAILABILITY': {
         const dbg = typeof LLSS_debug !== 'undefined' ? LLSS_debug : null;
@@ -592,6 +598,19 @@
     else if (destroyOcr) await destroyOcr();
 
     return { success: true };
+  }
+
+  // Transcribe a captured audio clip on-device with Gemini Nano. The clip is
+  // sent from the content script as raw bytes (JSON-safe number array); no audio
+  // is stored or uploaded. Returns the plain transcript for the caller to redact.
+  async function handleTranscribeAudio(message) {
+    const transcriber = (typeof LLSS_voiceTranscriber !== 'undefined') ? LLSS_voiceTranscriber : null;
+    if (!transcriber) throw new Error('Voice transcriber not loaded');
+    const bytes = new Uint8Array(message.audioBytes || []);
+    if (!bytes.length) throw new Error('Empty audio clip');
+    const blob = new Blob([bytes], { type: message.mime || 'audio/webm' });
+    const transcript = await transcriber.transcribeWithNano(blob);
+    return { transcript };
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────

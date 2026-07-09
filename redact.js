@@ -309,6 +309,157 @@
   btnClear.addEventListener('click', clearFiles);
   btnDownloadAll.addEventListener('click', downloadAll);
 
+  // ── On-device dictation ─────────────────────────────────────────────────
+  // Transcribes microphone input locally, then redacts the transcript through
+  // the normal pipeline. Audio stays on the device. Uses whichever on-device
+  // engine is genuinely ready: Web Speech (streaming) when available, else
+  // Gemini Nano audio (record-then-transcribe). Never the cloud.
+
+  const dictationCard = document.getElementById('dictation-card');
+  const btnDictate = document.getElementById('btn-dictate');
+  const dictationStatus = document.getElementById('dictation-status');
+  const dictationOutput = document.getElementById('dictation-output');
+  const btnDictationCopy = document.getElementById('btn-dictation-copy');
+  const transcriber = (typeof LLSS_voiceTranscriber !== 'undefined') ? LLSS_voiceTranscriber : null;
+
+  let activeEngine = null;   // 'webspeech' | 'nano'
+  let activeHandle = null;   // engine-specific session/recorder handle
+  let dictationLang = 'en-US';
+
+  function setDictationStatus(text) {
+    if (dictationStatus) dictationStatus.textContent = text || '';
+  }
+
+  // Show the card if any local engine is present: Web Speech (streaming) or
+  // Gemini Nano audio (record-then-transcribe).
+  const canDictate = transcriber &&
+    (transcriber.isSupported() || transcriber.nanoAudioSupported());
+
+  if (canDictate) {
+    dictationCard.hidden = false;
+    chrome.runtime.sendMessage({ type: 'GET_SETTINGS' }, (response) => {
+      const lang = response?.settings?.voiceDetection?.language;
+      if (lang) dictationLang = lang;
+    });
+    btnDictate.addEventListener('click', toggleDictation);
+    btnDictationCopy.addEventListener('click', () => {
+      navigator.clipboard.writeText(dictationOutput.value || '').then(
+        () => setDictationStatus('Copied.'),
+        () => setDictationStatus('Copy failed.')
+      );
+    });
+  }
+
+  async function toggleDictation() {
+    if (activeHandle) { await stopDictation(); return; }
+    await startDictationFlow();
+  }
+
+  // Pick the best genuinely-ready engine: Web Speech if it truly reports ready,
+  // otherwise Nano audio. Never cloud (that would upload audio).
+  async function selectEngine() {
+    if (transcriber.isSupported()) {
+      const ws = await transcriber.checkAvailability(dictationLang);
+      if (ws.ready) return 'webspeech';
+    }
+    if (transcriber.nanoAudioSupported()) {
+      const nano = await transcriber.nanoAudioAvailability();
+      // Ready, or downloadable/downloading (create() will complete the fetch).
+      if (nano.ready || nano.needsInstall || nano.downloading) return 'nano';
+    }
+    return null;
+  }
+
+  async function startDictationFlow() {
+    btnDictate.disabled = true;
+    try {
+      setDictationStatus('Checking on-device engines…');
+      const engine = await selectEngine();
+      if (!engine) {
+        setDictationStatus(
+          "On-device dictation isn't available in this browser yet. Your audio is " +
+          "never uploaded, so dictation stays disabled rather than using the cloud."
+        );
+        btnDictate.disabled = false;
+        return;
+      }
+
+      dictationOutput.value = '';
+      btnDictationCopy.hidden = true;
+      activeEngine = engine;
+
+      if (engine === 'webspeech') {
+        setDictationStatus('Listening… speak now, then click Stop.');
+        activeHandle = await transcriber.startDictation({
+          lang: dictationLang,
+          onPartial: (interim) => setDictationStatus('Listening… ' + interim),
+          onError: (err) => setDictationStatus('Error: ' + err.message),
+        });
+      } else {
+        setDictationStatus('Recording… speak now, then click Stop.');
+        activeHandle = await transcriber.startRecording();
+      }
+      btnDictate.textContent = 'Stop dictation';
+      btnDictate.disabled = false;
+    } catch (err) {
+      setDictationStatus('Could not start dictation: ' + (err?.message || err));
+      resetDictationUi();
+    }
+  }
+
+  async function stopDictation() {
+    btnDictate.disabled = true;
+    const engine = activeEngine;
+    const handle = activeHandle;
+    activeEngine = null;
+    activeHandle = null;
+    try {
+      let transcript = '';
+      if (engine === 'webspeech') {
+        setDictationStatus('Finishing…');
+        handle.stop();
+        transcript = await handle.done;
+      } else {
+        const blob = await handle.stop();
+        setDictationStatus('Transcribing on-device…');
+        transcript = await transcriber.transcribeWithNano(blob);
+      }
+      await redactAndShowTranscript(transcript);
+    } catch (err) {
+      setDictationStatus('Transcription failed: ' + (err?.message || err));
+    }
+    resetDictationUi();
+  }
+
+  function resetDictationUi() {
+    btnDictate.textContent = 'Start dictation';
+    btnDictate.disabled = false;
+    activeEngine = null;
+    activeHandle = null;
+  }
+
+  async function redactAndShowTranscript(transcript) {
+    if (!transcript) {
+      setDictationStatus('No speech detected.');
+      return;
+    }
+    setDictationStatus('Redacting…');
+    try {
+      const response = await chrome.runtime.sendMessage({ type: 'REDACT', text: transcript });
+      if (response?.success) {
+        dictationOutput.value = response.redacted;
+        btnDictationCopy.hidden = false;
+        setDictationStatus(`Redacted — ${response.matchCount || 0} item(s) removed (${response.engine || 'local'}).`);
+      } else {
+        dictationOutput.value = transcript;
+        setDictationStatus('Redaction failed; showing raw transcript. Review before use.');
+      }
+    } catch (err) {
+      dictationOutput.value = transcript;
+      setDictationStatus('Redaction unavailable; showing raw transcript. Review before use.');
+    }
+  }
+
   // ── Utility ────────────────────────────────────────────────────────────
 
   function escapeHtml(str) {

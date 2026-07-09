@@ -27,6 +27,12 @@
         "submitGuard.enabled": { "type": "boolean" },
         "uploadGuard": { "type": "boolean" },
         "uploadGuard.enabled": { "type": "boolean" },
+        "voiceDetection": { "type": "boolean" },
+        "voiceDetection.enabled": { "type": "boolean" },
+        "voiceDetection.warnOnLeak": { "type": "boolean" },
+        "voiceDictation": { "type": "boolean" },
+        "voiceDictation.enabled": { "type": "boolean" },
+        "voiceDictation.suppressNativeMic": { "type": "boolean" },
         "providers": { "type": "boolean" },
         "providers.local_ai": { "type": "boolean" },
         "providers.azure_pii": { "type": "boolean" },
@@ -137,6 +143,23 @@
         "enabled": { "type": "boolean" },
         "onlyOnAiSites": { "type": "boolean" },
         "confirmBeforeUpload": { "type": "boolean" }
+      }
+    },
+    "voiceDetection": {
+      "type": "object",
+      "description": "Microphone-capture (voice dictation) detection settings.",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "warnOnLeak": { "type": "boolean" },
+        "language": { "type": "string", "description": "BCP-47 language tag for on-device transcription (e.g., en-US)." }
+      }
+    },
+    "voiceDictation": {
+      "type": "object",
+      "description": "Inline on-device voice dictation on AI-chat composers.",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "suppressNativeMic": { "type": "boolean" }
       }
     },
     "providers": {

@@ -320,3 +320,36 @@
   gap: 8px;
   justify-content: flex-end;
 }
+
+/* Inline dictation mic button — sits left of the redact button. */
+.llss-dictate-btn {
+  right: 38px;
+  background: #2b5c3a;
+  border-color: #1c4227;
+}
+
+.llss-dictate-btn:hover {
+  background: #357048;
+}
+
+.llss-dictate-btn.llss-recording {
+  background: #c0392b;
+  border-color: #922b21;
+  opacity: 1;
+  animation: llss-rec-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes llss-rec-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(192, 57, 43, 0.5); }
+  50% { box-shadow: 0 0 0 5px rgba(192, 57, 43, 0); }
+}
+
+/* Floating dictation button — tracks the composer's corner (set via JS). */
+.llss-dictate-floating {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: auto;
+  right: auto;
+  z-index: 2147483000;
+}

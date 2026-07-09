@@ -1,8 +1,13 @@
 {
   "name": "loose-lips-sink-ships",
-  "version": "2.0.0",
-  "description": "Local-only PII redaction Chrome Extension",
+  "version": "4.1.0",
+  "description": "Local-first PII redaction Chrome Extension",
   "private": true,
+  "license": "FSL-1.1-MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bmaidev/looselipssinkships.extension.git"
+  },
   "scripts": {
     "test": "jest --verbose",
     "test:watch": "jest --watch",

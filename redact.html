@@ -31,6 +31,20 @@
       <input type="file" id="file-input" multiple accept=".docx,.doc,.xlsx,.xls,.pdf,.html,.htm,.md,.markdown,.csv,.tsv,.json,.jsonl,.xml,.yaml,.yml,.toml,.ini,.cfg,.conf,.env,.txt,.log,.rtf,.rst,.adoc,.tex,.py,.rb,.php,.js,.ts,.jsx,.tsx,.java,.cs,.go,.rs,.swift,.kt,.c,.cpp,.h,.sh,.ps1,.sql,.r,.bat,.png,.jpg,.jpeg,.gif,.webp,.bmp,.tiff,.tif,.zip,application/pdf,application/zip,image/*" hidden>
     </section>
 
+    <!-- On-device Dictation -->
+    <section class="card" id="dictation-card" hidden>
+      <h2>Dictate (on-device)</h2>
+      <p class="drop-hint" style="margin-bottom:12px">Speech is transcribed locally by Chrome's built-in on-device AI and redacted here — your microphone audio never leaves this device.</p>
+      <div class="dictation-controls">
+        <button id="btn-dictate" class="btn btn-primary">Start dictation</button>
+        <span id="dictation-status" class="dictation-status"></span>
+      </div>
+      <textarea id="dictation-output" class="dictation-output" rows="5" placeholder="Redacted transcript will appear here…" readonly></textarea>
+      <div class="summary-actions">
+        <button id="btn-dictation-copy" class="btn-sm" hidden>Copy redacted text</button>
+      </div>
+    </section>
+
     <!-- File Queue -->
     <section id="queue-section" class="card" hidden>
       <div class="queue-header">
@@ -54,6 +68,7 @@
   </div>
 
   <script src="lib/pii-types.js"></script>
+  <script src="lib/voice-transcriber.js"></script>
   <script src="lib/documents/document-processor.js"></script>
   <script src="redact.js"></script>
 </body>

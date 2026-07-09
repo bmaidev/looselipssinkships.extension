@@ -8,6 +8,8 @@
   const BUTTON_CLASS = "llss-redact-btn";
   const UPLOAD_CLASS = "llss-upload-btn";
   const SPINNER_CLASS = "llss-spinner";
+  const DICTATE_CLASS = "llss-dictate-btn";
+  const MIC_SVG = '<svg class="llss-btn-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M8 10a2.5 2.5 0 0 0 2.5-2.5v-4a2.5 2.5 0 0 0-5 0v4A2.5 2.5 0 0 0 8 10Z"/><path d="M12 7.5a.6.6 0 0 0-1.2 0 2.8 2.8 0 0 1-5.6 0A.6.6 0 0 0 4 7.5a4 4 0 0 0 3.4 3.96V13.4H6a.6.6 0 0 0 0 1.2h4a.6.6 0 0 0 0-1.2H8.6v-1.94A4 4 0 0 0 12 7.5Z"/></svg>';
 
   if (window.__llssInjected) return;
   window.__llssInjected = true;
@@ -160,6 +162,57 @@
   refreshSettings();
   setInterval(refreshSettings, 30000);
 
+  // ── Voice-capture detection bridge ────────────────────────────────────────
+  // Receives observe-only detections from the MAIN-world voice detector
+  // (lib/voice-detector.js) and forwards leak-risk signals. Attaches once.
+  // Disable via managed/remote config: voiceDetection.enabled = false.
+  function setupVoiceDetectionBridge() {
+    window.addEventListener("message", (event) => {
+      if (event.source !== window) return;
+      const data = event.data;
+      if (!data || data.source !== "llss-voice-detector" || !data.detection) return;
+      if (cachedSettings.voiceDetection?.enabled === false) return;
+
+      const { type, leakRisk } = data.detection;
+      if (typeof LLSS_debug !== "undefined") {
+        LLSS_debug.warn("voice", `Detected ${type}`, { leakRisk, href: data.href });
+      }
+      // Only the audio-leaves-the-page signal is recorded; local speech
+      // recognition keeps audio inside the browser engine (informational).
+      if (leakRisk) {
+        try {
+          chrome.runtime.sendMessage({
+            type: "RECORD_VOICE_CAPTURE_DETECTED",
+            detail: type,
+          });
+        } catch {
+          /* background may be asleep; detection is best-effort */
+        }
+        // Optional user-facing warning (off by default).
+        if (cachedSettings.voiceDetection?.warnOnLeak === true) {
+          maybeWarnVoiceLeak();
+        }
+      }
+    }, true);
+  }
+
+  // Rate-limited warning so a chatty page can't spam toasts.
+  let lastVoiceWarnAt = 0;
+  function maybeWarnVoiceLeak() {
+    const nowTs = Date.now();
+    if (nowTs - lastVoiceWarnAt < 15000) return;
+    lastVoiceWarnAt = nowTs;
+    try {
+      showToast(
+        document.body,
+        "This site is uploading your dictation audio. Spoken PII may bypass redaction — type sensitive details instead."
+      );
+    } catch {
+      /* toast is best-effort */
+    }
+  }
+  setupVoiceDetectionBridge();
+
   function updatePageProtection() {
     chrome.runtime.sendMessage({
       type: "CHECK_SITE",
@@ -175,7 +228,58 @@
         setupAutoRedact();
         setupSubmitGuard();
         setupUploadGuard();
+        // Composers may have been wrapped before we knew this was an AI site —
+        // attach the inline dictation mic button to any that are missing it.
+        refreshInlineDictation();
+        applyNativeMicSuppression();
       }
+    });
+  }
+
+  // ── Native mic suppression ────────────────────────────────────────────────
+  // Hide the site's own dictation/microphone button on AI sites so the leaky
+  // (audio-uploading) path can't be used by accident. Implemented as injected
+  // CSS matching specific aria-label substrings — self-applying across SPA
+  // re-renders, specific enough to avoid unrelated controls, and excludes our
+  // own button. Toggle: voiceDictation.suppressNativeMic.
+  const NATIVE_MIC_STYLE_ID = "llss-native-mic-suppress";
+
+  function applyNativeMicSuppression() {
+    const shouldSuppress =
+      isAiSite &&
+      cachedSettings.voiceDictation?.enabled !== false &&
+      cachedSettings.voiceDictation?.suppressNativeMic !== false;
+
+    const existing = document.getElementById(NATIVE_MIC_STYLE_ID);
+    if (!shouldSuppress) {
+      if (existing) existing.remove();
+      return;
+    }
+    if (existing) return;
+
+    const sel = (label) =>
+      `button[aria-label*="${label}" i]:not(.${DICTATE_CLASS}), [role="button"][aria-label*="${label}" i]:not(.${DICTATE_CLASS})`;
+    const style = document.createElement("style");
+    style.id = NATIVE_MIC_STYLE_ID;
+    style.textContent = [
+      sel("dictation"),
+      sel("dictate"),
+      sel("microphone"),
+      sel("press and hold to record"),
+      sel("voice input"),
+      sel("voice typing"),
+    ].join(",\n") + " { display: none !important; }";
+    (document.head || document.documentElement).appendChild(style);
+  }
+
+  // Attach the dictation mic to already-wrapped composers (used once AI-site
+  // status is known, since wrappers can be created before that).
+  function refreshInlineDictation() {
+    if (!shouldShowInlineDictation()) return;
+    document.querySelectorAll(".llss-wrapper").forEach((wrapper) => {
+      if (wrapper.dataset.llssDictate === "attached") return;
+      const el = wrapper.querySelector("textarea, [contenteditable='true'], [contenteditable='']");
+      if (el) attachInlineDictation(el, wrapper);
     });
   }
 
@@ -223,6 +327,180 @@
     btn.title = "Redact PII";
     btn.type = "button";
     return btn;
+  }
+
+  // ── Inline dictation (AI composers) ───────────────────────────────────────
+  // A mic button on AI-chat composers: capture speech, transcribe on-device
+  // (offscreen/Nano), redact, and insert the clean text — closing the voice
+  // dictation bypass in place. Audio never leaves the device.
+
+  function shouldShowInlineDictation() {
+    if (!isAiSite) return false;
+    if (cachedSettings.voiceDictation?.enabled === false) return false;
+    return typeof navigator !== "undefined" &&
+      navigator.mediaDevices &&
+      typeof navigator.mediaDevices.getUserMedia === "function" &&
+      typeof MediaRecorder !== "undefined";
+  }
+
+  function createDictationButton() {
+    const btn = document.createElement("button");
+    btn.className = `${BUTTON_CLASS} ${DICTATE_CLASS}`;
+    btn.innerHTML = MIC_SVG;
+    btn.title = "Dictate (on-device, redacted)";
+    btn.type = "button";
+    return btn;
+  }
+
+  function attachInlineDictation(el, wrapper) {
+    if (!shouldShowInlineDictation()) return;
+    if (wrapper.dataset.llssDictate === "attached") return;
+    wrapper.dataset.llssDictate = "attached";
+
+    // Float the button and track the composer's bottom-right corner. AI
+    // composers wrap a very short editable node (≈22px when empty), so
+    // anchoring absolutely inside the wrapper makes the button overflow. A
+    // fixed, rect-tracked button stays correctly placed as the composer grows.
+    const btn = createDictationButton();
+    btn.classList.add("llss-dictate-floating");
+    document.body.appendChild(btn);
+    btn.addEventListener("click", () => toggleInlineDictation(el, btn));
+
+    const reposition = () => positionFloatingDictation(el, btn, reposition);
+    reposition();
+    window.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    el.addEventListener("input", reposition);
+    el.addEventListener("focus", reposition, true);
+    try {
+      const ro = new ResizeObserver(reposition);
+      ro.observe(el);
+    } catch { /* ResizeObserver unavailable — event listeners still cover it */ }
+  }
+
+  function positionFloatingDictation(el, btn, reposition) {
+    // Clean up if the composer was removed (SPA navigation).
+    if (!el.isConnected) {
+      btn.remove();
+      window.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+      return;
+    }
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) { btn.style.display = "none"; return; }
+    btn.style.display = "";
+    const SIZE = 26;
+    // Bottom-right of the composer, offset left to clear the site's own send
+    // controls, clamped to stay on-screen.
+    let top = r.bottom - SIZE - 4;
+    let left = r.right - SIZE - 52;
+    top = Math.min(Math.max(top, 8), window.innerHeight - SIZE - 8);
+    left = Math.min(Math.max(left, 8), window.innerWidth - SIZE - 8);
+    btn.style.top = `${top}px`;
+    btn.style.left = `${left}px`;
+  }
+
+  const inlineRecorders = new WeakMap();
+
+  async function toggleInlineDictation(el, btn) {
+    // Stop → transcribe → redact → insert.
+    if (btn.dataset.recording === "true") {
+      btn.dataset.recording = "false";
+      btn.classList.remove("llss-recording");
+      btn.disabled = true;
+      btn.dataset.originalHtml = btn.innerHTML;
+      btn.innerHTML = "";
+      btn.classList.add(SPINNER_CLASS);
+      const recorder = inlineRecorders.get(btn);
+      inlineRecorders.delete(btn);
+      try {
+        const blob = recorder ? await recorder.stop() : null;
+        if (!blob || !blob.size) {
+          showToast(btn.parentNode || document.body, "No audio captured.");
+          return;
+        }
+        const buffer = await blob.arrayBuffer();
+        const audioBytes = Array.from(new Uint8Array(buffer));
+        const resp = await chrome.runtime.sendMessage({
+          type: "DICTATE_AUDIO",
+          audioBytes,
+          mime: blob.type,
+        });
+        if (resp?.success && resp.redacted) {
+          insertIntoComposer(el, resp.redacted);
+          showBadge(btn, resp.engine || "local_ai", resp.matchCount, resp.tier || "local");
+        } else if (resp?.success) {
+          showToast(btn.parentNode || document.body, "No speech detected.");
+        } else {
+          showToast(btn.parentNode || document.body, `Dictation failed: ${resp?.error || "unknown error"}`);
+        }
+      } catch (err) {
+        showToast(btn.parentNode || document.body, "Could not transcribe audio on-device.");
+      } finally {
+        btn.classList.remove(SPINNER_CLASS);
+        btn.disabled = false;
+        btn.innerHTML = btn.dataset.originalHtml || MIC_SVG;
+        btn.title = "Dictate (on-device, redacted)";
+      }
+      return;
+    }
+
+    // Start recording.
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const chunks = [];
+      const mr = new MediaRecorder(stream);
+      mr.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+      mr.start();
+      inlineRecorders.set(btn, {
+        stop: () => new Promise((resolve) => {
+          mr.onstop = () => {
+            try { stream.getTracks().forEach((t) => t.stop()); } catch { /* ignore */ }
+            resolve(new Blob(chunks, { type: mr.mimeType || "audio/webm" }));
+          };
+          try { mr.stop(); } catch { resolve(new Blob(chunks)); }
+        }),
+      });
+      btn.dataset.recording = "true";
+      btn.classList.add("llss-recording");
+      btn.title = "Stop dictation";
+    } catch (err) {
+      showToast(btn.parentNode || document.body, "Microphone unavailable or permission denied.");
+    }
+  }
+
+  // Insert transcribed+redacted text into a composer, framework-safe.
+  function insertIntoComposer(el, text) {
+    if (!text) return;
+    try { el.focus(); } catch { /* ignore */ }
+
+    if (el.tagName === "TEXTAREA" || el.tagName === "INPUT") {
+      const existing = el.value || "";
+      const sep = existing && !/\s$/.test(existing) ? " " : "";
+      el.value = existing + sep + text;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      return;
+    }
+
+    // contenteditable (ProseMirror/React composers) — move caret to end and use
+    // execCommand('insertText') so the editor's own change tracking registers it.
+    const existing = getElementText(el);
+    const sep = existing && !/\s$/.test(existing) ? " " : "";
+    let inserted = false;
+    try {
+      const sel = window.getSelection();
+      if (sel) {
+        sel.selectAllChildren(el);
+        sel.collapseToEnd();
+      }
+      inserted = document.execCommand && document.execCommand("insertText", false, sep + text);
+    } catch {
+      inserted = false;
+    }
+    if (!inserted) {
+      el.innerText = existing + sep + text;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    }
   }
 
   // ── File upload handler ────────────────────────────────────────────────────
@@ -397,6 +675,8 @@
         btn
       )
     );
+
+    attachInlineDictation(textarea, wrapper);
   }
 
   // ── Attach to contenteditable ────────────────────────────────────────────
@@ -429,6 +709,8 @@
         btn
       )
     );
+
+    attachInlineDictation(el, wrapper);
   }
 
   // ── Manual redaction handler ──────────────────────────────────────────────

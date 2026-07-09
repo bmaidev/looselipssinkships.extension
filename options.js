@@ -91,6 +91,16 @@ function populateUI() {
   document.getElementById("uploadGuardOnlyAi").checked = ug.onlyOnAiSites !== false;
   document.getElementById("uploadGuardConfirm").checked = ug.confirmBeforeUpload !== false;
 
+  // Voice capture detection.
+  const vd = s.voiceDetection || {};
+  document.getElementById("voiceDetectionEnabled").checked = vd.enabled !== false;
+  document.getElementById("voiceDetectionWarn").checked = vd.warnOnLeak === true;
+
+  // Inline voice dictation.
+  const vdict = s.voiceDictation || {};
+  document.getElementById("voiceDictationEnabled").checked = vdict.enabled !== false;
+  document.getElementById("voiceDictationSuppress").checked = vdict.suppressNativeMic !== false;
+
   // Provider configuration.
   const providers = s.providers || {};
   document.getElementById("provider-local-ai").checked = providers.local_ai?.enabled !== false;
@@ -172,6 +182,10 @@ const SETTING_MAP = {
   "uploadGuard.enabled":             { type: "checkbox", id: "uploadGuardEnabled" },
   "uploadGuard.onlyOnAiSites":       { type: "checkbox", id: "uploadGuardOnlyAi" },
   "uploadGuard.confirmBeforeUpload":  { type: "checkbox", id: "uploadGuardConfirm" },
+  "voiceDetection.enabled":          { type: "checkbox", id: "voiceDetectionEnabled" },
+  "voiceDetection.warnOnLeak":       { type: "checkbox", id: "voiceDetectionWarn" },
+  "voiceDictation.enabled":          { type: "checkbox", id: "voiceDictationEnabled" },
+  "voiceDictation.suppressNativeMic":{ type: "checkbox", id: "voiceDictationSuppress" },
   "providers.local_ai":              { type: "checkbox", id: "provider-local-ai" },
   "providers.azure_pii":             { type: "section", id: "azure-config" },
   "providers.azure_pii.enabled":     { type: "checkbox", id: "provider-azure-pii" },
@@ -830,6 +844,20 @@ function saveSettings() {
     confirmBeforeUpload: document.getElementById("uploadGuardConfirm").checked,
   };
 
+  // Voice capture detection
+  currentSettings.voiceDetection = {
+    ...(currentSettings.voiceDetection || {}),
+    enabled: document.getElementById("voiceDetectionEnabled").checked,
+    warnOnLeak: document.getElementById("voiceDetectionWarn").checked,
+  };
+
+  // Inline voice dictation
+  currentSettings.voiceDictation = {
+    ...(currentSettings.voiceDictation || {}),
+    enabled: document.getElementById("voiceDictationEnabled").checked,
+    suppressNativeMic: document.getElementById("voiceDictationSuppress").checked,
+  };
+
   // Remote config URL
   currentSettings.configUrl = document.getElementById("configUrl").value.trim();
 
@@ -1078,6 +1106,47 @@ document.getElementById("modal-overlay").addEventListener("click", (e) => {
 document.getElementById("hosted-modal-overlay").addEventListener("click", (e) => {
   if (e.target.id === "hosted-modal-overlay") closeHostedModal();
 });
+
+// ── Category navigation ─────────────────────────────────────────────────────
+// The settings are grouped into categories; the sidebar shows one at a time.
+function setupCategoryNav() {
+  const CAT_TITLES = {
+    general: "General",
+    providers: "Processing Providers",
+    protection: "AI Chat Protection",
+    voice: "Voice Dictation",
+    documents: "Documents",
+    rules: "PII Detection Rules",
+    enterprise: "Enterprise & Remote Config",
+    diagnostics: "Diagnostics",
+  };
+  const navItems = Array.from(document.querySelectorAll(".side-nav-item"));
+  const sections = Array.from(document.querySelectorAll(".card[data-cat]"));
+  const titleEl = document.getElementById("panel-title");
+
+  function activate(cat) {
+    if (!CAT_TITLES[cat]) cat = "general";
+    sections.forEach((sec) => {
+      sec.classList.toggle("cat-hidden", sec.dataset.cat !== cat);
+    });
+    navItems.forEach((n) => n.classList.toggle("active", n.dataset.target === cat));
+    if (titleEl) titleEl.textContent = CAT_TITLES[cat];
+    try { localStorage.setItem("llss_settings_cat", cat); } catch { /* ignore */ }
+    window.scrollTo({ top: 0 });
+  }
+
+  navItems.forEach((n) => {
+    n.addEventListener("click", () => activate(n.dataset.target));
+  });
+
+  let initial = "general";
+  try {
+    const saved = localStorage.getItem("llss_settings_cat");
+    if (saved && CAT_TITLES[saved]) initial = saved;
+  } catch { /* ignore */ }
+  activate(initial);
+}
+setupCategoryNav();
 
 // Initialise.
 init();

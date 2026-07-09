@@ -499,6 +499,52 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       return true;
     }
 
+    case "DICTATE_AUDIO": {
+      // Transcribe a captured audio clip on-device (offscreen/Nano), then redact
+      // the transcript through the normal pipeline. Audio never leaves the device.
+      const dictDone = LLSS_debug.time("dictate", `audio (${message.audioBytes?.length || 0} bytes)`);
+      sendToOffscreen("TRANSCRIBE_AUDIO", {
+        audioBytes: message.audioBytes,
+        mime: message.mime,
+      })
+        .then(async (res) => {
+          const transcript = (res?.transcript || "").trim();
+          if (!transcript) {
+            dictDone();
+            sendResponse({ success: true, transcript: "", redacted: "", matchCount: 0 });
+            return;
+          }
+          const result = await handleRedactText(transcript, {});
+          dictDone();
+          LLSS_debug.log("dictate", `transcript=${transcript.length}ch engine=${result.engine} matches=${result.matches?.length || 0}`);
+          sendResponse({
+            success: true,
+            transcript,
+            redacted: result.redacted,
+            engine: result.engine,
+            tier: result.tier,
+            matchCount: result.matches?.length || 0,
+          });
+        })
+        .catch((err) => {
+          dictDone();
+          LLSS_debug.error("dictate", "DICTATE_AUDIO failed:", err.message);
+          sendResponse({ success: false, error: err.message });
+        });
+      return true;
+    }
+
+    case "RECORD_VOICE_CAPTURE_DETECTED": {
+      LLSS_loadStats().then(async (stats) => {
+        stats.voiceCapturesDetected = (stats.voiceCapturesDetected || 0) + 1;
+        if (typeof chrome !== "undefined" && chrome.storage) {
+          chrome.storage.local.set({ llss_stats: stats });
+        }
+        sendResponse({ success: true });
+      });
+      return true;
+    }
+
     case "DESTROY_SESSION": {
       const localAi = registry.get("local_ai");
       if (localAi) localAi.destroy();

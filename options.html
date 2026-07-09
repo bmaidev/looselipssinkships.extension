@@ -7,11 +7,33 @@
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>Loose Lips Sink Ships</h1>
-      <p class="subtitle">PII Redaction Settings</p>
-    </header>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <span class="sidebar-logo">&#x1f6e1;&#xfe0f;</span>
+        <div>
+          <div class="sidebar-title">Loose Lips Sink Ships</div>
+          <div class="sidebar-sub">Settings</div>
+        </div>
+      </div>
+      <nav class="side-nav" id="side-nav">
+        <button type="button" class="side-nav-item active" data-target="general"><span class="side-ico">&#x2699;&#xfe0f;</span>General</button>
+        <button type="button" class="side-nav-item" data-target="providers"><span class="side-ico">&#x1f50c;</span>Providers</button>
+        <button type="button" class="side-nav-item" data-target="protection"><span class="side-ico">&#x1f6e1;&#xfe0f;</span>AI Protection</button>
+        <button type="button" class="side-nav-item" data-target="voice"><span class="side-ico">&#x1f3a4;</span>Voice</button>
+        <button type="button" class="side-nav-item" data-target="documents"><span class="side-ico">&#x1f4c4;</span>Documents</button>
+        <button type="button" class="side-nav-item" data-target="rules"><span class="side-ico">&#x1f50d;</span>PII Rules</button>
+        <button type="button" class="side-nav-item" data-target="enterprise"><span class="side-ico">&#x1f3e2;</span>Enterprise</button>
+        <button type="button" class="side-nav-item" data-target="diagnostics"><span class="side-ico">&#x1f527;</span>Diagnostics</button>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <div class="main-inner">
+        <header class="main-head">
+          <h1 id="panel-title">General</h1>
+          <p class="subtitle">PII Redaction Settings</p>
+        </header>
 
     <!-- Managed policy banner (hidden unless enterprise-managed) -->
     <div id="managed-banner" class="managed-banner hidden">
@@ -24,7 +46,7 @@
     </div>
 
     <!-- Detection Mode -->
-    <section class="card">
+    <section class="card" data-cat="general">
       <h2>Detection Mode</h2>
       <p class="help">Choose how PII is detected. "Auto" tries the local AI model first and falls back to regex if unavailable.</p>
       <div class="radio-group">
@@ -52,7 +74,7 @@
     </section>
 
     <!-- Provider Configuration -->
-    <section class="card">
+    <section class="card" data-cat="providers">
       <h2>Processing Providers</h2>
       <p class="help">Configure where PII redaction is processed. Local providers are used first — hosted and cloud providers are used for advanced processing or when local is unavailable.</p>
 
@@ -247,7 +269,7 @@
     </section>
 
     <!-- Site Filtering -->
-    <section class="card">
+    <section class="card" data-cat="protection">
       <h2>Site Filtering</h2>
       <p class="help">Control which websites the extension is active on.</p>
       <div class="radio-group">
@@ -279,7 +301,7 @@
     </section>
 
     <!-- AI Chat Guard -->
-    <section class="card">
+    <section class="card" data-cat="protection">
       <h2>AI Chat Guard</h2>
       <p class="help">Automatically protect against PII being submitted to AI chat services (ChatGPT, Claude, Gemini, Copilot, Grok, and many more).</p>
       <label class="checkbox-label">
@@ -309,7 +331,7 @@
     </section>
 
     <!-- Auto-Redact -->
-    <section class="card">
+    <section class="card" data-cat="protection">
       <h2>Auto-Redact</h2>
       <p class="help">Automatically redact PII as you type or paste, without clicking the Redact button.</p>
       <label class="checkbox-label">
@@ -332,7 +354,7 @@
     </section>
 
     <!-- Submit & Upload Guard -->
-    <section class="card">
+    <section class="card" data-cat="protection">
       <h2>Submit &amp; Upload Guard</h2>
       <p class="help">Intercept form submissions and file uploads to ensure PII is redacted before data leaves the page.</p>
       <label class="checkbox-label">
@@ -370,8 +392,31 @@
       </label>
     </section>
 
+    <!-- Voice Capture Detection -->
+    <section class="card" data-cat="voice">
+      <h2>Voice Dictation Detection</h2>
+      <p class="help">Detects when a site captures your microphone for dictation and uploads the audio off-device — spoken PII that would otherwise bypass text redaction. Detection is local and observe-only; no audio is recorded or sent anywhere. Works on any site, with no domain list.</p>
+      <label class="checkbox-label">
+        <input type="checkbox" id="voiceDetectionEnabled">
+        <span><strong>Detect microphone dictation uploads</strong></span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="voiceDetectionWarn">
+        <span>Warn me when a site uploads dictation audio</span>
+      </label>
+      <hr style="margin: 12px 0; border: none; border-top: 1px solid #e5e7eb;">
+      <label class="checkbox-label">
+        <input type="checkbox" id="voiceDictationEnabled">
+        <span><strong>Inline dictation on AI chat sites</strong> — adds a mic button to the composer that transcribes speech on-device and redacts it before insertion</span>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="voiceDictationSuppress">
+        <span>Hide the site's own dictation button — prevents accidentally using the path that uploads your voice</span>
+      </label>
+    </section>
+
     <!-- Document Upload -->
-    <section class="card">
+    <section class="card" data-cat="documents">
       <h2>Document Processing</h2>
       <p class="help">Enable file upload buttons alongside text redaction. Supports Word (.docx), Excel (.xlsx), HTML, Markdown, PDF, and images. PDF/image redaction uses local OCR (requires vendor setup) or an optional OCR container.</p>
       <label class="checkbox-label">
@@ -381,7 +426,7 @@
     </section>
 
     <!-- Fallback Options -->
-    <section class="card">
+    <section class="card" data-cat="general">
       <h2>Fallback Options</h2>
       <label class="checkbox-label">
         <input type="checkbox" id="enableVectorFallback">
@@ -399,7 +444,7 @@
     </section>
 
     <!-- UI Options -->
-    <section class="card">
+    <section class="card" data-cat="general">
       <h2>Interface</h2>
       <label class="checkbox-label">
         <input type="checkbox" id="showRedactButton">
@@ -417,7 +462,7 @@
     </section>
 
     <!-- PII Types -->
-    <section class="card">
+    <section class="card" data-cat="rules">
       <h2>PII Detection Rules</h2>
       <p class="help">Toggle built-in rules or add custom patterns. Each rule has a regex pattern and a replacement token.</p>
 
@@ -427,7 +472,7 @@
     </section>
 
     <!-- Regex Tester -->
-    <section class="card">
+    <section class="card" data-cat="rules">
       <h2>Regex Tester</h2>
       <p class="help">Test a regex pattern against sample text.</p>
       <div class="form-row">
@@ -440,7 +485,7 @@
     </section>
 
     <!-- Remote Configuration (small business) -->
-    <section class="card">
+    <section class="card" data-cat="enterprise">
       <h2>Remote Configuration</h2>
       <p class="help">For organisations without enterprise MDM: paste a URL to a hosted JSON configuration file. The extension will fetch it periodically and apply the settings. Your admin will provide this URL.</p>
       <div class="form-group">
@@ -452,7 +497,7 @@
     </section>
 
     <!-- Debug -->
-    <section class="card">
+    <section class="card" data-cat="diagnostics">
       <h2>Troubleshooting</h2>
       <label class="checkbox-label">
         <input type="checkbox" id="debugMode">
@@ -462,17 +507,19 @@
     </section>
 
     <!-- Statistics -->
-    <section class="card">
+    <section class="card" data-cat="diagnostics">
       <h2>Statistics</h2>
       <div id="stats-display" class="stats-grid"></div>
       <button id="btn-reset-stats" class="btn secondary">Reset Statistics</button>
     </section>
 
-    <!-- Save -->
-    <div class="save-bar">
-      <span id="save-status" class="save-status"></span>
-      <button id="btn-save" class="btn primary">Save Settings</button>
-    </div>
+        <!-- Save -->
+        <div class="save-bar">
+          <span id="save-status" class="save-status"></span>
+          <button id="btn-save" class="btn primary">Save Settings</button>
+        </div>
+      </div>
+    </main>
   </div>
 
   <!-- Modal for adding/editing custom PII types -->

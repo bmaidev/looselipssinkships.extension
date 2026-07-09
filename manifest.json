@@ -5,7 +5,6 @@
   "description": "Enterprise last-mile PII Interception & redaction with local-first processing.",
   "permissions": [
     "storage",
-    "activeTab",
     "offscreen",
     "alarms",
     "identity"

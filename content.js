@@ -8,6 +8,8 @@
   const BUTTON_CLASS = "llss-redact-btn";
   const UPLOAD_CLASS = "llss-upload-btn";
   const SPINNER_CLASS = "llss-spinner";
+  const DICTATE_CLASS = "llss-dictate-btn";
+  const MIC_SVG = '<svg class="llss-btn-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M8 10a2.5 2.5 0 0 0 2.5-2.5v-4a2.5 2.5 0 0 0-5 0v4A2.5 2.5 0 0 0 8 10Z"/><path d="M12 7.5a.6.6 0 0 0-1.2 0 2.8 2.8 0 0 1-5.6 0A.6.6 0 0 0 4 7.5a4 4 0 0 0 3.4 3.96V13.4H6a.6.6 0 0 0 0 1.2h4a.6.6 0 0 0 0-1.2H8.6v-1.94A4 4 0 0 0 12 7.5Z"/></svg>';
 
   if (window.__llssInjected) return;
   window.__llssInjected = true;
@@ -226,7 +228,21 @@
         setupAutoRedact();
         setupSubmitGuard();
         setupUploadGuard();
+        // Composers may have been wrapped before we knew this was an AI site —
+        // attach the inline dictation mic button to any that are missing it.
+        refreshInlineDictation();
       }
+    });
+  }
+
+  // Attach the dictation mic to already-wrapped composers (used once AI-site
+  // status is known, since wrappers can be created before that).
+  function refreshInlineDictation() {
+    if (!shouldShowInlineDictation()) return;
+    document.querySelectorAll(".llss-wrapper").forEach((wrapper) => {
+      if (wrapper.dataset.llssDictate === "attached") return;
+      const el = wrapper.querySelector("textarea, [contenteditable='true'], [contenteditable='']");
+      if (el) attachInlineDictation(el, wrapper);
     });
   }
 
@@ -274,6 +290,141 @@
     btn.title = "Redact PII";
     btn.type = "button";
     return btn;
+  }
+
+  // ── Inline dictation (AI composers) ───────────────────────────────────────
+  // A mic button on AI-chat composers: capture speech, transcribe on-device
+  // (offscreen/Nano), redact, and insert the clean text — closing the voice
+  // dictation bypass in place. Audio never leaves the device.
+
+  function shouldShowInlineDictation() {
+    if (!isAiSite) return false;
+    if (cachedSettings.voiceDictation?.enabled === false) return false;
+    return typeof navigator !== "undefined" &&
+      navigator.mediaDevices &&
+      typeof navigator.mediaDevices.getUserMedia === "function" &&
+      typeof MediaRecorder !== "undefined";
+  }
+
+  function createDictationButton() {
+    const btn = document.createElement("button");
+    btn.className = `${BUTTON_CLASS} ${DICTATE_CLASS}`;
+    btn.innerHTML = MIC_SVG;
+    btn.title = "Dictate (on-device, redacted)";
+    btn.type = "button";
+    return btn;
+  }
+
+  function attachInlineDictation(el, wrapper) {
+    if (!shouldShowInlineDictation()) return;
+    if (wrapper.dataset.llssDictate === "attached") return;
+    wrapper.dataset.llssDictate = "attached";
+    const btn = createDictationButton();
+    wrapper.appendChild(btn);
+    btn.addEventListener("click", () => toggleInlineDictation(el, btn));
+  }
+
+  const inlineRecorders = new WeakMap();
+
+  async function toggleInlineDictation(el, btn) {
+    // Stop → transcribe → redact → insert.
+    if (btn.dataset.recording === "true") {
+      btn.dataset.recording = "false";
+      btn.classList.remove("llss-recording");
+      btn.disabled = true;
+      btn.dataset.originalHtml = btn.innerHTML;
+      btn.innerHTML = "";
+      btn.classList.add(SPINNER_CLASS);
+      const recorder = inlineRecorders.get(btn);
+      inlineRecorders.delete(btn);
+      try {
+        const blob = recorder ? await recorder.stop() : null;
+        if (!blob || !blob.size) {
+          showToast(btn.parentNode || document.body, "No audio captured.");
+          return;
+        }
+        const buffer = await blob.arrayBuffer();
+        const audioBytes = Array.from(new Uint8Array(buffer));
+        const resp = await chrome.runtime.sendMessage({
+          type: "DICTATE_AUDIO",
+          audioBytes,
+          mime: blob.type,
+        });
+        if (resp?.success && resp.redacted) {
+          insertIntoComposer(el, resp.redacted);
+          showBadge(btn, resp.engine || "local_ai", resp.matchCount, resp.tier || "local");
+        } else if (resp?.success) {
+          showToast(btn.parentNode || document.body, "No speech detected.");
+        } else {
+          showToast(btn.parentNode || document.body, `Dictation failed: ${resp?.error || "unknown error"}`);
+        }
+      } catch (err) {
+        showToast(btn.parentNode || document.body, "Could not transcribe audio on-device.");
+      } finally {
+        btn.classList.remove(SPINNER_CLASS);
+        btn.disabled = false;
+        btn.innerHTML = btn.dataset.originalHtml || MIC_SVG;
+        btn.title = "Dictate (on-device, redacted)";
+      }
+      return;
+    }
+
+    // Start recording.
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const chunks = [];
+      const mr = new MediaRecorder(stream);
+      mr.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+      mr.start();
+      inlineRecorders.set(btn, {
+        stop: () => new Promise((resolve) => {
+          mr.onstop = () => {
+            try { stream.getTracks().forEach((t) => t.stop()); } catch { /* ignore */ }
+            resolve(new Blob(chunks, { type: mr.mimeType || "audio/webm" }));
+          };
+          try { mr.stop(); } catch { resolve(new Blob(chunks)); }
+        }),
+      });
+      btn.dataset.recording = "true";
+      btn.classList.add("llss-recording");
+      btn.title = "Stop dictation";
+    } catch (err) {
+      showToast(btn.parentNode || document.body, "Microphone unavailable or permission denied.");
+    }
+  }
+
+  // Insert transcribed+redacted text into a composer, framework-safe.
+  function insertIntoComposer(el, text) {
+    if (!text) return;
+    try { el.focus(); } catch { /* ignore */ }
+
+    if (el.tagName === "TEXTAREA" || el.tagName === "INPUT") {
+      const existing = el.value || "";
+      const sep = existing && !/\s$/.test(existing) ? " " : "";
+      el.value = existing + sep + text;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      return;
+    }
+
+    // contenteditable (ProseMirror/React composers) — move caret to end and use
+    // execCommand('insertText') so the editor's own change tracking registers it.
+    const existing = getElementText(el);
+    const sep = existing && !/\s$/.test(existing) ? " " : "";
+    let inserted = false;
+    try {
+      const sel = window.getSelection();
+      if (sel) {
+        sel.selectAllChildren(el);
+        sel.collapseToEnd();
+      }
+      inserted = document.execCommand && document.execCommand("insertText", false, sep + text);
+    } catch {
+      inserted = false;
+    }
+    if (!inserted) {
+      el.innerText = existing + sep + text;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    }
   }
 
   // ── File upload handler ────────────────────────────────────────────────────
@@ -448,6 +599,8 @@
         btn
       )
     );
+
+    attachInlineDictation(textarea, wrapper);
   }
 
   // ── Attach to contenteditable ────────────────────────────────────────────
@@ -480,6 +633,8 @@
         btn
       )
     );
+
+    attachInlineDictation(el, wrapper);
   }
 
   // ── Manual redaction handler ──────────────────────────────────────────────

@@ -96,6 +96,10 @@ function populateUI() {
   document.getElementById("voiceDetectionEnabled").checked = vd.enabled !== false;
   document.getElementById("voiceDetectionWarn").checked = vd.warnOnLeak === true;
 
+  // Inline voice dictation.
+  const vdict = s.voiceDictation || {};
+  document.getElementById("voiceDictationEnabled").checked = vdict.enabled !== false;
+
   // Provider configuration.
   const providers = s.providers || {};
   document.getElementById("provider-local-ai").checked = providers.local_ai?.enabled !== false;
@@ -179,6 +183,7 @@ const SETTING_MAP = {
   "uploadGuard.confirmBeforeUpload":  { type: "checkbox", id: "uploadGuardConfirm" },
   "voiceDetection.enabled":          { type: "checkbox", id: "voiceDetectionEnabled" },
   "voiceDetection.warnOnLeak":       { type: "checkbox", id: "voiceDetectionWarn" },
+  "voiceDictation.enabled":          { type: "checkbox", id: "voiceDictationEnabled" },
   "providers.local_ai":              { type: "checkbox", id: "provider-local-ai" },
   "providers.azure_pii":             { type: "section", id: "azure-config" },
   "providers.azure_pii.enabled":     { type: "checkbox", id: "provider-azure-pii" },
@@ -842,6 +847,12 @@ function saveSettings() {
     ...(currentSettings.voiceDetection || {}),
     enabled: document.getElementById("voiceDetectionEnabled").checked,
     warnOnLeak: document.getElementById("voiceDetectionWarn").checked,
+  };
+
+  // Inline voice dictation
+  currentSettings.voiceDictation = {
+    ...(currentSettings.voiceDictation || {}),
+    enabled: document.getElementById("voiceDictationEnabled").checked,
   };
 
   // Remote config URL

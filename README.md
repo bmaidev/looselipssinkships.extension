@@ -84,11 +84,18 @@
 - **Protection banner** on detected AI sites
 - Enforces redaction before submit, upload, and paste
 
+### Voice Dictation
+- **Dictation leak detection (observe-only)** — on any site, detects when a page captures the microphone in a way that would upload it (`getUserMedia` feeding a `MediaRecorder`), i.e. server-side dictation where spoken PII leaves the browser as audio before any text guard sees it. Local, observe-only — no audio is recorded or sent. Optional warning toast on leak.
+- **Inline on-device dictation** — adds a green microphone button to AI chat composers. Speak, and audio is transcribed **on-device** (Gemini Nano via the Prompt API's audio input; on-device Web Speech where available), redacted through the normal pipeline, and the clean text is inserted. Audio **never leaves the device**; cloud transcription is never used. Also available in the Redact Files tool as a "Dictate (on-device)" panel.
+- **Native dictation-button suppression** — hides the site's own dictation button (e.g. ChatGPT's "Start dictation", Claude's "Press and hold to record") so only the safe on-device button remains. Targets dictation buttons, not full realtime voice mode.
+- **Requires** Chrome 138+ with the on-device model (Gemini Nano) available; transcription runs in the offscreen document.
+
 ### Standalone Redaction Tool
 Click **"Redact Files"** in the popup to open a dedicated tab:
 - Drag-and-drop with multi-file batch processing
 - Per-file results: match count, engine, pipeline steps, text preview
 - Individual and bulk download of redacted files
+- On-device **Dictate** panel — transcribe speech locally and redact before it appears
 - Works independently of any website
 
 ### Provably Secure Image/PDF Redaction
@@ -125,6 +132,10 @@ Custom patterns can be added via the Settings page.
 ---
 
 ## Installation
+
+**Live on the Chrome Web Store:** [Loose Lips Sink Ships](https://chromewebstore.google.com/detail/loose-lips-sink-ships/bkjmleaamcpimcnlgfcejocbfgbhgldp) — click **Add to Chrome**.
+
+To build from source or side-load a development copy:
 
 ```bash
 # 1. Clone the repo

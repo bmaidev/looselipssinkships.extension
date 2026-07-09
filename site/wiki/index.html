@@ -424,6 +424,16 @@ footer{
   </div>
 
   <div class="sidebar-section">
+    <div class="sidebar-heading" data-section="voice-dictation">Voice Dictation</div>
+    <ul class="sidebar-links">
+      <li><a href="#voice-dictation">Overview</a></li>
+      <li><a href="#voice-leak-detection">Leak Detection</a></li>
+      <li><a href="#voice-inline-dictation">On-Device Dictation</a></li>
+      <li><a href="#voice-native-suppression">Native Button Suppression</a></li>
+    </ul>
+  </div>
+
+  <div class="sidebar-section">
     <div class="sidebar-heading" data-section="document-processing">Document Processing</div>
     <ul class="sidebar-links">
       <li><a href="#document-processing">Overview</a></li>
@@ -502,6 +512,7 @@ footer{
       <li><a href="#settings-ui">UI</a></li>
       <li><a href="#settings-site-filter">Site Filter</a></li>
       <li><a href="#settings-ai-chat-guard">AI Chat Guard</a></li>
+      <li><a href="#settings-voice">Voice Dictation</a></li>
       <li><a href="#settings-auto-redact">Auto-Redact</a></li>
       <li><a href="#settings-submit-guard">Submit Guard</a></li>
       <li><a href="#settings-upload-guard">Upload Guard</a></li>
@@ -553,6 +564,7 @@ footer{
 <ul>
   <li><strong>Google Chrome 128+</strong> (Chrome 136+ recommended for best Gemini Nano stability)</li>
   <li><strong>Gemini Nano</strong> (optional) &mdash; enable in <code>chrome://flags</code> for on-device AI detection</li>
+  <li><strong>Chrome 138+ with on-device AI</strong> (optional) &mdash; required for on-device voice dictation via the Prompt API</li>
   <li><strong>Tesseract.js + pdf.js</strong> (optional) &mdash; run <code>vendor/setup.sh</code> for PDF rendering and image OCR</li>
   <li><strong>Azure subscription</strong> (optional) &mdash; only needed for Azure PII or Purview DLP integration</li>
 </ul>
@@ -560,7 +572,7 @@ footer{
 <h3 id="installation">Installation</h3>
 <h4>From Chrome Web Store</h4>
 <ol>
-  <li>Visit the <a href="https://chrome.google.com/webstore">Chrome Web Store listing</a></li>
+  <li>Visit the <a href="https://chromewebstore.google.com/detail/loose-lips-sink-ships/bkjmleaamcpimcnlgfcejocbfgbhgldp">Chrome Web Store listing</a></li>
   <li>Click <strong>Add to Chrome</strong></li>
   <li>Confirm the permissions dialog</li>
   <li>The extension icon appears in your toolbar</li>
@@ -958,6 +970,70 @@ footer{
 
 
 <!-- ══════════════════════════════════════════════════════════════════
+     6b. VOICE DICTATION
+     ══════════════════════════════════════════════════════════════════ -->
+<h2 id="voice-dictation">Voice Dictation</h2>
+
+<p>Voice is a blind spot for text-based PII guards: when you dictate, spoken PII can leave the browser as an audio blob <strong>before any text guard ever sees it</strong>. The Voice Dictation family closes that gap with three cooperating features &mdash; a local leak detector, an on-device dictation button, and native-button suppression.</p>
+
+<div class="callout callout-tip"><p>The safe path is fully on-device: microphone audio is transcribed locally with Chrome's built-in AI, redacted through the normal PII pipeline, and only the clean text is inserted. The audio never leaves the device, and cloud transcription is never used.</p></div>
+
+<h3 id="voice-leak-detection">Voice Dictation Leak Detection <span class="badge badge-green">Observe-only</span></h3>
+<p>On <strong>any</strong> site (no domain allowlist required), the extension watches for pages that capture microphone audio in a way that would upload it &mdash; specifically <code>getUserMedia</code> feeding a <code>MediaRecorder</code>. This is the signature of server-side dictation, where your spoken words are sent off as an audio file before any text redaction can apply.</p>
+<ul>
+  <li><strong>Local and observe-only</strong> &mdash; detection happens entirely in the page. No audio is recorded, buffered, or sent anywhere by the extension.</li>
+  <li><strong>What it flags</strong> &mdash; a page that opens a microphone stream and pipes it into a recorder, i.e. dictation audio destined to leave the browser.</li>
+  <li><strong>Optional warning</strong> &mdash; when <code>voiceDetection.warnOnLeak</code> is enabled, a warning toast appears the moment a site uploads dictation audio.</li>
+</ul>
+<table class="settings-table">
+  <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>voiceDetection.enabled</code></td><td class="type">boolean</td><td><code>true</code></td><td>Detect microphone dictation uploads (<code>getUserMedia</code> &rarr; <code>MediaRecorder</code>). Local, observe-only.</td></tr>
+    <tr><td><code>voiceDetection.warnOnLeak</code></td><td class="type">boolean</td><td><code>false</code></td><td>Show a warning toast when a site uploads dictation audio.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="voice-inline-dictation">Inline On-Device Dictation <span class="badge badge-green">Local</span></h3>
+<p>On AI chat sites (ChatGPT, Claude, Gemini, and others), the extension adds a <strong>green microphone button</strong> to the composer. Click it, speak, and click again to stop:</p>
+<ol>
+  <li>Microphone audio is captured <strong>locally</strong> in the browser</li>
+  <li>It is transcribed <strong>on-device</strong> using Chrome's built-in AI (Gemini Nano, via the Prompt API's audio input; on-device Web Speech is also used where genuinely available)</li>
+  <li>The transcript is redacted through the normal PII pipeline</li>
+  <li>The clean, redacted text is inserted into the composer</li>
+</ol>
+<div class="callout callout-tip"><p>The microphone audio <strong>never leaves the device</strong>, and cloud transcription is never used. Only redacted text reaches the page.</p></div>
+<p>The same capability is available in the standalone <a href="#standalone-tool">Redact Files</a> tool as a <strong>Dictate (on-device)</strong> panel.</p>
+
+<h4>Requirements</h4>
+<ul>
+  <li><strong>Chrome 138+</strong> &mdash; required for the Prompt API in extensions</li>
+  <li><strong>On-device model available</strong> &mdash; Gemini Nano must be downloaded and available (see <a href="#installation">Installation</a>)</li>
+  <li>Transcription runs in the extension's <strong>offscreen document</strong></li>
+</ul>
+<div class="callout callout-info"><p>First use may pause a few seconds while the on-device model warms up. Subsequent dictation is faster within the session.</p></div>
+
+<table class="settings-table">
+  <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>voiceDictation.enabled</code></td><td class="type">boolean</td><td><code>true</code></td><td>Show the on-device microphone button on AI chat composers and in the Redact Files tool.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="voice-native-suppression">Native Button Suppression</h3>
+<p>On AI sites, the extension can hide the <strong>site's own</strong> dictation/microphone button &mdash; the one that uploads your raw voice to their servers &mdash; so users are left only with the safe on-device button.</p>
+<ul>
+  <li>Targets <strong>dictation buttons specifically</strong> (e.g. ChatGPT's "Start dictation", Claude's "Press and hold to record")</li>
+  <li>Does <strong>not</strong> target full realtime "voice mode" &mdash; only the dictation-to-text control</li>
+</ul>
+<table class="settings-table">
+  <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>voiceDictation.suppressNativeMic</code></td><td class="type">boolean</td><td><code>true</code></td><td>Hide the site's own dictation button so only the on-device button remains.</td></tr>
+  </tbody>
+</table>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
      7. DOCUMENT PROCESSING
      ══════════════════════════════════════════════════════════════════ -->
 <h2 id="document-processing">Document Processing</h2>
@@ -1107,6 +1183,7 @@ footer{
   <li><strong>Batch processing</strong> &mdash; queue multiple files; they are processed sequentially</li>
   <li><strong>Download results</strong> &mdash; redacted files are available for download individually</li>
   <li><strong>Text input</strong> &mdash; paste text directly for instant redaction</li>
+  <li><strong>Dictate (on-device)</strong> &mdash; a panel that transcribes your speech locally with Chrome's built-in AI and redacts the transcript before it appears (see <a href="#voice-inline-dictation">Inline On-Device Dictation</a>)</li>
   <li>Supports all document types the extension handles (DOCX, PDF, images, text files, ZIP)</li>
 </ul>
 
@@ -1436,6 +1513,17 @@ await LLSS_AzureAuth.signOut();</code></pre>
   </tbody>
 </table>
 
+<h3 id="settings-voice">Voice Dictation</h3>
+<table class="settings-table">
+  <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>voiceDetection.enabled</code></td><td class="type">boolean</td><td><code>true</code></td><td>Detect microphone dictation uploads (<code>getUserMedia</code> &rarr; <code>MediaRecorder</code>) on any site. Local, observe-only &mdash; no audio is recorded or sent.</td></tr>
+    <tr><td><code>voiceDetection.warnOnLeak</code></td><td class="type">boolean</td><td><code>false</code></td><td>Show a warning toast when a site uploads dictation audio.</td></tr>
+    <tr><td><code>voiceDictation.enabled</code></td><td class="type">boolean</td><td><code>true</code></td><td>Inline on-device dictation button on AI chat composers (and in the Redact Files tool).</td></tr>
+    <tr><td><code>voiceDictation.suppressNativeMic</code></td><td class="type">boolean</td><td><code>true</code></td><td>Hide the site's own dictation button so only the safe on-device button remains.</td></tr>
+  </tbody>
+</table>
+
 <h3 id="settings-auto-redact">Auto-Redact</h3>
 <table class="settings-table">
   <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
@@ -1648,6 +1736,16 @@ await LLSS_AzureAuth.signOut();</code></pre>
       <td><code>Graph API evaluation failed: 403</code></td>
       <td>Purview API permissions insufficient</td>
       <td>Ensure the app registration has the required Graph API permissions and admin consent has been granted.</td>
+    </tr>
+    <tr>
+      <td>The on-device mic button doesn't appear</td>
+      <td>Not an AI chat site, or Chrome lacks on-device AI</td>
+      <td>The inline dictation button only appears on detected AI chat sites in Chrome with on-device AI. Confirm you are on a supported AI site, that <code>voiceDictation.enabled</code> is on, and that Chrome (138+) has Gemini Nano available.</td>
+    </tr>
+    <tr>
+      <td><code>On-device dictation model unavailable</code></td>
+      <td>Gemini Nano / Chrome's on-device AI is not enabled or downloaded</td>
+      <td>Enable Chrome's on-device AI flags (<code>#optimization-guide-on-device-model</code> and <code>#prompt-api-for-gemini-nano</code>), restart Chrome, and wait for the model to download. Dictation transcribes on-device only &mdash; it never falls back to the cloud.</td>
     </tr>
   </tbody>
 </table>

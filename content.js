@@ -916,18 +916,22 @@
     try {
       const response = await redactText(text);
       if (response?.success && response.redacted !== text) {
-        setElementText(el, response.redacted);
-        autoRedactLastText.set(el, response.redacted); // Track the redacted version too
+        const inserted = setElementText(el, response.redacted);
+        if (inserted) {
+          autoRedactLastText.set(el, response.redacted); // Track the redacted version too
 
-        // Brief visual indicator
-        el.style.outline = "2px solid #22c55e";
-        setTimeout(() => { el.style.outline = ""; }, 1000);
+          // Brief visual indicator
+          el.style.outline = "2px solid #22c55e";
+          setTimeout(() => { el.style.outline = ""; }, 1000);
 
-        // Track stats
-        chrome.runtime.sendMessage({
-          type: "RECORD_AUTO_REDACTION",
-          matchCount: response.matchCount || 0,
-        });
+          // Track stats
+          chrome.runtime.sendMessage({
+            type: "RECORD_AUTO_REDACTION",
+            matchCount: response.matchCount || 0,
+          });
+        }
+        // If not inserted, the submit guard will catch it at send time and
+        // block + offer the clipboard fallback — no false success indicator here.
       }
     } finally {
       el.dataset.llssAutoRedacting = "false";
@@ -995,7 +999,15 @@
       const response = await redactText(text);
       if (response?.success) {
         if (response.redacted !== text) {
-          setElementText(el, response.redacted);
+          const inserted = setElementText(el, response.redacted);
+          if (!inserted) {
+            // The site's editor rejected the redacted text — do NOT send the
+            // original. Block and hand the user the redacted text to paste.
+            removeSubmitIndicator(indicator);
+            el.dataset.llssSubmitBlocked = "false";
+            _clipboardFallback(el, response.redacted);
+            return;
+          }
         }
         // Track intercept
         chrome.runtime.sendMessage({ type: "RECORD_SUBMIT_INTERCEPT" });
@@ -1044,7 +1056,12 @@
     e.preventDefault();
     e.stopImmediatePropagation();
 
-    redactFormFields(form, textInputs).then(() => {
+    redactFormFields(form, textInputs).then((allInserted) => {
+      if (!allInserted) {
+        // At least one field's redacted text couldn't be inserted — block the
+        // submit rather than let un-redacted content through.
+        return;
+      }
       form.dataset.llssAllowSubmit = "true";
       // Use requestSubmit for proper validation, fallback to submit()
       if (form.requestSubmit) {
@@ -1056,21 +1073,28 @@
     });
   }
 
+  // Redacts every field; returns false if any field needed redaction but the
+  // redacted text couldn't be inserted (so the caller blocks the submit).
   async function redactFormFields(form, fields) {
-    const promises = Array.from(fields).map(async (field) => {
+    const results = await Promise.all(Array.from(fields).map(async (field) => {
       const text = getElementText(field).trim();
-      if (!text) return;
+      if (!text) return true;
 
       try {
         const response = await redactText(text);
         if (response?.success && response.redacted !== text) {
-          setElementText(field, response.redacted);
+          const inserted = setElementText(field, response.redacted);
+          if (!inserted) {
+            _clipboardFallback(field, response.redacted);
+            return false;
+          }
         }
+        return true;
       } catch {
-        // Proceed even if redaction fails
+        return true; // redaction failed (not an insertion problem) — don't block
       }
-    });
-    await Promise.all(promises);
+    }));
+    return results.every(Boolean);
   }
 
   function onSendButtonClick(e) {
@@ -1107,7 +1131,13 @@
     redactText(text).then((response) => {
       removeSubmitIndicator(indicator);
       if (response?.success && response.redacted !== text) {
-        setElementText(textInput, response.redacted);
+        const inserted = setElementText(textInput, response.redacted);
+        if (!inserted) {
+          // Editor rejected the redacted text — do not click send with the
+          // original still in the box.
+          _clipboardFallback(textInput, response.redacted);
+          return;
+        }
       }
       chrome.runtime.sendMessage({ type: "RECORD_SUBMIT_INTERCEPT" });
 
@@ -1845,25 +1875,49 @@
     return el.innerText || el.textContent || "";
   }
 
+  function _normText(s) {
+    return (s || "").replace(/\s+/g, " ").trim();
+  }
+
+  // Returns true only if the field verifiably holds the new text. For rich
+  // React editors (e.g. Copilot) that reject programmatic writes, this returns
+  // false so leak-sensitive callers can block the send and fall back to the
+  // clipboard rather than send the un-redacted original.
   function setElementText(el, text) {
     if (el.tagName === "TEXTAREA" || el.tagName === "INPUT") {
       el.value = text;
       el.dispatchEvent(new Event("input", { bubbles: true }));
-      return;
+      return true;
     }
-    // contenteditable / rich editors (ProseMirror, Lexical, Copilot's composer):
-    // setting innerText is silently ignored by the framework's change tracking.
-    // Replace the whole content via execCommand('insertText') so the editor
-    // registers it. Fall back to innerText for plain contenteditables.
+    // contenteditable / rich editors (ProseMirror, Lexical): replace the whole
+    // content via execCommand so the editor's change tracking registers it,
+    // then verify it actually took. execCommand is a no-op in editors that
+    // intercept programmatic input — hence the verification.
     try {
       el.focus();
       const sel = window.getSelection();
       if (sel) sel.selectAllChildren(el);
-      const ok = document.execCommand && document.execCommand("insertText", false, text);
-      if (ok) return;
+      if (document.execCommand) document.execCommand("insertText", false, text);
+    } catch { /* verified below */ }
+    return _normText(getElementText(el)) === _normText(text);
+  }
+
+  // When a site's editor blocks programmatic insertion, put the redacted text
+  // on the clipboard and tell the user to paste it — so they're never stuck
+  // with un-redacted text they can't replace.
+  function _clipboardFallback(el, text) {
+    const parent = (el && el.parentNode) || document.body;
+    const paste = (navigator.platform || "").toLowerCase().includes("mac") ? "⌘V" : "Ctrl+V";
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(
+          () => showToast(parent, `This site blocks automatic insertion. Redacted text copied — press ${paste} to paste it before sending.`),
+          () => showToast(parent, "This site blocks automatic insertion of redacted text. Please redact manually before sending.")
+        );
+        return;
+      }
     } catch { /* fall through */ }
-    el.innerText = text;
-    el.dispatchEvent(new Event("input", { bubbles: true }));
+    showToast(parent, "This site blocks automatic insertion of redacted text.");
   }
 
   // ── Engine badge ─────────────────────────────────────────────────────────

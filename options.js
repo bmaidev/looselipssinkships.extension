@@ -1159,5 +1159,16 @@ function setupCategoryNav() {
 }
 setupCategoryNav();
 
+// Show a note when this browser doesn't provide Chrome's on-device AI
+// (e.g. Edge). Gemini Nano / the Prompt API back both local AI redaction and
+// on-device voice dictation; without it, redaction falls back to regex/cloud.
+function detectAiCapability() {
+  const note = document.getElementById("ai-capability-note");
+  if (!note) return;
+  const hasOnDeviceAi = typeof LanguageModel !== "undefined";
+  note.classList.toggle("hidden", hasOnDeviceAi);
+}
+detectAiCapability();
+
 // Initialise.
 init();

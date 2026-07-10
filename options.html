@@ -45,6 +45,15 @@
       </div>
     </div>
 
+    <!-- On-device AI capability note (shown only when the browser lacks it) -->
+    <div id="ai-capability-note" class="capability-note hidden">
+      <span class="capability-note-icon">&#x2139;&#xfe0f;</span>
+      <div>
+        <strong>On-device AI isn't available in this browser</strong>
+        <p>Local AI redaction (Gemini Nano) and on-device voice dictation require Chrome with built-in AI. Redaction will use the regex engine and any cloud/hosted providers you configure — everything else works normally.</p>
+      </div>
+    </div>
+
     <!-- Detection Mode -->
     <section class="card" data-cat="general">
       <h2>Detection Mode</h2>
@@ -389,6 +398,16 @@
       <label class="checkbox-label">
         <input type="checkbox" id="uploadGuardConfirm">
         <span>Show confirmation dialog before allowing upload</span>
+      </label>
+    </section>
+
+    <!-- Reversible Tokenization -->
+    <section class="card" data-cat="protection">
+      <h2>Reversible Tokenization</h2>
+      <p class="help">Replace PII with unique, numbered tokens (<code>[[EMAIL_1]]</code>, <code>[[PERSON_1]]</code>) instead of generic masks, so the AI can reason over the placeholders. The token&#8596;value mapping is kept in memory only (never stored or sent), and tokens in the AI's reply are automatically swapped back to the real values for display — while your composer keeps the tokens, so what's sent stays redacted. <strong>Experimental.</strong> When off, PII is masked irreversibly (the safer default).</p>
+      <label class="checkbox-label">
+        <input type="checkbox" id="reversibleTokenizationEnabled">
+        <span><strong>Use reversible tokens instead of masks</strong></span>
       </label>
     </section>
 

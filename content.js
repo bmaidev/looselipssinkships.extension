@@ -72,6 +72,7 @@
         engine: result.engine,
         tier: "local",
         matchCount: result.matches?.length || 0,
+        matches: result.matches || [],
       };
     } catch (err) {
       if (dbg) dbg.warn("nano", "Direct Nano redact failed, falling back:", err);
@@ -91,7 +92,107 @@
    *
    * In non-auto modes, routing is handled by the background pipeline.
    */
+  // Per-tab vault for reversible tokenization. Memory-only, cleared on tab
+  // close; accumulates across submits so a value keeps the same token across
+  // the conversation. Never persisted, never sent anywhere.
+  const reversibleVault =
+    (typeof LLSS_tokenVault !== "undefined") ? LLSS_tokenVault.createVault() : null;
+
   async function redactText(text) {
+    const result = await _redactTextInner(text);
+    return _maybeTokenize(text, result);
+  }
+
+  // When reversible tokenization is on, re-express the redaction as unique,
+  // stable tokens ([[EMAIL_1]] …) instead of generic masks, using the match
+  // list. Falls back silently to the generic redaction if anything is missing.
+  function _maybeTokenize(originalText, result) {
+    if (!result || !result.success) return result;
+    if (cachedSettings.reversibleTokenization?.enabled !== true) return result;
+    if (typeof LLSS_tokenVault === "undefined" || !reversibleVault) return result;
+    if (!Array.isArray(result.matches) || result.matches.length === 0) return result;
+    const tok = LLSS_tokenVault.tokenize(originalText, result.matches, reversibleVault);
+    if (tok.applied.length === 0) return result;
+    return { ...result, redacted: tok.text, reversible: true, tokensApplied: tok.applied.length };
+  }
+
+  // ── Inbound restoration (reversible tokenization) ──────────────────────────
+  // Swap tokens back to their originals in the assistant's rendered reply, for
+  // display only. Editable elements (the composer) are skipped so what actually
+  // gets sent stays tokenized — the vault mapping never leaves the browser.
+  let inboundObserver = null;
+  const TOKEN_RE = /\[\[[A-Z0-9_]+_\d+\]\]/;
+
+  function _isInEditable(node) {
+    let el = node.parentElement;
+    while (el) {
+      if (el.isContentEditable) return true;
+      if (el.tagName === "TEXTAREA" || el.tagName === "INPUT") return true;
+      el = el.parentElement;
+    }
+    return false;
+  }
+
+  function _restoreTextNode(node) {
+    const val = node.nodeValue;
+    if (!val || !TOKEN_RE.test(val)) return;
+    if (_isInEditable(node)) return; // keep the composer tokenized
+    const restored = LLSS_tokenVault.restore(val, reversibleVault);
+    if (restored !== val) node.nodeValue = restored;
+  }
+
+  function _scanForTokens(root) {
+    if (!root) return;
+    if (root.nodeType === Node.TEXT_NODE) { _restoreTextNode(root); return; }
+    if (root.nodeType !== Node.ELEMENT_NODE) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = walker.nextNode())) _restoreTextNode(n);
+  }
+
+  function startInboundRestoration() {
+    const pending = new Set();
+    let scheduled = false;
+    const flush = () => {
+      scheduled = false;
+      const nodes = Array.from(pending);
+      pending.clear();
+      for (const node of nodes) {
+        if (!node || !node.isConnected) continue;
+        if (node.nodeType === Node.TEXT_NODE) _restoreTextNode(node);
+        else _scanForTokens(node);
+      }
+    };
+    const obs = new MutationObserver((muts) => {
+      if (!reversibleVault || reversibleVault.order.length === 0) return;
+      for (const m of muts) {
+        if (m.type === "characterData") pending.add(m.target);
+        else m.addedNodes.forEach((n) => pending.add(n));
+      }
+      // Restoring a text node fires another characterData mutation, but the
+      // restored text no longer matches TOKEN_RE, so it converges (no loop).
+      // setTimeout (not requestAnimationFrame) so restoration still runs while
+      // the tab is backgrounded — rAF pauses in hidden tabs.
+      if (!scheduled) { scheduled = true; setTimeout(flush, 0); }
+    });
+    obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+    _scanForTokens(document.body); // restore anything already on the page
+    return obs;
+  }
+
+  function updateInboundRestoration() {
+    const on = isAiSite &&
+      cachedSettings.reversibleTokenization?.enabled === true &&
+      reversibleVault && typeof LLSS_tokenVault !== "undefined";
+    if (on && !inboundObserver) {
+      inboundObserver = startInboundRestoration();
+    } else if (!on && inboundObserver) {
+      inboundObserver.disconnect();
+      inboundObserver = null;
+    }
+  }
+
+  async function _redactTextInner(text) {
     const dbg = typeof LLSS_debug !== "undefined" ? LLSS_debug : null;
     const mode = cachedSettings.detectionMode || "auto";
 
@@ -232,6 +333,7 @@
         // attach the inline dictation mic button to any that are missing it.
         refreshInlineDictation();
         applyNativeMicSuppression();
+        updateInboundRestoration();
       }
     });
   }
@@ -814,18 +916,22 @@
     try {
       const response = await redactText(text);
       if (response?.success && response.redacted !== text) {
-        setElementText(el, response.redacted);
-        autoRedactLastText.set(el, response.redacted); // Track the redacted version too
+        const inserted = setElementText(el, response.redacted);
+        if (inserted) {
+          autoRedactLastText.set(el, response.redacted); // Track the redacted version too
 
-        // Brief visual indicator
-        el.style.outline = "2px solid #22c55e";
-        setTimeout(() => { el.style.outline = ""; }, 1000);
+          // Brief visual indicator
+          el.style.outline = "2px solid #22c55e";
+          setTimeout(() => { el.style.outline = ""; }, 1000);
 
-        // Track stats
-        chrome.runtime.sendMessage({
-          type: "RECORD_AUTO_REDACTION",
-          matchCount: response.matchCount || 0,
-        });
+          // Track stats
+          chrome.runtime.sendMessage({
+            type: "RECORD_AUTO_REDACTION",
+            matchCount: response.matchCount || 0,
+          });
+        }
+        // If not inserted, the submit guard will catch it at send time and
+        // block + offer the clipboard fallback — no false success indicator here.
       }
     } finally {
       el.dataset.llssAutoRedacting = "false";
@@ -893,7 +999,15 @@
       const response = await redactText(text);
       if (response?.success) {
         if (response.redacted !== text) {
-          setElementText(el, response.redacted);
+          const inserted = setElementText(el, response.redacted);
+          if (!inserted) {
+            // The site's editor rejected the redacted text — do NOT send the
+            // original. Block and hand the user the redacted text to paste.
+            removeSubmitIndicator(indicator);
+            el.dataset.llssSubmitBlocked = "false";
+            _clipboardFallback(el, response.redacted);
+            return;
+          }
         }
         // Track intercept
         chrome.runtime.sendMessage({ type: "RECORD_SUBMIT_INTERCEPT" });
@@ -942,7 +1056,12 @@
     e.preventDefault();
     e.stopImmediatePropagation();
 
-    redactFormFields(form, textInputs).then(() => {
+    redactFormFields(form, textInputs).then((allInserted) => {
+      if (!allInserted) {
+        // At least one field's redacted text couldn't be inserted — block the
+        // submit rather than let un-redacted content through.
+        return;
+      }
       form.dataset.llssAllowSubmit = "true";
       // Use requestSubmit for proper validation, fallback to submit()
       if (form.requestSubmit) {
@@ -954,21 +1073,28 @@
     });
   }
 
+  // Redacts every field; returns false if any field needed redaction but the
+  // redacted text couldn't be inserted (so the caller blocks the submit).
   async function redactFormFields(form, fields) {
-    const promises = Array.from(fields).map(async (field) => {
+    const results = await Promise.all(Array.from(fields).map(async (field) => {
       const text = getElementText(field).trim();
-      if (!text) return;
+      if (!text) return true;
 
       try {
         const response = await redactText(text);
         if (response?.success && response.redacted !== text) {
-          setElementText(field, response.redacted);
+          const inserted = setElementText(field, response.redacted);
+          if (!inserted) {
+            _clipboardFallback(field, response.redacted);
+            return false;
+          }
         }
+        return true;
       } catch {
-        // Proceed even if redaction fails
+        return true; // redaction failed (not an insertion problem) — don't block
       }
-    });
-    await Promise.all(promises);
+    }));
+    return results.every(Boolean);
   }
 
   function onSendButtonClick(e) {
@@ -1005,7 +1131,13 @@
     redactText(text).then((response) => {
       removeSubmitIndicator(indicator);
       if (response?.success && response.redacted !== text) {
-        setElementText(textInput, response.redacted);
+        const inserted = setElementText(textInput, response.redacted);
+        if (!inserted) {
+          // Editor rejected the redacted text — do not click send with the
+          // original still in the box.
+          _clipboardFallback(textInput, response.redacted);
+          return;
+        }
       }
       chrome.runtime.sendMessage({ type: "RECORD_SUBMIT_INTERCEPT" });
 
@@ -1743,13 +1875,49 @@
     return el.innerText || el.textContent || "";
   }
 
+  function _normText(s) {
+    return (s || "").replace(/\s+/g, " ").trim();
+  }
+
+  // Returns true only if the field verifiably holds the new text. For rich
+  // React editors (e.g. Copilot) that reject programmatic writes, this returns
+  // false so leak-sensitive callers can block the send and fall back to the
+  // clipboard rather than send the un-redacted original.
   function setElementText(el, text) {
     if (el.tagName === "TEXTAREA" || el.tagName === "INPUT") {
       el.value = text;
-    } else {
-      el.innerText = text;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      return true;
     }
-    el.dispatchEvent(new Event("input", { bubbles: true }));
+    // contenteditable / rich editors (ProseMirror, Lexical): replace the whole
+    // content via execCommand so the editor's change tracking registers it,
+    // then verify it actually took. execCommand is a no-op in editors that
+    // intercept programmatic input — hence the verification.
+    try {
+      el.focus();
+      const sel = window.getSelection();
+      if (sel) sel.selectAllChildren(el);
+      if (document.execCommand) document.execCommand("insertText", false, text);
+    } catch { /* verified below */ }
+    return _normText(getElementText(el)) === _normText(text);
+  }
+
+  // When a site's editor blocks programmatic insertion, put the redacted text
+  // on the clipboard and tell the user to paste it — so they're never stuck
+  // with un-redacted text they can't replace.
+  function _clipboardFallback(el, text) {
+    const parent = (el && el.parentNode) || document.body;
+    const paste = (navigator.platform || "").toLowerCase().includes("mac") ? "⌘V" : "Ctrl+V";
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(
+          () => showToast(parent, `This site blocks automatic insertion. Redacted text copied — press ${paste} to paste it before sending.`),
+          () => showToast(parent, "This site blocks automatic insertion of redacted text. Please redact manually before sending.")
+        );
+        return;
+      }
+    } catch { /* fall through */ }
+    showToast(parent, "This site blocks automatic insertion of redacted text.");
   }
 
   // ── Engine badge ─────────────────────────────────────────────────────────

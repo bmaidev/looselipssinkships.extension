@@ -1771,9 +1771,21 @@
   function setElementText(el, text) {
     if (el.tagName === "TEXTAREA" || el.tagName === "INPUT") {
       el.value = text;
-    } else {
-      el.innerText = text;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      return;
     }
+    // contenteditable / rich editors (ProseMirror, Lexical, Copilot's composer):
+    // setting innerText is silently ignored by the framework's change tracking.
+    // Replace the whole content via execCommand('insertText') so the editor
+    // registers it. Fall back to innerText for plain contenteditables.
+    try {
+      el.focus();
+      const sel = window.getSelection();
+      if (sel) sel.selectAllChildren(el);
+      const ok = document.execCommand && document.execCommand("insertText", false, text);
+      if (ok) return;
+    } catch { /* fall through */ }
+    el.innerText = text;
     el.dispatchEvent(new Event("input", { bubbles: true }));
   }
 

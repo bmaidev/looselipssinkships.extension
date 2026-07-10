@@ -404,7 +404,7 @@
     <!-- Reversible Tokenization -->
     <section class="card" data-cat="protection">
       <h2>Reversible Tokenization</h2>
-      <p class="help">Replace PII with unique, numbered tokens (<code>[[EMAIL_1]]</code>, <code>[[PERSON_1]]</code>) instead of generic masks. The mapping is kept in memory only, so the AI can reason over the placeholders. <strong>Experimental — outbound only:</strong> tokens currently appear in the AI's reply; automatic restoration on the way back is a later phase. When off, PII is masked irreversibly (the safer default).</p>
+      <p class="help">Replace PII with unique, numbered tokens (<code>[[EMAIL_1]]</code>, <code>[[PERSON_1]]</code>) instead of generic masks, so the AI can reason over the placeholders. The token&#8596;value mapping is kept in memory only (never stored or sent), and tokens in the AI's reply are automatically swapped back to the real values for display — while your composer keeps the tokens, so what's sent stays redacted. <strong>Experimental.</strong> When off, PII is masked irreversibly (the safer default).</p>
       <label class="checkbox-label">
         <input type="checkbox" id="reversibleTokenizationEnabled">
         <span><strong>Use reversible tokens instead of masks</strong></span>

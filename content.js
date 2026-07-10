@@ -116,6 +116,82 @@
     return { ...result, redacted: tok.text, reversible: true, tokensApplied: tok.applied.length };
   }
 
+  // ── Inbound restoration (reversible tokenization) ──────────────────────────
+  // Swap tokens back to their originals in the assistant's rendered reply, for
+  // display only. Editable elements (the composer) are skipped so what actually
+  // gets sent stays tokenized — the vault mapping never leaves the browser.
+  let inboundObserver = null;
+  const TOKEN_RE = /\[\[[A-Z0-9_]+_\d+\]\]/;
+
+  function _isInEditable(node) {
+    let el = node.parentElement;
+    while (el) {
+      if (el.isContentEditable) return true;
+      if (el.tagName === "TEXTAREA" || el.tagName === "INPUT") return true;
+      el = el.parentElement;
+    }
+    return false;
+  }
+
+  function _restoreTextNode(node) {
+    const val = node.nodeValue;
+    if (!val || !TOKEN_RE.test(val)) return;
+    if (_isInEditable(node)) return; // keep the composer tokenized
+    const restored = LLSS_tokenVault.restore(val, reversibleVault);
+    if (restored !== val) node.nodeValue = restored;
+  }
+
+  function _scanForTokens(root) {
+    if (!root) return;
+    if (root.nodeType === Node.TEXT_NODE) { _restoreTextNode(root); return; }
+    if (root.nodeType !== Node.ELEMENT_NODE) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = walker.nextNode())) _restoreTextNode(n);
+  }
+
+  function startInboundRestoration() {
+    const pending = new Set();
+    let scheduled = false;
+    const flush = () => {
+      scheduled = false;
+      const nodes = Array.from(pending);
+      pending.clear();
+      for (const node of nodes) {
+        if (!node || !node.isConnected) continue;
+        if (node.nodeType === Node.TEXT_NODE) _restoreTextNode(node);
+        else _scanForTokens(node);
+      }
+    };
+    const obs = new MutationObserver((muts) => {
+      if (!reversibleVault || reversibleVault.order.length === 0) return;
+      for (const m of muts) {
+        if (m.type === "characterData") pending.add(m.target);
+        else m.addedNodes.forEach((n) => pending.add(n));
+      }
+      // Restoring a text node fires another characterData mutation, but the
+      // restored text no longer matches TOKEN_RE, so it converges (no loop).
+      // setTimeout (not requestAnimationFrame) so restoration still runs while
+      // the tab is backgrounded — rAF pauses in hidden tabs.
+      if (!scheduled) { scheduled = true; setTimeout(flush, 0); }
+    });
+    obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+    _scanForTokens(document.body); // restore anything already on the page
+    return obs;
+  }
+
+  function updateInboundRestoration() {
+    const on = isAiSite &&
+      cachedSettings.reversibleTokenization?.enabled === true &&
+      reversibleVault && typeof LLSS_tokenVault !== "undefined";
+    if (on && !inboundObserver) {
+      inboundObserver = startInboundRestoration();
+    } else if (!on && inboundObserver) {
+      inboundObserver.disconnect();
+      inboundObserver = null;
+    }
+  }
+
   async function _redactTextInner(text) {
     const dbg = typeof LLSS_debug !== "undefined" ? LLSS_debug : null;
     const mode = cachedSettings.detectionMode || "auto";
@@ -257,6 +333,7 @@
         // attach the inline dictation mic button to any that are missing it.
         refreshInlineDictation();
         applyNativeMicSuppression();
+        updateInboundRestoration();
       }
     });
   }

@@ -11,6 +11,9 @@ const statRedactions = document.getElementById("stat-redactions");
 const statMatches = document.getElementById("stat-matches");
 const statDocs = document.getElementById("stat-docs");
 const resetStatsButton = document.getElementById("btn-reset-stats");
+const NANO_STATUS_TIMEOUT_MS = 2500;
+
+document.getElementById("popup-version").textContent = `v${chrome.runtime.getManifest().version}`;
 
 function sendMessage(message, timeoutMs = 4000) {
   return new Promise((resolve) => {
@@ -24,10 +27,11 @@ function sendMessage(message, timeoutMs = 4000) {
 
     try {
       chrome.runtime.sendMessage(message, (response) => {
+        const lastError = chrome.runtime.lastError;
         if (settled) return;
         settled = true;
         clearTimeout(timer);
-        if (chrome.runtime.lastError) {
+        if (lastError) {
           resolve(null);
           return;
         }
@@ -68,11 +72,19 @@ const TIER_LABELS = { local: "Local", hosted: "Hosted", cloud: "Cloud" };
 // ── Check Nano availability directly (popup is a document context) ────────
 
 async function checkNanoDirectly() {
+  let timeoutId;
   try {
-    const result = await LLSS_BrowserAI.checkTextAvailability();
+    const result = await Promise.race([
+      LLSS_BrowserAI.checkTextAvailability(),
+      new Promise((resolve) => {
+        timeoutId = setTimeout(() => resolve({ status: "unavailable" }), NANO_STATUS_TIMEOUT_MS);
+      }),
+    ]);
     return result?.status || "unavailable";
   } catch {
     return "unavailable";
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
   }
 }
 

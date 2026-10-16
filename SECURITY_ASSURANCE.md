@@ -1,6 +1,6 @@
 # Security Assurance and Threat Model
 
-Status: engineering baseline for version 4.4.0, updated 16 October 2026.
+Status: engineering baseline for version 4.5.0, updated 16 October 2026.
 
 This document defines what Loose Lips Sink Ships protects, where its trust
 boundaries sit, and what must surround it in a high-assurance deployment. It is

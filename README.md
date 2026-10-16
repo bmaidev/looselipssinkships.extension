@@ -163,8 +163,8 @@ The extension works without a browser language model: deterministic regex and ve
 
 ```bash
 npm run build         # Chrome and Edge
-npm run build:chrome  # dist/loose-lips-sink-ships-v4.4.0.zip
-npm run build:edge    # dist/loose-lips-sink-ships-edge-v4.4.0.zip
+npm run build:chrome  # dist/loose-lips-sink-ships-v4.5.0.zip
+npm run build:edge    # dist/loose-lips-sink-ships-edge-v4.5.0.zip
 ```
 
 Every build validates manifest references, package contents, local-only scripts, and browser API compatibility before creating the ZIP.

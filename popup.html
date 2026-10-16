@@ -56,7 +56,8 @@
       letter-spacing: -0.01em;
     }
 
-    .header p { color: var(--muted); font-size: 11px; margin-top: 2px; }
+    .header p { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 11px; margin-top: 2px; }
+    .header-version { padding: 1px 5px; border: 1px solid #d5dee8; border-radius: 999px; background: rgba(255, 255, 255, 0.78); color: #526176; font-size: 9px; font-weight: 650; }
 
     .card {
       margin-bottom: 11px;
@@ -173,7 +174,7 @@
       <img class="brand-mark" src="icons/icon48.png" width="40" height="40" alt="">
       <div>
         <h1>Loose Lips Sink Ships</h1>
-        <p>PII protection, local first</p>
+        <p>PII protection, local first <span class="header-version" id="popup-version">v—</span></p>
       </div>
     </header>
 

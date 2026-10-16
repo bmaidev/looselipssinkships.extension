@@ -8,6 +8,14 @@ let editingCustomIndex = -1; // -1 = adding new, >= 0 = editing existing
 let editingHostedIndex = -1;
 let activeModalOverlay = null;
 let modalReturnFocus = null;
+let settingsRetryTimer = null;
+let settingsRetryDelayMs = 1000;
+let settingsInitPromise = null;
+
+const manifestVersion = chrome.runtime.getManifest().version;
+document.querySelectorAll("[data-app-version]").forEach((element) => {
+  element.textContent = `v${manifestVersion}`;
+});
 
 function showModalOverlay(overlay, initialFocusId) {
   modalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -72,10 +80,11 @@ function sendRuntimeMessage(message, timeoutMs = 5000) {
 
     try {
       chrome.runtime.sendMessage(message, (response) => {
+        const lastError = chrome.runtime.lastError;
         if (settled) return;
         settled = true;
         clearTimeout(timer);
-        resolve(chrome.runtime.lastError ? null : (response || null));
+        resolve(lastError ? null : (response || null));
       });
     } catch {
       clearTimeout(timer);
@@ -85,11 +94,19 @@ function sendRuntimeMessage(message, timeoutMs = 5000) {
   });
 }
 
-function setSettingsLoadFailure(failed) {
+function setSettingsLoadFailure(failed, detail = "") {
   document.getElementById("settings-load-error").classList.toggle("hidden", !failed);
+  const detailElement = document.getElementById("settings-load-error-detail");
+  if (failed && detailElement) {
+    detailElement.textContent = detail || "Reconnecting to the extension service. Your existing settings are safe.";
+  }
+  setSettingsControlsDisabled(failed);
+}
+
+function setSettingsControlsDisabled(disabled) {
   const controls = document.querySelectorAll(".card[data-cat] input, .card[data-cat] select, .card[data-cat] textarea, .card[data-cat] button, #btn-save");
   for (const control of controls) {
-    if (failed) {
+    if (disabled) {
       if (!Object.prototype.hasOwnProperty.call(control.dataset, "loadPreviousDisabled")) {
         control.dataset.loadPreviousDisabled = String(control.disabled);
       }
@@ -103,14 +120,44 @@ function setSettingsLoadFailure(failed) {
 
 // ── Load settings and populate UI ──────────────────────────────────────────
 
-async function init() {
-  const response = await sendRuntimeMessage({ type: "GET_SETTINGS" });
+function scheduleSettingsRetry() {
+  if (settingsRetryTimer !== null || document.visibilityState === "hidden") return;
+  settingsRetryTimer = window.setTimeout(() => {
+    settingsRetryTimer = null;
+    init();
+  }, settingsRetryDelayMs);
+  settingsRetryDelayMs = Math.min(settingsRetryDelayMs * 2, 30_000);
+}
+
+async function performInit() {
+  const retryButton = document.getElementById("btn-retry-load");
+  const main = document.querySelector(".main");
+  main?.setAttribute("aria-busy", "true");
+  setSettingsControlsDisabled(true);
+  retryButton.disabled = true;
+  retryButton.textContent = "Connecting…";
+  const response = await sendRuntimeMessage({ type: "GET_SETTINGS" }, 7000);
   if (!response?.settings) {
-    setSettingsLoadFailure(true);
+    const reason = response?.error
+      ? `The extension service reported: ${response.error}. Retrying automatically.`
+      : "The extension service did not respond. Retrying automatically; your existing settings are safe.";
+    setSettingsLoadFailure(true, reason);
+    main?.setAttribute("aria-busy", "false");
+    retryButton.disabled = false;
+    retryButton.textContent = "Retry now";
+    scheduleSettingsRetry();
     return false;
   }
 
+  if (settingsRetryTimer !== null) {
+    clearTimeout(settingsRetryTimer);
+    settingsRetryTimer = null;
+  }
+  settingsRetryDelayMs = 1000;
   setSettingsLoadFailure(false);
+  main?.setAttribute("aria-busy", "false");
+  retryButton.disabled = false;
+  retryButton.textContent = "Retry now";
   currentSettings = response.settings;
   // Ensure providers object exists
   if (!currentSettings.providers) currentSettings.providers = {};
@@ -120,6 +167,15 @@ async function init() {
   loadStats();
   loadProviderStatus();
   return true;
+}
+
+function init() {
+  if (!settingsInitPromise) {
+    settingsInitPromise = performInit().finally(() => {
+      settingsInitPromise = null;
+    });
+  }
+  return settingsInitPromise;
 }
 
 function populateUI() {
@@ -813,6 +869,12 @@ function loadStats() {
 // ── Save settings ──────────────────────────────────────────────────────────
 
 async function saveSettings() {
+  if (!currentSettings) {
+    const status = document.getElementById("save-status");
+    status.textContent = "Settings are still loading. Please try again.";
+    status.className = "save-status error";
+    return;
+  }
   // Collect values from the UI.
   const mode = document.querySelector('input[name="detectionMode"]:checked');
   currentSettings.detectionMode = mode ? mode.value : "auto";
@@ -1316,4 +1378,7 @@ detectAiCapability();
 
 // Initialise.
 document.getElementById("btn-retry-load").addEventListener("click", init);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && !currentSettings) init();
+});
 init();

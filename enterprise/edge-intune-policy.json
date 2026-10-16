@@ -6,7 +6,7 @@
     "YOUR_EDGE_ADDONS_EXTENSION_ID": {
       "installation_mode": "force_installed",
       "update_url": "https://edge.microsoft.com/extensionwebstorebase/v1/crx",
-      "minimum_version_required": "4.4.0",
+      "minimum_version_required": "4.5.0",
       "toolbar_state": "force_shown"
     }
   },

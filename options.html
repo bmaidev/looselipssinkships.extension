@@ -13,7 +13,7 @@
         <img class="sidebar-logo" src="icons/icon48.png" width="35" height="35" alt="">
         <div>
           <div class="sidebar-title">Loose Lips Sink Ships</div>
-          <div class="sidebar-sub">Settings</div>
+          <div class="sidebar-sub">Settings <span aria-hidden="true">·</span> <span data-app-version>v—</span></div>
         </div>
       </div>
       <nav class="side-nav" id="side-nav" aria-label="Settings sections">
@@ -32,13 +32,13 @@
       <div class="main-inner">
         <header class="main-head">
           <h1 id="panel-title">General</h1>
-          <p class="subtitle">PII Redaction Settings</p>
+          <p class="subtitle">PII Redaction Settings <span class="version-badge" data-app-version>v—</span></p>
         </header>
 
     <div id="settings-load-error" class="load-error hidden" role="alert">
       <div>
         <strong>Settings could not be loaded</strong>
-        <p>No changes can be saved until the extension service is available.</p>
+        <p id="settings-load-error-detail">Reconnecting to the extension service. Your existing settings are safe.</p>
       </div>
       <button id="btn-retry-load" class="btn secondary btn-sm" type="button">Retry</button>
     </div>

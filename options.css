@@ -181,6 +181,20 @@ header h1 {
   margin-top: 4px;
 }
 
+.version-badge {
+  display: inline-flex;
+  margin-left: 5px;
+  padding: 1px 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #526176;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.5;
+  vertical-align: 1px;
+}
+
 /* Cards */
 .card {
   margin-bottom: 16px;

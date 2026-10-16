@@ -2,7 +2,7 @@
 
 ## Package
 
-Upload `dist/loose-lips-sink-ships-edge-v4.4.0.zip`.
+Upload `dist/loose-lips-sink-ships-edge-v4.5.0.zip`.
 
 ## Name
 

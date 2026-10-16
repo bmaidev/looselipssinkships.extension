@@ -31,7 +31,10 @@ describe('user interface quality guardrails', () => {
     expect(source).toContain('if (event.key === "Escape")');
     expect(source).toContain('modalReturnFocus');
     expect(source).toContain('saveButton.disabled = true');
-    expect(source).toContain('setSettingsLoadFailure(true)');
+    expect(source).toContain('setSettingsLoadFailure(true, reason)');
+    expect(source).toContain('scheduleSettingsRetry()');
+    expect(source).toContain('setSettingsControlsDisabled(true)');
+    expect(source).toContain('if (!currentSettings)');
   });
 
   test('in-page controls and result dialogs preserve accessible interaction', () => {
@@ -57,5 +60,17 @@ describe('user interface quality guardrails', () => {
     expect(read('options.html')).toContain('aria-current="page"');
     expect(read('redact.html')).toContain('icons/icon128.png');
     expect(read('popup.html')).toContain('icons/icon48.png');
+    expect(read('popup.html')).toContain('id="popup-version"');
+    expect(read('options.html')).toContain('data-app-version');
+  });
+
+  test('the popup cannot hang indefinitely while checking the on-device model', () => {
+    const source = read('popup.js');
+    const background = read('background.js');
+
+    expect(source).toContain('NANO_STATUS_TIMEOUT_MS');
+    expect(source).toContain('Promise.race([');
+    expect(source).toContain('resolve({ status: "unavailable" })');
+    expect(background).toContain("sendToOffscreen('NANO_CHECK_AVAILABILITY', {}, LOCAL_AI_STATUS_TIMEOUT_MS)");
   });
 });

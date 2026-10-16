@@ -4,6 +4,7 @@
 
 importScripts(
   "lib/debug.js",
+  "lib/message-security.js",
   "lib/binary-transfer.js",
   "lib/browser-ai.js",
   "lib/pii-types.js",
@@ -35,6 +36,7 @@ const registry = new LLSS_ProviderRegistry();
 const MAX_TEXT_CHARS = 1_000_000;
 const MAX_DOCUMENT_BYTES = 25 * 1024 * 1024;
 const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
+const LOCAL_AI_STATUS_TIMEOUT_MS = 2500;
 
 const PRIVILEGED_MESSAGE_TYPES = new Set([
   "CHECK_STATUS", "GET_SETTINGS", "SAVE_SETTINGS", "GET_STATS", "RESET_STATS",
@@ -43,10 +45,7 @@ const PRIVILEGED_MESSAGE_TYPES = new Set([
 ]);
 
 function isTrustedExtensionSender(sender) {
-  const extensionOrigin = chrome.runtime.getURL("");
-  return sender?.id === chrome.runtime.id &&
-    !sender.tab &&
-    (typeof sender.url !== "string" || sender.url.startsWith(extensionOrigin));
+  return LLSS_isTrustedExtensionSender(sender, chrome.runtime);
 }
 
 function contentSettings(settings) {
@@ -140,7 +139,7 @@ async function initProviders() {
   localAiProvider.setProxy(async (msg) => {
     switch (msg.action) {
       case 'checkAvailability':
-        return sendToOffscreen('NANO_CHECK_AVAILABILITY');
+        return sendToOffscreen('NANO_CHECK_AVAILABILITY', {}, LOCAL_AI_STATUS_TIMEOUT_MS);
       case 'redactText':
         return sendToOffscreen('NANO_REDACT', {
           text: msg.text,
@@ -558,7 +557,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     case "GET_SETTINGS": {
-      LLSS_loadSettings().then((settings) => sendResponse({ settings }));
+      LLSS_loadSettings()
+        .then((settings) => sendResponse({ settings }))
+        .catch((err) => sendResponse({ success: false, error: err.message }));
       return true;
     }
 

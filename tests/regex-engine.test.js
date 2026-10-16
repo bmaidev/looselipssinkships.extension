@@ -165,6 +165,23 @@ describe("regexRedact", () => {
     expect(result.redacted).toBe("Student [REDACTED_STUDENT] enrolled.");
   });
 
+  test("fails closed instead of silently truncating excessive matches", () => {
+    const custom = [{
+      id: "custom_dense", category: "custom", token: "[DENSE]",
+      enabled: true, regex: "a", flags: "g",
+    }];
+    expect(() => regexRedact("a".repeat(10_001), custom)).toThrow(/match safety limit/);
+  });
+
+  test("adds global matching when a custom rule omits the g flag", () => {
+    const custom = [{
+      id: "custom_student", category: "custom", token: "[STUDENT]",
+      enabled: true, regex: "STU-\\d{2}", flags: "i",
+    }];
+    const result = regexRedact("STU-12 and stu-34", custom);
+    expect(result.redacted).toBe("[STUDENT] and [STUDENT]");
+  });
+
   // ── Overlapping matches ───────────────────────────────────────────────
 
   test("does not double-redact overlapping patterns", () => {
@@ -194,5 +211,17 @@ describe("testRegexPattern", () => {
     const result = testRegexPattern("xyz", "g", "abc def");
     expect(result.valid).toBe(true);
     expect(result.matches).toEqual([]);
+  });
+
+  test("rejects a nested-quantifier pattern", () => {
+    const result = testRegexPattern("(a+)+$", "g", "aaaaaaaaaaaaaaaa!");
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/safety limits/);
+  });
+
+  test("rejects ambiguous repeated alternation", () => {
+    const result = testRegexPattern("(a|aa)+$", "g", "aaaaaaaaaaaaaaaa!");
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/safety limits/);
   });
 });

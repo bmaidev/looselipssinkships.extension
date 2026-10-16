@@ -1,4 +1,11 @@
-const { createVault, tokenize, restore, labelFor } = require("../lib/token-vault");
+const {
+  createVault,
+  tokenize,
+  restore,
+  labelFor,
+  MAX_VAULT_ENTRIES,
+  LIMIT_TOKEN,
+} = require("../lib/token-vault");
 
 describe("labelFor", () => {
   test("uppercases and cleans a type id", () => {
@@ -74,6 +81,28 @@ describe("tokenize", () => {
   test("ignores malformed matches", () => {
     const r = tokenize("a@x.com", [null, { typeId: "email" }, { original: "" }, { original: "a@x.com", typeId: "email" }]);
     expect(r.text).toBe("[[EMAIL_1]]");
+  });
+
+  test("safely tokenizes values that are object prototype names", () => {
+    const r = tokenize("__proto__", [{ original: "__proto__", typeId: "name" }]);
+    expect(r.text).toBe("[[PERSON_1]]");
+    expect(r.vault.byOriginal["__proto__"]).toBe("[[PERSON_1]]");
+    expect(Object.getPrototypeOf(r.vault.byOriginal)).toBeNull();
+  });
+
+  test("bounds retained originals and fails to an irreversible placeholder", () => {
+    const vault = createVault();
+    for (let i = 0; i < MAX_VAULT_ENTRIES; i++) {
+      tokenize(`user${i}@example.test`, [
+        { original: `user${i}@example.test`, typeId: "email" },
+      ], vault);
+    }
+    const overflow = "overflow@example.test";
+    const result = tokenize(overflow, [{ original: overflow, typeId: "email" }], vault);
+    expect(result.text).toBe(LIMIT_TOKEN);
+    expect(vault.order).toHaveLength(MAX_VAULT_ENTRIES);
+    expect(vault.byOriginal[overflow]).toBeUndefined();
+    expect(vault.byToken[LIMIT_TOKEN]).toBeUndefined();
   });
 });
 

@@ -46,8 +46,8 @@
     },
     "detectionMode": {
       "type": "string",
-      "enum": ["auto", "ai_only", "regex_only", "cloud_only"],
-      "description": "PII detection mode. 'auto' tries local AI first with progressive fallback."
+      "enum": ["auto", "ai_only", "regex_only", "hosted_only", "cloud_only"],
+      "description": "PII detection mode. 'auto' runs deterministic local detection first and may progressively enhance it with enabled providers."
     },
     "enableVectorFallback": {
       "type": "boolean",
@@ -144,7 +144,21 @@
       "properties": {
         "enabled": { "type": "boolean" },
         "onlyOnAiSites": { "type": "boolean" },
-        "confirmBeforeUpload": { "type": "boolean" }
+        "confirmBeforeUpload": { "type": "boolean" },
+        "allowBypass": {
+          "type": "boolean",
+          "description": "Permit release of an original file when inspection fails. Keep false for fail-closed deployments."
+        },
+        "blockUnsupported": {
+          "type": "boolean",
+          "description": "Block formats the extension cannot inspect. Keep true for fail-closed deployments."
+        },
+        "maxFileSizeBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 26214400,
+          "description": "Maximum file size accepted by the browser pipeline (hard maximum 25 MiB)."
+        }
       }
     },
     "voiceDetection": {
@@ -199,25 +213,20 @@
             "domain": { "type": "string", "enum": ["none", "phi"] },
             "categoriesFilter": { "type": "array", "items": { "type": "string" } },
             "tenantId": { "type": "string", "description": "Azure AD tenant ID (GUID) for Enterprise mode." },
-            "clientId": { "type": "string", "description": "Azure AD App Registration client ID for Enterprise mode." }
+            "clientId": { "type": "string", "description": "Azure AD App Registration client ID for Enterprise mode." },
+            "nativeDocEnabled": { "type": "boolean" },
+            "sourceContainerUrl": { "type": "string" },
+            "targetContainerUrl": { "type": "string" },
+            "redactionPolicy": { "type": "string", "enum": ["entityMask", "characterMask"] }
           }
         },
         "purview": {
           "type": "object",
           "properties": {
-            "enabled": { "type": "boolean" },
-            "tenantId": { "type": "string" },
-            "clientId": { "type": "string" },
-            "clientSecret": { "type": "string" },
-            "graphEndpoint": { "type": "string" },
-            "useDelegatedAuth": { "type": "boolean" },
-            "dlpPolicyId": { "type": "string" },
-            "gateEnabled": { "type": "boolean", "description": "Enable pre-upload classification gate — blocks documents with restricted sensitivity labels." },
+            "gateEnabled": { "type": "boolean", "description": "Enable the local pre-upload gate for embedded Microsoft sensitivity labels." },
             "blockedLabels": { "type": "array", "items": { "type": "string" }, "description": "Sensitivity label names to block (e.g., PROTECTED, SECRET)." },
             "warnLabels": { "type": "array", "items": { "type": "string" }, "description": "Sensitivity label names to warn about but allow." },
-            "blockedSensitivity": { "type": "integer", "description": "Block labels with sensitivity >= this value (0 = disabled)." },
-            "blockEncrypted": { "type": "boolean", "description": "Block files with encryption/protection markers." },
-            "checkViaApi": { "type": "boolean", "description": "Also check classification via Graph API (requires auth)." }
+            "blockEncrypted": { "type": "boolean", "description": "Block files with embedded encryption/protection markers." }
           }
         },
         "hosted": {

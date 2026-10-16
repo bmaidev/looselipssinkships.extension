@@ -1,0 +1,119 @@
+name: Security and release verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 16 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  extension:
+    name: Extension tests, audit, and packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Audit all npm dependencies
+        run: npm audit --audit-level=low
+
+      - name: Check JavaScript syntax
+        run: git ls-files -z '*.js' | xargs -0 -n1 node --check
+
+      - name: Run regression suite
+        run: npm test -- --runInBand --detectOpenHandles
+
+      - name: Build and validate Chrome and Edge packages
+        run: npm run build
+
+      - name: Preserve validated store packages
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: browser-store-packages
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  ocr-service:
+    name: OCR service audit and container build
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      LLSS_API_KEY: ci-only-verification-key-not-for-production
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: server/requirements.txt
+
+      - name: Install dependency scanner
+        run: python -m pip install pip-audit==2.10.1
+
+      - name: Install hash-locked runtime dependencies
+        run: python -m pip install --require-hashes -r server/requirements.txt
+
+      - name: Audit Python dependencies
+        run: python -m pip_audit -r server/requirements.txt
+
+      - name: Compile and import the service
+        run: |
+          python -m compileall -q server
+          python -c "import server.main; assert server.main.app.docs_url is None"
+
+      - name: Build the production container
+        run: docker build --tag llss-ocr:ci server
+
+      - name: Save production container for verification
+        run: docker save --output llss-ocr-ci.tar llss-ocr:ci
+
+      - name: Scan fixed high and critical container vulnerabilities
+        run: >-
+          docker run --rm
+          -v "${{ github.workspace }}:/work"
+          aquasec/trivy@sha256:2416d1f74045b57274df1a340eee6b510cacd73c66a6ccb8da092b117eb7d222
+          image --input /work/llss-ocr-ci.tar --scanners vuln --ignore-unfixed
+          --severity HIGH,CRITICAL --exit-code 1 --no-progress
+
+      - name: Generate CycloneDX container SBOM
+        run: >-
+          docker run --rm
+          -v "${{ github.workspace }}:/work"
+          aquasec/trivy@sha256:2416d1f74045b57274df1a340eee6b510cacd73c66a6ccb8da092b117eb7d222
+          image --input /work/llss-ocr-ci.tar --format cyclonedx
+          --output /work/llss-ocr.cdx.json --no-progress
+
+      - name: Preserve container SBOM
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ocr-container-sbom
+          path: llss-ocr.cdx.json
+          if-no-files-found: error
+          retention-days: 14

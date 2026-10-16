@@ -81,15 +81,12 @@ describe("LLSS_debug", () => {
 
   // ── error() ────────────────────────────────────────────────────────────
 
-  test("error() always outputs even when disabled", () => {
+  test("error() does not expose diagnostics when disabled", () => {
     const spy = jest.spyOn(console, "error").mockImplementation(() => {});
     debug.setEnabled(false);
 
     debug.error("critical", "something broke");
-    expect(spy).toHaveBeenCalledWith(
-      expect.stringContaining("[LLSS:critical]"),
-      "something broke"
-    );
+    expect(spy).not.toHaveBeenCalled();
   });
 
   test("error() outputs when enabled", () => {

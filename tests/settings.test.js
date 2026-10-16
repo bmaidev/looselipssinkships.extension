@@ -6,6 +6,8 @@ const {
   mergeWithManaged,
   isSettingLocked,
   deletePath,
+  sanitizeRemoteConfig,
+  isSecureConfigurationUrl,
 } = require("../lib/settings");
 const { DEFAULT_PII_TYPES } = require("../lib/pii-types");
 
@@ -16,7 +18,7 @@ describe("DEFAULT_SETTINGS", () => {
     expect(DEFAULT_SETTINGS.vectorThreshold).toBe(0.45);
     expect(DEFAULT_SETTINGS.showRedactButton).toBe(true);
     expect(DEFAULT_SETTINGS.sessionTimeoutMinutes).toBe(5);
-    expect(DEFAULT_SETTINGS.schemaVersion).toBe(3);
+    expect(DEFAULT_SETTINGS.schemaVersion).toBe(7);
   });
 
   test("has site filter defaults", () => {
@@ -49,6 +51,8 @@ describe("DEFAULT_SETTINGS", () => {
     expect(DEFAULT_SETTINGS.uploadGuard).toBeDefined();
     expect(DEFAULT_SETTINGS.uploadGuard.enabled).toBe(true);
     expect(DEFAULT_SETTINGS.uploadGuard.confirmBeforeUpload).toBe(true);
+    expect(DEFAULT_SETTINGS.uploadGuard.allowBypass).toBe(false);
+    expect(DEFAULT_SETTINGS.uploadGuard.blockUnsupported).toBe(true);
   });
 
   test("customPiiTypes defaults to empty array", () => {
@@ -57,6 +61,32 @@ describe("DEFAULT_SETTINGS", () => {
 
   test("piiTypeOverrides defaults to empty object", () => {
     expect(DEFAULT_SETTINGS.piiTypeOverrides).toEqual({});
+  });
+});
+
+describe("settings migration", () => {
+  test("v7 removes obsolete remote Purview configuration and credentials", () => {
+    const result = mergeWithManaged(DEFAULT_SETTINGS, {
+      schemaVersion: 6,
+      providers: {
+        purview: {
+          enabled: true,
+          tenantId: "tenant",
+          clientId: "client",
+          checkViaApi: true,
+          gateEnabled: true,
+          blockedLabels: ["SECRET"],
+        },
+      },
+    }, null, null);
+
+    expect(result.schemaVersion).toBe(7);
+    expect(result.providers.purview).toEqual({
+      gateEnabled: true,
+      blockedLabels: ["SECRET"],
+      warnLabels: [],
+      blockEncrypted: true,
+    });
   });
 });
 
@@ -170,6 +200,63 @@ describe("deepMerge", () => {
     deepMerge(target, source);
     expect(target).toEqual({ a: { b: 1 } });
     expect(source).toEqual({ a: { c: 2 } });
+  });
+
+  test("rejects prototype-pollution keys from JSON settings", () => {
+    const payload = JSON.parse('{"__proto__":{"polluted":true},"safe":1}');
+    const result = deepMerge({}, payload);
+    expect(result.safe).toBe(1);
+    expect(result).not.toHaveProperty("__proto__.polluted");
+    expect({}.polluted).toBeUndefined();
+  });
+});
+
+describe("remote configuration trust boundary", () => {
+  test("strips providers, network destinations and debug mode", () => {
+    const result = sanitizeRemoteConfig({
+      detectionMode: "regex_only",
+      providers: { hosted: [{ endpoint: "https://attacker.example" }] },
+      configUrl: "https://attacker.example/config.json",
+      debugMode: true,
+      _policyVersion: 4,
+    });
+    expect(result.detectionMode).toBe("regex_only");
+    expect(result._policyVersion).toBe(4);
+    expect(result.providers).toBeUndefined();
+    expect(result.configUrl).toBeUndefined();
+    expect(result.debugMode).toBeUndefined();
+  });
+
+  test("cannot remotely enable unsafe upload bypasses or oversized files", () => {
+    const result = sanitizeRemoteConfig({
+      uploadGuard: {
+        allowBypass: true,
+        blockUnsupported: false,
+        maxFileSizeBytes: Number.MAX_SAFE_INTEGER,
+      },
+    });
+    expect(result.uploadGuard.allowBypass).toBe(false);
+    expect(result.uploadGuard.blockUnsupported).toBe(true);
+    expect(result.uploadGuard.maxFileSizeBytes).toBe(25 * 1024 * 1024);
+  });
+
+  test("sanitizes remote lock maps", () => {
+    const result = sanitizeRemoteConfig({
+      _locked: {
+        "submitGuard.enabled": true,
+        "__proto__.polluted": true,
+        "uploadGuard.enabled": "yes",
+      },
+    });
+    expect(result._locked).toEqual({ "submitGuard.enabled": true });
+    expect({}.polluted).toBeUndefined();
+  });
+
+  test("requires HTTPS except for loopback development", () => {
+    expect(isSecureConfigurationUrl("https://config.example/policy.json")).toBe(true);
+    expect(isSecureConfigurationUrl("http://localhost:8080/policy.json")).toBe(true);
+    expect(isSecureConfigurationUrl("http://config.example/policy.json")).toBe(false);
+    expect(isSecureConfigurationUrl("https://user:pass@config.example/policy.json")).toBe(false);
   });
 });
 

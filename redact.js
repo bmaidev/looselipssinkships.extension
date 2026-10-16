@@ -10,6 +10,8 @@
   const files = [];     // { id, file, status, result, error }
   let processing = false;
   let nextId = 0;
+  const MAX_FILE_BYTES = 25 * 1024 * 1024;
+  const MAX_QUEUE_FILES = 50;
 
   // ── DOM refs ───────────────────────────────────────────────────────────
 
@@ -24,15 +26,32 @@
   const summarySection = document.getElementById('summary-section');
   const summaryContent = document.getElementById('summary-content');
   const providerStatus = document.getElementById('provider-status');
+  const queueAnnouncement = document.getElementById('queue-announcement');
+
+  function announce(message) {
+    queueAnnouncement.textContent = '';
+    requestAnimationFrame(() => { queueAnnouncement.textContent = message; });
+  }
 
   // ── Provider status ────────────────────────────────────────────────────
 
   chrome.runtime.sendMessage({ type: 'CHECK_STATUS' }, (response) => {
-    if (!response?.providers) return;
-    providerStatus.innerHTML = response.providers.map(p => {
-      const dot = p.available ? 'on' : 'off';
-      return `<span class="provider-tag"><span class="dot ${dot}"></span>${p.name}</span>`;
-    }).join('');
+    if (chrome.runtime.lastError || !response?.providers?.length) {
+      providerStatus.textContent = 'Local protection available';
+      return;
+    }
+    const fragment = document.createDocumentFragment();
+    for (const provider of response.providers) {
+      const tag = document.createElement('span');
+      tag.className = 'provider-tag';
+      tag.setAttribute('aria-label', `${provider.name || 'Provider'}: ${provider.available ? 'available' : 'unavailable'}`);
+      const statusDot = document.createElement('span');
+      statusDot.className = `dot ${provider.available ? 'on' : 'off'}`;
+      statusDot.setAttribute('aria-hidden', 'true');
+      tag.append(statusDot, document.createTextNode(provider.name || 'Provider'));
+      fragment.appendChild(tag);
+    }
+    providerStatus.replaceChildren(fragment);
   });
 
   // ── File type helpers ──────────────────────────────────────────────────
@@ -47,7 +66,7 @@
     'image/png': '.png',
     'image/jpeg': '.jpg',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.csv',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
     'text/plain': '.txt',
     'text/csv': '.csv',
     'application/zip': '.zip',
@@ -69,9 +88,32 @@
   // ── File management ────────────────────────────────────────────────────
 
   function addFiles(newFiles) {
+    if (processing) {
+      announce('Wait for the current redaction to finish before adding files.');
+      return;
+    }
+    let added = 0;
+    let unsupported = 0;
+    let oversized = 0;
+    let duplicates = 0;
     for (const file of newFiles) {
+      if (files.length >= MAX_QUEUE_FILES) break;
       const contentType = detectType(file);
-      if (!contentType) continue; // Skip unsupported
+      if (!contentType) {
+        unsupported++;
+        continue;
+      }
+      if (file.size > MAX_FILE_BYTES) {
+        oversized++;
+        continue;
+      }
+      const duplicate = files.some((entry) => entry.file.name === file.name
+        && entry.file.size === file.size
+        && entry.file.lastModified === file.lastModified);
+      if (duplicate) {
+        duplicates++;
+        continue;
+      }
       files.push({
         id: nextId++,
         file,
@@ -80,8 +122,17 @@
         result: null,
         error: null,
       });
+      added++;
     }
     renderQueue();
+
+    const notes = [];
+    if (added) notes.push(`${added} ${added === 1 ? 'file' : 'files'} added`);
+    if (oversized) notes.push(`${oversized} over the 25 MB limit`);
+    if (unsupported) notes.push(`${unsupported} unsupported`);
+    if (duplicates) notes.push(`${duplicates} already in the queue`);
+    if (files.length >= MAX_QUEUE_FILES && added < newFiles.length) notes.push(`queue limited to ${MAX_QUEUE_FILES} files`);
+    announce(notes.length ? notes.join('; ') : 'No supported files were added.');
   }
 
   function removeFile(id) {
@@ -93,10 +144,11 @@
   }
 
   function clearFiles() {
+    if (processing) return;
     files.length = 0;
-    processing = false;
     renderQueue();
     summarySection.hidden = true;
+    announce('File queue cleared.');
   }
 
   // ── Rendering ──────────────────────────────────────────────────────────
@@ -104,6 +156,11 @@
   function renderQueue() {
     queueSection.hidden = files.length === 0;
     btnProcess.disabled = processing || files.every(f => f.status !== 'pending');
+    btnClear.disabled = processing;
+    btnBrowse.disabled = processing;
+    fileInput.disabled = processing;
+    dropZone.setAttribute('aria-disabled', String(processing));
+    dropZone.tabIndex = processing ? -1 : 0;
 
     fileList.innerHTML = files.map(f => {
       const icon = TYPE_ICONS[f.contentType] || '\u{1F4C4}';
@@ -115,21 +172,21 @@
       switch (f.status) {
         case 'pending':
           statusText = 'Pending';
-          actions = `<button class="btn-sm" data-remove="${f.id}">Remove</button>`;
+          actions = `<button class="btn-sm" type="button" data-remove="${f.id}" aria-label="Remove ${escapeHtml(f.file.name)}">Remove</button>`;
           break;
         case 'processing':
-          statusText = '<span class="spinner"></span> Processing...';
+          statusText = '<span class="spinner" aria-hidden="true"></span> Processing…';
           break;
         case 'done':
           statusText = `${f.result?.matchCount || 0} PII found`;
-          if (f.result?.redactedFile) {
-            actions = `<button class="btn-sm btn-success" data-download="${f.id}">Download</button>`;
+          if (f.result?.redactedFileBase64) {
+            actions = `<button class="btn-sm btn-success" type="button" data-download="${f.id}" aria-label="Download redacted ${escapeHtml(f.file.name)}">Download</button>`;
           }
           result = renderResult(f);
           break;
         case 'error':
           statusText = 'Error';
-          result = `<div class="file-result"><span style="color:#dc2626">${escapeHtml(f.error)}</span></div>`;
+          result = `<div class="file-result"><span class="result-error">${escapeHtml(f.error)}</span></div>`;
           break;
       }
 
@@ -138,7 +195,7 @@
         <div class="file-info">
           <div class="file-name">${escapeHtml(f.file.name)}</div>
           <div class="file-meta">${escapeHtml(f.contentType.toUpperCase())} &middot; ${formatSize(f.file.size)}</div>
-          ${f.status === 'processing' ? '<div class="file-progress"><div class="file-progress-fill" id="progress-' + f.id + '"></div></div>' : ''}
+          ${f.status === 'processing' ? '<div class="file-progress" role="progressbar" aria-label="Processing ' + escapeHtml(f.file.name) + '"><div class="file-progress-fill" id="progress-' + f.id + '"></div></div>' : ''}
           ${result}
         </div>
         <span class="file-status ${statusCls}">${statusText}</span>
@@ -156,7 +213,11 @@
     fileList.querySelectorAll('[data-toggle-preview]').forEach(btn => {
       btn.addEventListener('click', () => {
         const pre = document.getElementById(`preview-${btn.dataset.togglePreview}`);
-        if (pre) pre.hidden = !pre.hidden;
+        if (pre) {
+          pre.hidden = !pre.hidden;
+          btn.setAttribute('aria-expanded', String(!pre.hidden));
+          btn.textContent = pre.hidden ? 'Show preview' : 'Hide preview';
+        }
       });
     });
   }
@@ -171,13 +232,13 @@
 
     let preview = '';
     if (r.redacted) {
-      preview = `<button class="btn-sm" data-toggle-preview="${f.id}">Toggle Preview</button>
+      preview = `<button class="btn-sm" type="button" data-toggle-preview="${f.id}" aria-controls="preview-${f.id}" aria-expanded="false">Show preview</button>
         <div class="file-result-preview" id="preview-${f.id}" hidden>${escapeHtml(r.redacted.substring(0, 2000))}${r.redacted.length > 2000 ? '\n...' : ''}</div>`;
     }
 
     return `<div class="file-result">
       <div class="file-result-meta">${meta.map(m => `<span>${escapeHtml(m)}</span>`).join('')}</div>
-      ${r.redactedFile ? '<span style="color:#059669;font-weight:600">Redacted file ready</span>' : '<span style="color:#6b7280">Text-only redaction (no file modification for this format)</span>'}
+      ${r.redactedFileBase64 ? '<span class="result-ready">Redacted file ready</span>' : '<span class="result-note">Text-only redaction (no file modification for this format)</span>'}
       ${preview}
     </div>`;
   }
@@ -186,7 +247,7 @@
     const done = files.filter(f => f.status === 'done');
     const errors = files.filter(f => f.status === 'error');
     const totalMatches = done.reduce((sum, f) => sum + (f.result?.matchCount || 0), 0);
-    const withFiles = done.filter(f => f.result?.redactedFile);
+    const withFiles = done.filter(f => f.result?.redactedFileBase64);
 
     summarySection.hidden = false;
     summaryContent.innerHTML = `
@@ -201,6 +262,7 @@
   // ── Processing ─────────────────────────────────────────────────────────
 
   async function processAll() {
+    if (processing) return;
     processing = true;
     btnProcess.disabled = true;
     summarySection.hidden = true;
@@ -213,67 +275,81 @@
 
     const pending = files.filter(f => f.status === 'pending');
 
-    for (const entry of pending) {
-      entry.status = 'processing';
-      renderQueue();
+    try {
+      for (const [index, entry] of pending.entries()) {
+        entry.status = 'processing';
+        announce(`Redacting ${entry.file.name}, file ${index + 1} of ${pending.length}.`);
+        renderQueue();
 
-      try {
-        const buffer = await entry.file.arrayBuffer();
-        const data = Array.from(new Uint8Array(buffer));
+        try {
+          // Reject before reading the Blob so an unexpectedly large file cannot
+          // cause a full in-memory allocation.
+          if (entry.file.size > MAX_FILE_BYTES) throw new Error('File exceeds the 25 MB limit.');
+          const buffer = await entry.file.arrayBuffer();
+          const data = LLSS_BinaryTransfer.toBase64(buffer, MAX_FILE_BYTES);
 
-        const response = await chrome.runtime.sendMessage({
-          type: 'REDACT_DOCUMENT',
-          fileData: data,
-          fileName: entry.file.name,
-          mimeType: entry.file.type,
-        });
+          const response = await chrome.runtime.sendMessage({
+            type: 'REDACT_DOCUMENT',
+            fileDataBase64: data,
+            fileName: entry.file.name,
+            mimeType: entry.file.type,
+          });
 
-        if (!response?.success) {
-          throw new Error(response?.error || 'Processing failed');
+          if (!response?.success) {
+            throw new Error(response?.error || 'Processing failed');
+          }
+
+          entry.status = 'done';
+          entry.result = response;
+          announce(`${entry.file.name} redacted. ${response.matchCount || 0} sensitive items found.`);
+        } catch (err) {
+          entry.status = 'error';
+          entry.error = err?.message || String(err);
+          announce(`${entry.file.name} could not be redacted.`);
         }
 
-        entry.status = 'done';
-        entry.result = response;
-      } catch (err) {
-        entry.status = 'error';
-        entry.error = err?.message || String(err);
+        renderQueue();
       }
-
+    } finally {
+      if (port) {
+        try { port.disconnect(); } catch (_) {}
+      }
+      processing = false;
       renderQueue();
+      renderSummary();
+      const failed = pending.filter((entry) => entry.status === 'error').length;
+      announce(`Redaction complete. ${pending.length - failed} succeeded${failed ? ` and ${failed} failed` : ''}.`);
     }
-
-    if (port) {
-      try { port.disconnect(); } catch (_) {}
-    }
-
-    processing = false;
-    renderQueue();
-    renderSummary();
   }
 
   // ── Download ───────────────────────────────────────────────────────────
 
   function downloadFile(id) {
     const entry = files.find(f => f.id === id);
-    if (!entry?.result?.redactedFile) return;
+    if (!entry?.result?.redactedFileBase64) return;
 
-    const r = entry.result;
-    const bytes = new Uint8Array(r.redactedFile);
-    const format = r.redactedFileFormat || entry.file.type;
-    const ext = MIME_EXT_MAP[format] || entry.file.name.match(/\.[^.]+$/)?.[0] || '';
-    const baseName = entry.file.name.replace(/\.[^.]+$/, '');
+    try {
+      const r = entry.result;
+      const bytes = LLSS_BinaryTransfer.fromBase64(r.redactedFileBase64, MAX_FILE_BYTES);
+      const format = r.redactedFileFormat || entry.file.type;
+      const ext = MIME_EXT_MAP[format] || entry.file.name.match(/\.[^.]+$/)?.[0] || '';
+      const baseName = entry.file.name.replace(/\.[^.]+$/, '');
 
-    const blob = new Blob([bytes], { type: format });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${baseName}_redacted${ext}`;
-    a.click();
-    URL.revokeObjectURL(url);
+      const blob = new Blob([bytes], { type: format });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${baseName}_redacted${ext}`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      announce(`Downloading redacted ${entry.file.name}.`);
+    } catch {
+      announce(`${entry.file.name} could not be downloaded. Redact it again and retry.`);
+    }
   }
 
   function downloadAll() {
-    const withFiles = files.filter(f => f.status === 'done' && f.result?.redactedFile);
+    const withFiles = files.filter(f => f.status === 'done' && f.result?.redactedFileBase64);
     for (const entry of withFiles) {
       downloadFile(entry.id);
     }
@@ -295,6 +371,11 @@
     addFiles(Array.from(e.dataTransfer.files));
   });
   dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('keydown', (event) => {
+    if (event.target !== dropZone || (event.key !== 'Enter' && event.key !== ' ')) return;
+    event.preventDefault();
+    fileInput.click();
+  });
   btnBrowse.addEventListener('click', (e) => {
     e.stopPropagation();
     fileInput.click();

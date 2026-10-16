@@ -5,155 +5,218 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Loose Lips Sink Ships</title>
   <style>
+    :root {
+      color-scheme: light;
+      --navy-950: #0b1f33;
+      --navy-800: #173b5d;
+      --teal-700: #0f766e;
+      --teal-600: #0d9488;
+      --ink: #172033;
+      --muted: #64748b;
+      --line: #dce4ec;
+      --surface: #ffffff;
+      --canvas: #f3f7fa;
+    }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      width: 360px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #f7f8fa;
-      color: #1a1a2e;
-      padding: 20px;
+      width: 380px;
+      min-height: 490px;
+      font-family: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+      background:
+        radial-gradient(circle at 100% 0, rgba(13, 148, 136, 0.11), transparent 35%),
+        var(--canvas);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
     }
 
-    .header { text-align: center; margin-bottom: 16px; }
-    .header h1 { font-size: 15px; font-weight: 700; color: #1a3a5c; letter-spacing: 0.3px; }
-    .header p { font-size: 11px; color: #6b7280; margin-top: 4px; }
+    .shell { padding: 20px; }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      margin: 1px 2px 17px;
+    }
+
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      padding: 4px;
+      border-radius: 11px;
+      background: var(--surface);
+      box-shadow: 0 5px 14px rgba(11, 31, 51, 0.13);
+    }
+
+    .header h1 {
+      color: var(--navy-950);
+      font-size: 15px;
+      font-weight: 720;
+      letter-spacing: -0.01em;
+    }
+
+    .header p { color: var(--muted); font-size: 11px; margin-top: 2px; }
 
     .card {
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 14px 16px;
-      margin-bottom: 10px;
+      margin-bottom: 11px;
+      padding: 15px 16px;
+      border: 1px solid rgba(203, 213, 225, 0.85);
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 6px 18px rgba(15, 42, 68, 0.055);
     }
 
     .card-title {
+      margin-bottom: 11px;
+      color: #748297;
       font-size: 10px;
       font-weight: 700;
+      letter-spacing: 0.075em;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: #9ca3af;
-      margin-bottom: 8px;
     }
 
     .status-row { display: flex; align-items: center; gap: 10px; }
 
     .status-dot {
-      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+      width: 10px;
+      height: 10px;
+      flex-shrink: 0;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      box-shadow: 0 0 0 2px currentColor;
     }
-    .status-dot.ready       { background: #22c55e; }
-    .status-dot.downloading { background: #f59e0b; animation: pulse 1.2s infinite; }
-    .status-dot.unavailable { background: #ef4444; }
-    .status-dot.checking    { background: #9ca3af; animation: pulse 1.2s infinite; }
-    .status-dot.fallback    { background: #3b82f6; }
+    .status-dot.ready       { color: #16a34a; background: #16a34a; }
+    .status-dot.downloading { color: #d97706; background: #d97706; animation: pulse 1.2s infinite; }
+    .status-dot.unavailable { color: #dc2626; background: #dc2626; }
+    .status-dot.checking    { color: #94a3b8; background: #94a3b8; animation: pulse 1.2s infinite; }
+    .status-dot.fallback    { color: #2563eb; background: #2563eb; }
 
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 
-    .status-label { font-size: 13px; font-weight: 600; }
-    .status-detail { font-size: 11px; color: #6b7280; margin-top: 6px; }
+    .status-label { color: var(--navy-950); font-size: 13px; font-weight: 650; }
+    .status-detail { margin-top: 8px; color: var(--muted); font-size: 11px; line-height: 1.45; }
 
     .providers-list {
-      margin-top: 8px;
+      margin-top: 11px;
+      padding-top: 8px;
+      border-top: 1px solid #eef2f6;
       font-size: 11px;
     }
 
-    .provider-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 3px 0;
-    }
+    .provider-row { display: flex; align-items: center; gap: 7px; min-height: 25px; }
+    .provider-dot { width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; }
+    .provider-dot.on { background: #16a34a; }
+    .provider-dot.off { background: #cbd5e1; }
+    .provider-name { color: #334155; }
+    .provider-tier { margin-left: auto; color: #8492a6; font-size: 9px; font-weight: 650; text-transform: uppercase; }
 
-    .provider-dot {
-      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
-    }
-
-    .provider-dot.on { background: #22c55e; }
-    .provider-dot.off { background: #d1d5db; }
-
-    .provider-name { color: #374151; }
-    .provider-tier {
-      font-size: 9px;
-      color: #9ca3af;
-      margin-left: auto;
-    }
-
-    .stats-grid {
-      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 4px;
-    }
-    .stat-item { text-align: center; }
-    .stat-value { font-size: 16px; font-weight: 700; color: #1a3a5c; }
-    .stat-label { font-size: 9px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.4px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .stat-item { position: relative; text-align: center; }
+    .stat-item + .stat-item::before { position: absolute; top: 4px; bottom: 4px; left: 0; width: 1px; background: #e7edf3; content: ""; }
+    .stat-value { color: var(--navy-800); font-size: 20px; font-variant-numeric: tabular-nums; font-weight: 720; line-height: 1.15; }
+    .stat-label { margin-top: 4px; color: #5f6f84; font-size: 9px; font-weight: 650; letter-spacing: 0.055em; text-transform: uppercase; }
 
     .mode-badge {
-      display: inline-block; padding: 2px 8px; font-size: 10px; font-weight: 600;
-      border-radius: 10px; margin-top: 6px;
+      display: inline-flex;
+      margin-top: 9px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 650;
     }
-    .mode-badge.ai      { background: #dbeafe; color: #1d4ed8; }
-    .mode-badge.regex   { background: #fef3c7; color: #92400e; }
-    .mode-badge.auto    { background: #d1fae5; color: #065f46; }
+    .mode-badge.ai    { color: #1d4ed8; background: #dbeafe; }
+    .mode-badge.regex { color: #92400e; background: #fef3c7; }
+    .mode-badge.auto  { color: #08635c; background: #ccfbf1; }
 
-    .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+    #guard-stats { min-height: 15px; margin-top: 8px; color: var(--muted); font-size: 10px; text-align: center; }
+
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 13px; }
 
     .btn {
-      flex: 1; padding: 8px; font-size: 12px; font-weight: 600;
-      border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer;
-      background: #fff; color: #1a3a5c; transition: background 0.15s;
-      text-align: center; text-decoration: none;
+      min-height: 38px;
+      padding: 8px 12px;
+      border: 1px solid #ccd6e1;
+      border-radius: 9px;
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--navy-800);
+      cursor: pointer;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 650;
+      text-align: center;
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s, background 0.15s;
     }
-    .btn:hover { background: #f0f4f8; }
-    .btn.primary { background: #1a3a5c; color: #fff; border-color: #0f2a44; }
-    .btn.primary:hover { background: #244e78; }
+    .btn:hover { border-color: #9fb0c3; background: #fff; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn:focus-visible { outline: 3px solid rgba(37, 99, 235, 0.28); outline-offset: 2px; }
+    .btn.primary {
+      grid-column: 1 / -1;
+      border-color: var(--navy-950);
+      background: linear-gradient(135deg, var(--navy-950), var(--navy-800));
+      color: #fff;
+      box-shadow: 0 5px 12px rgba(11, 31, 51, 0.17);
+    }
+    .btn.primary:hover { background: linear-gradient(135deg, #102e4c, #20517e); }
 
-    .info {
-      font-size: 10px; color: #9ca3af; text-align: center; margin-top: 12px; line-height: 1.5;
+    .info { display: flex; align-items: flex-start; justify-content: center; gap: 6px; margin: 13px 7px 1px; color: #5f6f84; font-size: 10px; line-height: 1.45; text-align: center; }
+    .info svg { width: 12px; height: 12px; flex: 0 0 auto; margin-top: 1px; color: var(--teal-700); }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
     }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>Loose Lips Sink Ships</h1>
-    <p>Enterprise PII redaction — local first</p>
-  </div>
+  <main class="shell">
+    <header class="header">
+      <img class="brand-mark" src="icons/icon48.png" width="40" height="40" alt="">
+      <div>
+        <h1>Loose Lips Sink Ships</h1>
+        <p>PII protection, local first</p>
+      </div>
+    </header>
 
-  <div class="card">
-    <div class="status-row">
-      <span id="status-dot" class="status-dot checking"></span>
-      <span id="status-label" class="status-label">Checking providers...</span>
+    <section class="card" aria-labelledby="status-label">
+      <div class="status-row" role="status" aria-live="polite" aria-atomic="true">
+        <span id="status-dot" class="status-dot checking" aria-hidden="true"></span>
+        <span id="status-label" class="status-label">Checking protection…</span>
+      </div>
+      <div id="status-detail" class="status-detail"></div>
+      <div id="mode-badge-container"></div>
+      <div id="providers-list" class="providers-list" role="list" aria-label="Configured processing providers"></div>
+    </section>
+
+    <section class="card" aria-labelledby="activity-title">
+      <div id="activity-title" class="card-title">Protected activity</div>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <output id="stat-redactions" class="stat-value">—</output>
+          <div class="stat-label">Redactions</div>
+        </div>
+        <div class="stat-item">
+          <output id="stat-matches" class="stat-value">—</output>
+          <div class="stat-label">PII found</div>
+        </div>
+        <div class="stat-item">
+          <output id="stat-docs" class="stat-value">—</output>
+          <div class="stat-label">Documents</div>
+        </div>
+      </div>
+      <div id="guard-stats" aria-live="polite"></div>
+    </section>
+
+    <div class="btn-row">
+      <button id="btn-redact" class="btn primary" type="button">Redact documents</button>
+      <button id="btn-options" class="btn" type="button">Settings</button>
+      <button id="btn-reset-stats" class="btn" type="button">Clear activity</button>
     </div>
-    <div id="status-detail" class="status-detail"></div>
-    <div id="mode-badge-container"></div>
-    <div id="providers-list" class="providers-list"></div>
-  </div>
 
-  <div class="card">
-    <div class="card-title">Activity</div>
-    <div class="stats-grid">
-      <div class="stat-item">
-        <div id="stat-redactions" class="stat-value">-</div>
-        <div class="stat-label">Redactions</div>
-      </div>
-      <div class="stat-item">
-        <div id="stat-matches" class="stat-value">-</div>
-        <div class="stat-label">PII Found</div>
-      </div>
-      <div class="stat-item">
-        <div id="stat-docs" class="stat-value">-</div>
-        <div class="stat-label">Documents</div>
-      </div>
-    </div>
-    <div id="guard-stats" style="font-size:10px;color:#6b7280;text-align:center;margin-top:6px;"></div>
-  </div>
-
-  <div class="btn-row">
-    <button id="btn-redact" class="btn primary">Redact Files</button>
-    <button id="btn-options" class="btn">Settings</button>
-    <button id="btn-reset-stats" class="btn">Reset</button>
-  </div>
-
-  <p class="info">
-    Local-first processing. Enterprise providers route through your organisation's infrastructure.
-  </p>
+    <p class="info">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
+      <span>Local processing stays on this device. Configured enterprise providers use your organisation’s infrastructure.</span>
+    </p>
+  </main>
 
   <script src="lib/browser-ai.js"></script>
   <script src="popup.js"></script>

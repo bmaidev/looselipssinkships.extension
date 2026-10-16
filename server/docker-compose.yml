@@ -1,7 +1,9 @@
 # LLSS OCR Extraction Server — one-command deployment.
 #
 # Usage:
-#   docker-compose up -d
+#   openssl rand -hex 32 > llss-api-key.txt
+#   chmod 600 llss-api-key.txt
+#   LLSS_API_KEY_SECRET_FILE=./llss-api-key.txt docker compose up -d
 #
 # Then configure the extension:
 #   Hosted Provider → Endpoint: http://localhost:8000
@@ -15,15 +17,35 @@ services:
     build: .
     image: llss-ocr:latest
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
-      - LLSS_MAX_FILE_SIZE=52428800   # 50MB
+      - LLSS_API_KEY_FILE=/run/secrets/llss_api_key
+      - LLSS_MAX_FILE_SIZE=26214400   # 25 MiB
       - LLSS_MAX_PAGES=50
       - LLSS_TESSERACT_LANG=eng
-      - LLSS_DPI=300
+      - LLSS_DPI=250
+      - LLSS_OCR_TIMEOUT=60
+      - LLSS_PDF_TIMEOUT=120
+      - LLSS_MAX_IMAGE_PIXELS=40000000
+    secrets:
+      - llss_api_key
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777,noexec,nosuid,nodev
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 2g
+    cpus: 2.0
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
       interval: 30s
       timeout: 5s
       retries: 3
+
+secrets:
+  llss_api_key:
+    file: ${LLSS_API_KEY_SECRET_FILE:?Set LLSS_API_KEY_SECRET_FILE to a file containing a random key of at least 32 characters}

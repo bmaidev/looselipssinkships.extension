@@ -389,7 +389,7 @@ footer{
       <li><a href="#provider-regex">Regex Engine</a></li>
       <li><a href="#provider-vector">Vector Names</a></li>
       <li><a href="#provider-azure-pii">Azure PII</a></li>
-      <li><a href="#provider-purview">Purview DLP</a></li>
+      <li><a href="#provider-purview">Sensitivity-label gate</a></li>
       <li><a href="#provider-hosted">Hosted Models</a></li>
     </ul>
   </div>
@@ -537,7 +537,7 @@ footer{
     <ul class="sidebar-links">
       <li><a href="#security-privacy">Design Principles</a></li>
       <li><a href="#no-telemetry">No Telemetry</a></li>
-      <li><a href="#provably-secure">Provably Secure</a></li>
+      <li><a href="#provably-secure">Redaction Output Design</a></li>
       <li><a href="#enterprise-security">Enterprise Security</a></li>
     </ul>
   </div>
@@ -566,7 +566,7 @@ footer{
   <li><strong>Browser Prompt API</strong> (optional) &mdash; Gemini Nano in Chrome or Microsoft Edge&rsquo;s local model in supported preview channels/devices</li>
   <li><strong>On-device transcription API</strong> (optional) &mdash; required for local voice dictation; the control stays disabled instead of using cloud transcription when unavailable</li>
   <li><strong>Tesseract.js + pdf.js</strong> (optional) &mdash; run <code>vendor/setup.sh</code> for PDF rendering and image OCR</li>
-  <li><strong>Azure subscription</strong> (optional) &mdash; only needed for Azure PII or Purview DLP integration</li>
+  <li><strong>Azure subscription</strong> (optional) &mdash; only needed for Azure PII or Azure native document processing</li>
 </ul>
 
 <h3 id="installation">Installation</h3>
@@ -598,7 +598,7 @@ footer{
 <ol class="steps">
   <li>Use a current Microsoft Edge Dev or Canary release</li>
   <li>Open <code>edge://flags</code> and enable <strong>Prompt API for on-device language model</strong></li>
-  <li>For Edge 150+ on lower-performance devices, optionally enable <strong>Enable prerelease on-device language model</strong> to test Aion-1.0-Instruct</li>
+  <li>On supported Edge preview channels, enable the browser's prerelease on-device language model only for a managed pilot</li>
   <li>Restart Edge and check <code>edge://on-device-internals</code></li>
   <li>The extension popup reports whether the model is ready, downloading, or unavailable</li>
 </ol>
@@ -636,7 +636,7 @@ footer{
   <li><strong>Browser on-device AI</strong> &mdash; tried when the Chrome or Edge Prompt API is enabled and available</li>
   <li><strong>Regex + Vector</strong> &mdash; always-available local fallback; runs if browser AI is unavailable or fails</li>
   <li><strong>Hosted models</strong> &mdash; tried if configured and the above steps produced no result</li>
-  <li><strong>Cloud providers</strong> (Azure PII, Purview) &mdash; tried only if no hosted provider could handle the request</li>
+  <li><strong>Cloud provider</strong> (Azure PII) &mdash; tried only if no hosted provider could handle the request</li>
 </ol>
 <p>If <code>regexAfterAi</code> is enabled (belt-and-suspenders mode), regex also runs as a second pass after browser AI to catch anything the model missed.</p>
 <div class="callout callout-tip"><p><strong>Best for:</strong> Most deployments. Maximises privacy by preferring local processing, but can escalate when higher-quality detection is needed.</p></div>
@@ -673,7 +673,7 @@ footer{
 <p>Sends text directly to cloud providers. Falls back to regex if no cloud provider is available or configured.</p>
 <h4>Fallback chain</h4>
 <ol>
-  <li><strong>Cloud providers</strong> (Azure PII, Purview)</li>
+  <li><strong>Cloud provider</strong> (Azure PII)</li>
   <li><strong>Regex engine</strong> (fallback if cloud is unavailable)</li>
 </ol>
 <div class="callout callout-warn"><p><strong>Best for:</strong> Environments where Azure PII accuracy is paramount and cloud data transmission is acceptable. Note that text is sent to external Azure endpoints.</p></div>
@@ -748,28 +748,24 @@ footer{
 <table class="wiki-table">
   <thead><tr><th>Field</th><th>Description</th></tr></thead>
   <tbody>
-    <tr><td><code>sourceContainerUrl</code></td><td>Blob storage URL for uploads. Direct: URL with SAS (read+list). Enterprise: plain URL.</td></tr>
-    <tr><td><code>targetContainerUrl</code></td><td>Blob storage URL for results. Direct: URL with SAS (write+list). Enterprise: plain URL.</td></tr>
-    <tr><td><code>redactionPolicy</code></td><td><code>characterMask</code>, <code>entityMask</code>, or <code>noMask</code></td></tr>
+    <tr><td><code>sourceContainerUrl</code></td><td>Blob storage URL for uploads. Direct: expiring HTTPS-only read+write SAS (list optional). Enterprise: plain URL.</td></tr>
+    <tr><td><code>targetContainerUrl</code></td><td>Blob storage URL for results. Direct: expiring HTTPS-only read+write SAS (list optional). Enterprise: plain URL.</td></tr>
+    <tr><td><code>redactionPolicy</code></td><td><code>characterMask</code> or <code>entityMask</code></td></tr>
   </tbody>
 </table>
 
-<h3 id="provider-purview">Purview DLP <span class="badge badge-blue">Cloud</span></h3>
-<p>Microsoft Purview Data Loss Prevention via the Microsoft Graph API. Provides sensitivity label evaluation and DLP policy checking.</p>
+<h3 id="provider-purview">Microsoft sensitivity-label gate <span class="badge badge-green">Local</span></h3>
+<p>Reads embedded Microsoft Information Protection labels from DOCX/XLSX custom properties before upload. The file and its metadata remain on-device. This is a label-enforcement gate, not a remote content classifier, and it does not infer policy for unlabeled files.</p>
 <table class="wiki-table">
   <thead><tr><th>Field</th><th>Description</th></tr></thead>
   <tbody>
-    <tr><td><code>tenantId</code></td><td>Azure AD tenant ID</td></tr>
-    <tr><td><code>clientId</code></td><td>App Registration client ID</td></tr>
-    <tr><td><code>clientSecret</code></td><td>Client secret (for application auth)</td></tr>
-    <tr><td><code>accessToken</code></td><td>Pre-obtained access token (alternative to client secret)</td></tr>
-    <tr><td><code>graphEndpoint</code></td><td>Graph API endpoint (default <code>https://graph.microsoft.com/beta</code>)</td></tr>
-    <tr><td><code>useDelegatedAuth</code></td><td>Use delegated (user) auth instead of application auth</td></tr>
-    <tr><td><code>dlpPolicyId</code></td><td>Specific DLP policy ID to evaluate against</td></tr>
-    <tr><td><code>sensitiveInfoTypes</code></td><td>Array of sensitive information type IDs to detect</td></tr>
+    <tr><td><code>gateEnabled</code></td><td>Enable local pre-upload inspection of embedded Microsoft labels</td></tr>
+    <tr><td><code>blockedLabels</code></td><td>Label names that prevent upload</td></tr>
+    <tr><td><code>warnLabels</code></td><td>Label names that produce a warning</td></tr>
+    <tr><td><code>blockEncrypted</code></td><td>Block embedded encryption/protection markers</td></tr>
   </tbody>
 </table>
-<p>The Purview provider also powers the <a href="#classification-gate">Classification Gate</a>.</p>
+<p>See the complete <a href="#classification-gate">Classification Gate</a> deployment guidance.</p>
 
 <h3 id="provider-hosted">Hosted Models <span class="badge badge-amber">Hosted</span></h3>
 <p>Organisation-hosted LLMs or OCR endpoints. Multiple instances can be configured. The extension connects to your own infrastructure.</p>
@@ -990,22 +986,22 @@ footer{
      ══════════════════════════════════════════════════════════════════ -->
 <h2 id="voice-dictation">Voice Dictation</h2>
 
-<p>Voice is a blind spot for text-based PII guards: when you dictate, spoken PII can leave the browser as an audio blob <strong>before any text guard ever sees it</strong>. The Voice Dictation family closes that gap with three cooperating features &mdash; a local leak detector, an on-device dictation button, and native-button suppression.</p>
+<p>Voice is a blind spot for text-based PII guards: a site can process or transmit speech before any text guard sees it. The Voice Dictation family reduces that risk with a local bypass detector, an on-device dictation button, and native-button suppression.</p>
 
-<div class="callout callout-tip"><p>The safe path is fully on-device: a supported browser-local engine transcribes the microphone audio, the normal PII pipeline redacts it, and only clean text is inserted. Cloud transcription is never used.</p></div>
+<div class="callout callout-tip"><p>The extension-provided path uses a browser-local engine, runs the transcript through the normal PII pipeline, and inserts the resulting text. Cloud transcription is not selected.</p></div>
 
 <h3 id="voice-leak-detection">Voice Dictation Leak Detection <span class="badge badge-green">Observe-only</span></h3>
-<p>On <strong>any</strong> site (no domain allowlist required), the extension watches for pages that capture microphone audio in a way that would upload it &mdash; specifically <code>getUserMedia</code> feeding a <code>MediaRecorder</code>. This is the signature of server-side dictation, where your spoken words are sent off as an audio file before any text redaction can apply.</p>
+<p>Without relying on a domain allowlist, the extension watches for potential bypass paths: <code>getUserMedia</code> feeding a <code>MediaRecorder</code>, and speech recognition that is not explicitly marked local. These are conservative risk signals, not proof that an upload occurred.</p>
 <ul>
   <li><strong>Local and observe-only</strong> &mdash; detection happens entirely in the page. No audio is recorded, buffered, or sent anywhere by the extension.</li>
-  <li><strong>What it flags</strong> &mdash; a page that opens a microphone stream and pipes it into a recorder, i.e. dictation audio destined to leave the browser.</li>
-  <li><strong>Optional warning</strong> &mdash; when <code>voiceDetection.warnOnLeak</code> is enabled, a warning toast appears the moment a site uploads dictation audio.</li>
+  <li><strong>What it flags</strong> &mdash; microphone audio being packaged for later use, or a browser speech recognizer allowed to process remotely.</li>
+  <li><strong>Optional warning</strong> &mdash; when <code>voiceDetection.warnOnLeak</code> is enabled, a rate-limited warning appears when a potential off-device path is observed.</li>
 </ul>
 <table class="settings-table">
   <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
   <tbody>
-    <tr><td><code>voiceDetection.enabled</code></td><td class="type">boolean</td><td><code>true</code></td><td>Detect microphone dictation uploads (<code>getUserMedia</code> &rarr; <code>MediaRecorder</code>). Local, observe-only.</td></tr>
-    <tr><td><code>voiceDetection.warnOnLeak</code></td><td class="type">boolean</td><td><code>false</code></td><td>Show a warning toast when a site uploads dictation audio.</td></tr>
+    <tr><td><code>voiceDetection.enabled</code></td><td class="type">boolean</td><td><code>true</code></td><td>Detect potential microphone and speech-recognition bypass paths. Local, observe-only.</td></tr>
+    <tr><td><code>voiceDetection.warnOnLeak</code></td><td class="type">boolean</td><td><code>false</code></td><td>Show a warning for a potential off-device speech path.</td></tr>
   </tbody>
 </table>
 
@@ -1017,7 +1013,7 @@ footer{
   <li>The transcript is redacted through the normal PII pipeline</li>
   <li>The clean, redacted text is inserted into the composer</li>
 </ol>
-<div class="callout callout-tip"><p>The microphone audio <strong>never leaves the device</strong>, and cloud transcription is never used. Only redacted text reaches the page.</p></div>
+<div class="callout callout-tip"><p>The extension temporarily holds audio in memory for a browser on-device engine and does not select cloud transcription. Only the redacted transcript is inserted into the page.</p></div>
 <p>The same capability is available in the standalone <a href="#standalone-tool">Redact Files</a> tool as a <strong>Dictate (on-device)</strong> panel.</p>
 
 <h4>Requirements</h4>
@@ -1054,7 +1050,7 @@ footer{
      ══════════════════════════════════════════════════════════════════ -->
 <h2 id="document-processing">Document Processing</h2>
 
-<p>The extension processes 50+ file formats. Documents are handled by format-specific processors with a shared pipeline.</p>
+<p>The extension handles the explicitly listed document, image, archive, code, configuration, and text formats through format-specific processors with a shared pipeline. Unsupported content is blocked by default.</p>
 
 <h3 id="doc-docx">DOCX (Word)</h3>
 <p>DOCX files are ZIP archives containing XML. The extension:</p>
@@ -1218,7 +1214,7 @@ MSIP_Label_{GUID}_Name = "PROTECTED"
 MSIP_Label_{GUID}_SiteId = {tenant GUID}
 MSIP_Label_{GUID}_Method = Standard | Privileged
 MSIP_Label_{GUID}_ContentBits = 8</code></pre>
-<p>The gate reads these properties locally (Layer 1) without any API call. An optional Layer 2 check uses the Microsoft Graph API for deeper policy evaluation.</p>
+<p>The gate reads these properties locally without an API call. Administrators must configure the label names to block or warn; this check does not classify unlabeled content.</p>
 
 <h4>Gate Evaluation Flow</h4>
 <ol class="steps">
@@ -1226,7 +1222,6 @@ MSIP_Label_{GUID}_ContentBits = 8</code></pre>
   <li>Check if any label matches the <code>blockedLabels</code> list &mdash; if yes, <strong>block</strong> the upload</li>
   <li>Check if the file is encrypted (ContentBits &amp; 0x8) and <code>blockEncrypted</code> is true &mdash; if yes, <strong>block</strong></li>
   <li>Check if any label matches the <code>warnLabels</code> list &mdash; if yes, show <strong>warning</strong> but allow</li>
-  <li>Optionally query Graph API for additional policy evaluation (<code>checkViaApi</code>)</li>
   <li>If no restrictions are found, <strong>allow</strong> the upload</li>
 </ol>
 
@@ -1410,9 +1405,11 @@ MSIP_Label_{GUID}_ContentBits = 8</code></pre>
     <tr><td><strong>v3</strong></td><td>Added <code>siteFilter</code>, <code>aiChatGuard</code>, <code>autoRedact</code>, <code>submitGuard</code>, <code>uploadGuard</code> sections.</td></tr>
     <tr><td><strong>v4</strong></td><td>Migrated <code>useManagedIdentity</code> boolean to <code>connectionMode</code> string (<code>"direct"</code>/<code>"enterprise"</code>) in Azure PII.</td></tr>
     <tr><td><strong>v5</strong></td><td>Added Classification Gate fields to Purview: <code>gateEnabled</code>, <code>blockedLabels</code>, <code>warnLabels</code>, <code>blockEncrypted</code>.</td></tr>
+    <tr><td><strong>v6</strong></td><td>Added fail-closed uploads, mandatory deterministic detection, and credential isolation.</td></tr>
+    <tr><td><strong>v7</strong></td><td>Made Microsoft sensitivity-label enforcement local-only and removed the unsupported remote Purview route.</td></tr>
   </tbody>
 </table>
-<p>Current schema version: <strong>5</strong> (stored as <code>schemaVersion: 5</code> in settings). Migration is automatic and non-destructive.</p>
+<p>Current schema version: <strong>7</strong> (stored as <code>schemaVersion: 7</code> in settings). Migration removes obsolete remote Purview credentials while retaining local label-gate policy.</p>
 
 
 <!-- ══════════════════════════════════════════════════════════════════
@@ -1539,7 +1536,7 @@ await LLSS_AzureAuth.signOut();</code></pre>
   <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
   <tbody>
     <tr><td><code>voiceDetection.enabled</code></td><td class="type">boolean</td><td><code>true</code></td><td>Detect microphone dictation uploads (<code>getUserMedia</code> &rarr; <code>MediaRecorder</code>) on any site. Local, observe-only &mdash; no audio is recorded or sent.</td></tr>
-    <tr><td><code>voiceDetection.warnOnLeak</code></td><td class="type">boolean</td><td><code>false</code></td><td>Show a warning toast when a site uploads dictation audio.</td></tr>
+    <tr><td><code>voiceDetection.warnOnLeak</code></td><td class="type">boolean</td><td><code>false</code></td><td>Show a warning for a potential off-device speech path.</td></tr>
     <tr><td><code>voiceDictation.enabled</code></td><td class="type">boolean</td><td><code>true</code></td><td>Inline on-device dictation button on AI chat composers (and in the Redact Files tool).</td></tr>
     <tr><td><code>voiceDictation.suppressNativeMic</code></td><td class="type">boolean</td><td><code>true</code></td><td>Hide the site's own dictation button so only the safe on-device button remains.</td></tr>
   </tbody>
@@ -1613,29 +1610,18 @@ await LLSS_AzureAuth.signOut();</code></pre>
     <tr><td><code>providers.azure_pii.nativeDocEnabled</code></td><td class="type">boolean</td><td><code>false</code></td><td>Enable server-side document redaction via Azure.</td></tr>
     <tr><td><code>providers.azure_pii.sourceContainerUrl</code></td><td class="type">string</td><td><code>""</code></td><td>Blob storage URL for source uploads.</td></tr>
     <tr><td><code>providers.azure_pii.targetContainerUrl</code></td><td class="type">string</td><td><code>""</code></td><td>Blob storage URL for redacted results.</td></tr>
-    <tr><td><code>providers.azure_pii.redactionPolicy</code></td><td class="type">string</td><td><code>"entityMask"</code></td><td>Redaction policy: <code>"characterMask"</code>, <code>"entityMask"</code>, or <code>"noMask"</code>.</td></tr>
+    <tr><td><code>providers.azure_pii.redactionPolicy</code></td><td class="type">string</td><td><code>"entityMask"</code></td><td>Redaction policy: <code>"characterMask"</code> or <code>"entityMask"</code>.</td></tr>
   </tbody>
 </table>
 
-<h4>Purview DLP</h4>
+<h4>Microsoft sensitivity-label gate</h4>
 <table class="settings-table">
   <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
   <tbody>
-    <tr><td><code>providers.purview.enabled</code></td><td class="type">boolean</td><td><code>false</code></td><td>Enable Microsoft Purview DLP.</td></tr>
-    <tr><td><code>providers.purview.tenantId</code></td><td class="type">string</td><td><code>""</code></td><td>Azure AD tenant ID.</td></tr>
-    <tr><td><code>providers.purview.clientId</code></td><td class="type">string</td><td><code>""</code></td><td>App Registration client ID.</td></tr>
-    <tr><td><code>providers.purview.clientSecret</code></td><td class="type">string</td><td><code>""</code></td><td>Client secret for application auth.</td></tr>
-    <tr><td><code>providers.purview.accessToken</code></td><td class="type">string</td><td><code>""</code></td><td>Pre-obtained access token (alternative).</td></tr>
-    <tr><td><code>providers.purview.graphEndpoint</code></td><td class="type">string</td><td><code>"https://graph.microsoft.com/beta"</code></td><td>Graph API endpoint URL.</td></tr>
-    <tr><td><code>providers.purview.useDelegatedAuth</code></td><td class="type">boolean</td><td><code>false</code></td><td>Use delegated (user) auth instead of application auth.</td></tr>
-    <tr><td><code>providers.purview.dlpPolicyId</code></td><td class="type">string</td><td><code>""</code></td><td>Specific DLP policy ID to evaluate.</td></tr>
-    <tr><td><code>providers.purview.sensitiveInfoTypes</code></td><td class="type">array</td><td><code>[]</code></td><td>Sensitive info type IDs to detect.</td></tr>
-    <tr><td><code>providers.purview.gateEnabled</code></td><td class="type">boolean</td><td><code>false</code></td><td>Enable Classification Gate (pre-upload label check).</td></tr>
+    <tr><td><code>providers.purview.gateEnabled</code></td><td class="type">boolean</td><td><code>false</code></td><td>Enable the local pre-upload embedded-label check.</td></tr>
     <tr><td><code>providers.purview.blockedLabels</code></td><td class="type">array</td><td><code>[]</code></td><td>Sensitivity label names to block (e.g., <code>["PROTECTED","SECRET"]</code>).</td></tr>
     <tr><td><code>providers.purview.warnLabels</code></td><td class="type">array</td><td><code>[]</code></td><td>Sensitivity label names to warn but allow.</td></tr>
-    <tr><td><code>providers.purview.blockedSensitivity</code></td><td class="type">number</td><td><code>0</code></td><td>Block labels with sensitivity >= this value (0 = disabled).</td></tr>
     <tr><td><code>providers.purview.blockEncrypted</code></td><td class="type">boolean</td><td><code>true</code></td><td>Block files with encryption/RMS markers.</td></tr>
-    <tr><td><code>providers.purview.checkViaApi</code></td><td class="type">boolean</td><td><code>false</code></td><td>Also evaluate via Graph API (requires auth).</td></tr>
   </tbody>
 </table>
 
@@ -1754,11 +1740,6 @@ await LLSS_AzureAuth.signOut();</code></pre>
       <td>Reload the extension. Check <code>chrome://extensions</code> or <code>edge://extensions</code> for error badges. Ensure the <code>offscreen</code> permission is in manifest.json.</td>
     </tr>
     <tr>
-      <td><code>Graph API evaluation failed: 403</code></td>
-      <td>Purview API permissions insufficient</td>
-      <td>Ensure the app registration has the required Graph API permissions and admin consent has been granted.</td>
-    </tr>
-    <tr>
       <td>The on-device mic button doesn't appear</td>
       <td>Not an AI chat site, or the browser lacks an on-device transcription engine</td>
       <td>The inline dictation button only appears on detected AI chat sites when a local Web Speech or audio-capable Prompt API is ready. Confirm the site is supported, <code>voiceDictation.enabled</code> is on, and the popup reports a local capability.</td>
@@ -1788,27 +1769,28 @@ await LLSS_AzureAuth.signOut();</code></pre>
 
 <h3>Design Principles</h3>
 <ul>
-  <li><strong>Local-first:</strong> All detection and redaction runs on-device by default. No data leaves the browser unless a cloud provider is explicitly configured by the user or administrator.</li>
-  <li><strong>Zero stored PII:</strong> The extension never persists PII to disk. Text is processed in memory and immediately replaced with redaction tokens.</li>
-  <li><strong>No background data collection:</strong> The extension does not maintain persistent connections, background sync, or any form of data exfiltration channel.</li>
+  <li><strong>Local-first:</strong> Redaction providers run on-device by default. Hosted/cloud processing requires explicit configuration.</li>
+  <li><strong>Memory-only working data:</strong> The extension does not intentionally persist submitted text, document working copies, audio, or reversible token maps to extension storage.</li>
+  <li><strong>No product telemetry:</strong> There is no analytics endpoint. Configured provider, OAuth, remote-policy, and model-download traffic are explicit exceptions.</li>
 </ul>
 
 <h3 id="no-telemetry">No Telemetry</h3>
 <ul>
   <li>No analytics, usage metrics, or crash reports are collected</li>
-  <li>No phone-home requests to any server</li>
+  <li>No analytics or product phone-home endpoint</li>
   <li>No user tracking, cookies, or fingerprinting</li>
   <li>Third-party libraries (pdf.js, Tesseract.js) run entirely locally</li>
   <li>Statistics (redaction counts) are stored in <code>chrome.storage.local</code> &mdash; never transmitted</li>
 </ul>
 
-<h3 id="provably-secure">Provably Secure Redaction</h3>
+<h3 id="provably-secure">Redaction Output Design</h3>
 <ul>
   <li><strong>Text redaction:</strong> PII is replaced with bracketed tokens (e.g., <code>[REDACTED_EMAIL]</code>). The original text is overwritten in the DOM.</li>
   <li><strong>Image redaction:</strong> Black rectangles are drawn directly over PII regions on the canvas. There is no hidden text layer. The original pixel data is permanently destroyed.</li>
   <li><strong>PDF flattening:</strong> Redacted PDFs are flattened to images to prevent extraction of a hidden text layer from the original PDF structure.</li>
   <li><strong>DOCX XML replacement:</strong> PII is replaced within the XML nodes of the DOCX file. The redacted document is a valid Word file with tokens in place of PII.</li>
 </ul>
+<p>These properties reduce common recovery paths but do not prove that all sensitive content was detected. Validate output against your organisation's release and classification process.</p>
 
 <h3 id="enterprise-security">Enterprise Mode Security</h3>
 <ul>

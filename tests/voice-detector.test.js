@@ -56,11 +56,18 @@ describe("VoiceActivityCorrelator", () => {
     expect(c.noteRecorderStart(["track-a"], 999)).not.toBeNull();
   });
 
-  test("speech recognition is reported without leak risk", () => {
+  test("explicitly local speech recognition is reported without leak risk", () => {
     const c = new VoiceActivityCorrelator();
-    const detection = c.noteSpeechRecognition(0);
+    const detection = c.noteSpeechRecognition(0, true);
     expect(detection.type).toBe(EVENT_TYPES.LOCAL_SPEECH_RECOGNITION);
     expect(detection.leakRisk).toBe(false);
+  });
+
+  test("remote or unspecified speech recognition is a leak risk", () => {
+    const c = new VoiceActivityCorrelator();
+    const detection = c.noteSpeechRecognition(0);
+    expect(detection.type).toBe(EVENT_TYPES.REMOTE_SPEECH_RECOGNITION);
+    expect(detection.leakRisk).toBe(true);
   });
 
   test("openCaptureCount tracks live captures and evicts stale ones", () => {
@@ -90,6 +97,7 @@ describe("module surface", () => {
   test("exports stable event types and message source", () => {
     expect(EVENT_TYPES.AUDIO_CAPTURE_TO_RECORDER).toBe("audio_capture_to_recorder");
     expect(EVENT_TYPES.LOCAL_SPEECH_RECOGNITION).toBe("local_speech_recognition");
+    expect(EVENT_TYPES.REMOTE_SPEECH_RECOGNITION).toBe("remote_speech_recognition");
     expect(MESSAGE_SOURCE).toBe("llss-voice-detector");
   });
 

@@ -33,7 +33,7 @@ class MockProvider extends BaseProvider {
 }
 
 // Load pipeline after setting up globals
-const { redactText } = require("../lib/pipeline");
+const { redactText, redactDocument } = require("../lib/pipeline");
 
 describe("Pipeline - redactText", () => {
   let registry;
@@ -112,8 +112,9 @@ describe("Pipeline - redactText", () => {
       settings: { detectionMode: "ai_only" },
     });
 
-    expect(result.engine).toBe("local_ai");
+    expect(result.engine).toBe("local_ai+regex");
     expect(result.pipelineSteps).toContain("ai_only:local_ai");
+    expect(result.pipelineSteps).toContain("regex_after_ai");
   });
 
   test("ai_only mode escalates to hosted when local unavailable", async () => {
@@ -232,5 +233,156 @@ describe("Pipeline - redactText", () => {
     expect(result.pipelineSteps).toBeDefined();
     expect(Array.isArray(result.pipelineSteps)).toBe(true);
     expect(result.pipelineSteps.length).toBeGreaterThan(0);
+  });
+});
+
+describe("Pipeline - hosted OCR coordinate safety", () => {
+  test("scales hosted OCR regions to the local redaction canvas", async () => {
+    const registry = new ProviderRegistry();
+    const regex = new MockProvider({
+      id: "regex",
+      redactFn: () => "[NAME]",
+    });
+    regex.redactText = async () => ({
+      redacted: "[NAME]",
+      engine: "regex",
+      matches: [{ typeId: "name", token: "[NAME]", original: "John", index: 0 }],
+    });
+    registry.register(regex);
+    const hosted = new MockProvider({
+      id: "hosted_ocr",
+      tier: "hosted",
+      settings: { apiMode: "ocr_extract" },
+    });
+    hosted.extractOcr = async () => ({
+      fullText: "John",
+      pages: [{
+        pageNumber: 1,
+        text: "John",
+        charStart: 0,
+        charEnd: 4,
+        width: 100,
+        height: 100,
+        blocks: [],
+      }],
+    });
+    registry.register(hosted);
+
+    const originalProcessor = globalThis.LLSS_processDocument;
+    const originalMapper = globalThis.LLSS_mapMatchesToRegions;
+    globalThis.LLSS_processDocument = async () => ({ requiresOffscreen: true });
+    globalThis.LLSS_mapMatchesToRegions = () => [{ x: 10, y: 20, w: 30, h: 40 }];
+
+    let renderCalls = 0;
+    let applied;
+    const offscreenProcessor = {
+      renderAndOcr: async () => {
+        renderCalls += 1;
+        if (renderCalls === 1) throw new Error("local OCR unavailable");
+        return { pages: [{ pageNumber: 1, width: 200, height: 300 }] };
+      },
+      applyRedactions: async (request) => {
+        applied = request;
+        return { file: [1, 2, 3], format: "image/png", pageCount: 1 };
+      },
+    };
+
+    try {
+      const result = await redactDocument(new Uint8Array([1, 2, 3]).buffer, "image", {
+        registry,
+        piiTypes: [],
+        settings: { detectionMode: "auto", providers: {} },
+        offscreenProcessor,
+        verifiedMimeType: "image/png",
+      });
+
+      expect(Array.from(result.redactedFile)).toEqual([1, 2, 3]);
+      expect(applied.pageRedactions[0].regions).toEqual([
+        { x: 20, y: 60, w: 60, h: 120 },
+      ]);
+    } finally {
+      globalThis.LLSS_processDocument = originalProcessor;
+      globalThis.LLSS_mapMatchesToRegions = originalMapper;
+    }
+  });
+});
+
+describe("Pipeline - Azure native document release safety", () => {
+  let originalNative;
+  let originalProcessor;
+
+  beforeEach(() => {
+    originalNative = globalThis.LLSS_AzureNativeDoc;
+    originalProcessor = globalThis.LLSS_processDocument;
+  });
+
+  afterEach(() => {
+    globalThis.LLSS_AzureNativeDoc = originalNative;
+    globalThis.LLSS_processDocument = originalProcessor;
+  });
+
+  test("coerces detect-only policy to an actual redaction policy", async () => {
+    let receivedPolicy;
+    globalThis.LLSS_AzureNativeDoc = {
+      redactDocument: async (_content, _name, _mime, _provider, nativeSettings) => {
+        receivedPolicy = nativeSettings.redactionPolicy;
+        return {
+          redactedFile: new TextEncoder().encode("%PDF-secured").buffer,
+          contentType: "application/octet-stream",
+          entities: [],
+        };
+      },
+    };
+
+    const result = await redactDocument(new TextEncoder().encode("%PDF-source").buffer, "pdf", {
+      registry: new ProviderRegistry(),
+      piiTypes: [],
+      fileName: "source.pdf",
+      settings: {
+        detectionMode: "cloud_only",
+        providers: {
+          azure_pii: {
+            enabled: true,
+            nativeDocEnabled: true,
+            endpoint: "https://example.cognitiveservices.azure.com",
+            sourceContainerUrl: "https://example.blob.core.windows.net/source",
+            targetContainerUrl: "https://example.blob.core.windows.net/target",
+            redactionPolicy: "noMask",
+          },
+        },
+      },
+    });
+
+    expect(receivedPolicy).toBe("entityMask");
+    expect(result.redactedFileFormat).toBe("application/pdf");
+  });
+
+  test("does not release a cloud result with the wrong file signature", async () => {
+    globalThis.LLSS_AzureNativeDoc = {
+      redactDocument: async () => ({
+        redactedFile: new TextEncoder().encode("not a pdf").buffer,
+        contentType: "application/pdf",
+        entities: [],
+      }),
+    };
+    globalThis.LLSS_processDocument = async () => {
+      throw new Error("local fallback unavailable");
+    };
+
+    await expect(redactDocument(new TextEncoder().encode("%PDF-source").buffer, "pdf", {
+      registry: new ProviderRegistry(),
+      piiTypes: [],
+      settings: {
+        providers: {
+          azure_pii: {
+            enabled: true,
+            nativeDocEnabled: true,
+            endpoint: "https://example.cognitiveservices.azure.com",
+            sourceContainerUrl: "https://example.blob.core.windows.net/source",
+            targetContainerUrl: "https://example.blob.core.windows.net/target",
+          },
+        },
+      },
+    })).rejects.toThrow("local fallback unavailable");
   });
 });

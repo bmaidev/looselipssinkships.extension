@@ -9,14 +9,17 @@
 <body>
   <div class="container">
     <header>
-      <h1>Loose Lips Sink Ships</h1>
-      <p class="subtitle">Document Redaction Tool</p>
-      <div id="provider-status" class="provider-status"></div>
+      <img class="brand-mark" src="icons/icon128.png" width="56" height="56" alt="">
+      <div class="header-copy">
+        <h1>Secure document redaction</h1>
+        <p class="subtitle">Inspect and remove sensitive information before a file leaves your device.</p>
+      </div>
+      <div id="provider-status" class="provider-status" role="status" aria-live="polite" aria-label="Processing providers"></div>
     </header>
 
     <!-- Drop Zone -->
-    <section class="card drop-card">
-      <div id="drop-zone" class="drop-zone">
+    <section class="card drop-card" aria-labelledby="drop-title">
+      <div id="drop-zone" class="drop-zone" role="button" tabindex="0" aria-describedby="drop-hint">
         <div class="drop-icon">
           <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M28 4H12a4 4 0 0 0-4 4v32a4 4 0 0 0 4 4h24a4 4 0 0 0 4-4V16L28 4z"/>
@@ -25,8 +28,8 @@
             <polyline points="18 32 24 26 30 32"/>
           </svg>
         </div>
-        <p class="drop-text">Drop files here or <button id="btn-browse" class="link-btn">browse</button></p>
-        <p class="drop-hint">DOCX, XLSX, PDF, CSV, JSON, XML, YAML, TXT, Code, Images, ZIP</p>
+        <p id="drop-title" class="drop-text">Drop files here or <button id="btn-browse" class="link-btn" type="button">choose files</button></p>
+        <p id="drop-hint" class="drop-hint">Up to 25 MB each · DOCX, XLSX, PDF, text, code, images and ZIP</p>
       </div>
       <input type="file" id="file-input" multiple accept=".docx,.doc,.xlsx,.xls,.pdf,.html,.htm,.md,.markdown,.csv,.tsv,.json,.jsonl,.xml,.yaml,.yml,.toml,.ini,.cfg,.conf,.env,.txt,.log,.rtf,.rst,.adoc,.tex,.py,.rb,.php,.js,.ts,.jsx,.tsx,.java,.cs,.go,.rs,.swift,.kt,.c,.cpp,.h,.sh,.ps1,.sql,.r,.bat,.png,.jpg,.jpeg,.gif,.webp,.bmp,.tiff,.tif,.zip,application/pdf,application/zip,image/*" hidden>
     </section>
@@ -34,41 +37,44 @@
     <!-- On-device Dictation -->
     <section class="card" id="dictation-card" hidden>
       <h2>Dictate (on-device)</h2>
-      <p class="drop-hint" style="margin-bottom:12px">Speech is transcribed by a supported browser on-device engine and redacted here — your microphone audio never leaves this device.</p>
+      <p class="drop-hint" style="margin-bottom:12px">Speech is held temporarily in memory, transcribed by a supported browser on-device engine, and redacted here. No cloud transcription fallback is used.</p>
       <div class="dictation-controls">
-        <button id="btn-dictate" class="btn btn-primary">Start dictation</button>
-        <span id="dictation-status" class="dictation-status"></span>
+        <button id="btn-dictate" class="btn btn-primary" type="button">Start dictation</button>
+        <span id="dictation-status" class="dictation-status" role="status" aria-live="polite"></span>
       </div>
+      <label class="sr-only" for="dictation-output">Redacted transcript</label>
       <textarea id="dictation-output" class="dictation-output" rows="5" placeholder="Redacted transcript will appear here…" readonly></textarea>
       <div class="summary-actions">
-        <button id="btn-dictation-copy" class="btn-sm" hidden>Copy redacted text</button>
+        <button id="btn-dictation-copy" class="btn-sm" type="button" hidden>Copy redacted text</button>
       </div>
     </section>
 
     <!-- File Queue -->
-    <section id="queue-section" class="card" hidden>
+    <section id="queue-section" class="card" aria-labelledby="queue-title" hidden>
       <div class="queue-header">
-        <h2>Files</h2>
+        <h2 id="queue-title">Files to redact</h2>
         <div class="queue-actions">
-          <button id="btn-clear" class="btn-sm">Clear All</button>
-          <button id="btn-process" class="btn btn-primary">Redact All</button>
+          <button id="btn-clear" class="btn-sm" type="button">Clear all</button>
+          <button id="btn-process" class="btn btn-primary" type="button">Redact all</button>
         </div>
       </div>
-      <ul id="file-list" class="file-list"></ul>
+      <div id="queue-announcement" class="sr-only" role="status" aria-live="polite"></div>
+      <ul id="file-list" class="file-list" aria-label="Redaction queue"></ul>
     </section>
 
     <!-- Summary -->
-    <section id="summary-section" class="card" hidden>
-      <h2>Summary</h2>
+    <section id="summary-section" class="card" aria-labelledby="summary-title" hidden>
+      <h2 id="summary-title">Completed</h2>
       <div id="summary-content" class="summary-content"></div>
       <div class="summary-actions">
-        <button id="btn-download-all" class="btn btn-primary" hidden>Download All Redacted</button>
+        <button id="btn-download-all" class="btn btn-primary" type="button" hidden>Download all redacted files</button>
       </div>
     </section>
   </div>
 
   <script src="lib/browser-ai.js"></script>
   <script src="lib/pii-types.js"></script>
+  <script src="lib/binary-transfer.js"></script>
   <script src="lib/voice-transcriber.js"></script>
   <script src="lib/documents/document-processor.js"></script>
   <script src="redact.js"></script>

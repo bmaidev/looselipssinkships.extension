@@ -1,8 +1,8 @@
 # Loose Lips Sink Ships
 
-**Enterprise-grade PII redaction for Google Chrome and Microsoft Edge.** Local-first processing with progressive escalation to hosted and cloud providers. Designed for Australian government agencies and secure enterprise environments.
+**Local-first PII redaction for Google Chrome and Microsoft Edge.** Layered text, document, upload, and AI-chat controls with optional organisation-hosted and cloud providers.
 
-> **Zero PII leaves the browser by default.** External processing happens only when a user or administrator explicitly configures a hosted or cloud provider. Every document, text field, and file upload is scanned before it reaches the destination.
+> **The extension does not send protected content to an external redaction provider in its default configuration.** Hosted/cloud processing requires explicit configuration and an origin permission grant. This is a risk-reduction control, not a network firewall: detection can miss novel PII, and a website can observe or transmit text while it is being typed. See [Security Assurance](SECURITY_ASSURANCE.md) before high-assurance deployment.
 
 ---
 
@@ -34,8 +34,8 @@
   │ Regex   │ │ OCR    │ │ Azure      │
   │ Engine  │ │ Server │ │ Native Doc │
   │         │ │        │ │            │
-  │ OCR +   │ │        │ │ Microsoft  │
-  │ Pixel   │ │        │ │ Purview    │
+  │ OCR +   │ │        │ │            │
+  │ Pixel   │ │        │ │            │
   │ Redact  │ │        │ │            │
   └─────────┘ └────────┘ └────────────┘
 ```
@@ -60,23 +60,23 @@
 | **Docs** (HTML, Markdown, RTF, LaTeX, TXT, LOG) | Text extraction + redaction | Same format |
 | **ZIP** | Extract → redact each file → repack | Redacted `.zip` |
 
-**50+ file extensions** recognised. If it's text-based, it's covered.
+Only the formats listed above are accepted. Unsupported, binary, oversized, encrypted, malformed, or partially inspectable archive content is blocked by the fail-closed upload guard.
 
 ---
 
 ## Key Features
 
 ### Real-Time Text Protection
-- **Direct browser-AI redaction** in text fields through the cross-browser Prompt API when available — zero IPC, instant
+- **Browser on-device AI** when the compatible Prompt API and local model are available, followed by a mandatory deterministic safety pass
 - **Auto-redact on type/paste** with smart debouncing (configurable 500ms–5s)
 - **Submit interception** — catches Enter key, form submit, and send button clicks
-- **Conversational response guard** — detects when a local language model goes off-script and returns the original text
+- **Model-output validation** — rejects unsafe or malformed AI results and retains deterministic redaction
 
 ### Upload Interception ("Security Handshake")
 - **Shadow DOM overlay** with scanning animation while processing
 - **File replacement** — redacted file injected via `DataTransfer` before the site sees it
 - **Multi-file queue** with bounded concurrency
-- **Skip button** — users can bypass at any time
+- **Fail-closed default** — no release of the original file when inspection or redaction fails; unsupported files are blocked
 
 ### AI Chat Guard
 - **Auto-detects 30+ AI services** — ChatGPT, Claude, Gemini, Copilot, Grok, DeepSeek, Perplexity, and more
@@ -85,8 +85,8 @@
 - Enforces redaction before submit, upload, and paste
 
 ### Voice Dictation
-- **Dictation leak detection (observe-only)** — on any site, detects when a page captures the microphone in a way that would upload it (`getUserMedia` feeding a `MediaRecorder`), i.e. server-side dictation where spoken PII leaves the browser as audio before any text guard sees it. Local, observe-only — no audio is recorded or sent. Optional warning toast on leak.
-- **Inline on-device dictation** — adds a green microphone button to AI chat composers when the browser exposes a supported local Web Speech or multimodal Prompt API. Speech is redacted through the normal pipeline before insertion. Audio **never leaves the device**; cloud transcription is never used.
+- **Dictation bypass detection (observe-only)** — on any site, detects microphone capture being packaged by `MediaRecorder`, plus speech recognition that is not explicitly marked local. These are potential off-device paths, not proof that a network upload occurred. Detection itself records no audio and performs no network activity.
+- **Inline on-device dictation** — adds a green microphone button only when the browser reports its multimodal Prompt API audio model ready. The extension temporarily holds the recording in memory, transcribes it with that on-device model, redacts the transcript, and does not select a cloud transcription fallback.
 - **Native dictation-button suppression** — hides the site's own dictation button (e.g. ChatGPT's "Start dictation", Claude's "Press and hold to record") so only the safe on-device button remains. Targets dictation buttons, not full realtime voice mode.
 - **Capability-gated** — the dictation control remains unavailable unless an on-device transcription engine is genuinely ready. Text, upload, and document protection are unaffected.
 
@@ -98,9 +98,9 @@ Click **"Redact Files"** in the popup to open a dedicated tab:
 - On-device **Dictate** panel — transcribe speech locally and redact before it appears
 - Works independently of any website
 
-### Provably Secure Image/PDF Redaction
+### Flattened Image/PDF Redaction
 - **Image-based flattening** — no hidden text layer in the output
-- Copy-paste and select-all **cannot recover** redacted content
+- Copy-paste and select-all do not expose a retained text layer in image-based output
 - The `pdf-lib` overlay approach (used by ~65% of government "redacted" PDFs) is **deliberately avoided**
 
 ---
@@ -109,12 +109,12 @@ Click **"Redact Files"** in the popup to open a dedicated tab:
 
 | Engine | Tier | Description |
 |--------|------|-------------|
-| **Browser On-Device AI** | Local | Gemini Nano in Chrome or Microsoft Edge's local model through the Prompt API. Zero network calls. |
+| **Browser On-Device AI** | Local | Chrome/Edge local model through a compatible Prompt API. Model installation may use the network; inference content stays on-device according to the browser API contract. |
 | **Regex Engine** | Local | 17 built-in Australian PII patterns. Always available. |
 | **Vector Names** | Local | Heuristic name detection via trigram similarity. |
 | **Azure AI Language** | Cloud | Microsoft's PII API with Australian entity support. Direct (API key) or Enterprise (OAuth2 PKCE) auth. |
 | **Azure Native Document** | Cloud | Server-side PDF/DOCX/TXT redaction via Azure Blob Storage. |
-| **Microsoft Purview** | Cloud | M365 DLP sensitive information types. |
+| **Microsoft Label Gate** | Local | Reads embedded Microsoft sensitivity-label metadata from DOCX/XLSX files and blocks configured classifications before upload. |
 | **Hosted Models** | Hosted | Your infrastructure — vLLM, Ollama, TGI, Azure OpenAI, or custom PII APIs. |
 
 ### 17 Built-in PII Types (Australian Focus)
@@ -163,8 +163,8 @@ The extension works without a browser language model: deterministic regex and ve
 
 ```bash
 npm run build         # Chrome and Edge
-npm run build:chrome  # dist/loose-lips-sink-ships-v4.3.0.zip
-npm run build:edge    # dist/loose-lips-sink-ships-edge-v4.3.0.zip
+npm run build:chrome  # dist/loose-lips-sink-ships-v4.4.0.zip
+npm run build:edge    # dist/loose-lips-sink-ships-edge-v4.4.0.zip
 ```
 
 Every build validates manifest references, package contents, local-only scripts, and browser API compatibility before creating the ZIP.
@@ -183,7 +183,7 @@ Works out of the box with local regex and AI Chat Guard enabled. When the browse
 | **Auto** (default) | Browser AI → Regex → Hosted → Cloud |
 | **AI Only** | AI providers across all tiers |
 | **Regex Only** | Pattern matching only |
-| **Cloud Only** | Azure PII / Purview first, regex fallback |
+| **Cloud Only** | Azure PII first, deterministic regex fallback |
 
 ### Enterprise Setup
 
@@ -194,7 +194,7 @@ Two authentication modes for Azure PII:
 | **Direct** | API key | Key in settings | Paste endpoint + key |
 | **Enterprise** | Azure AD OAuth2 PKCE | None (short-lived tokens) | App Registration + sign-in |
 
-Enterprise mode provides: MFA, Conditional Access, per-user audit, automatic token refresh, and no stored credentials.
+Enterprise mode uses public-client OAuth2 PKCE with short-lived tokens and automatic refresh. Microsoft Entra Conditional Access can require MFA and provide sign-in audit records; the extension does not itself enforce tenant policy.
 
 **Azure Native Document Redaction** (server-side PDF/DOCX) is available with Azure Blob Storage:
 - **Direct mode**: SAS tokens for source/target containers
@@ -221,13 +221,15 @@ Locked settings appear as disabled with an **Admin** badge in the options page.
 
 ## Privacy & Security
 
-- **Local-first.** Browser AI, regex, vector detection, OCR, and pixel redaction run on-device. Text field redaction happens in the content script.
-- **No telemetry.** Zero analytics, zero phone-home.
+- **Local-first.** Browser AI, regex, vector detection, OCR, and pixel redaction run within extension/browser contexts unless a hosted or cloud provider is explicitly configured.
+- **No product telemetry.** The extension contains no analytics or product phone-home endpoint. Configured provider, OAuth, remote-policy, and model-download traffic remain explicit exceptions.
 - **Enterprise providers are opt-in.** Cloud connections only activate when explicitly configured.
-- **Provably secure.** Image/PDF output has no hidden text layer. DOCX redaction removes PII from the XML. ZIP processing redacts every text file inside.
-- **Pre-send, pre-upload.** Redaction happens before content reaches the network — not after.
-- **Enterprise OAuth2.** Short-lived tokens, no stored API keys, MFA enforced, per-user audit trail.
+- **Fail-closed files.** Unsupported or partially inspectable files are blocked. Rasterised output does not retain a selectable text layer; text-based formats are rebuilt from inspected content.
+- **Pre-submit and pre-upload guards.** Supported DOM submits and file inputs are intercepted before release. This does not prevent a hostile site from transmitting keystrokes or making unrelated programmatic requests.
+- **Enterprise OAuth2.** Short-lived delegated tokens use PKCE; client secrets are not accepted by the extension.
 - **Managed identity for storage.** In enterprise mode, the Language resource accesses Blob Storage via its own identity — no SAS tokens in the extension.
+
+The security model, limits, deployment profile, and residual risks are documented in [SECURITY_ASSURANCE.md](SECURITY_ASSURANCE.md).
 
 ---
 
@@ -260,10 +262,9 @@ Locked settings appear as disabled with an **Admin** badge in the options page.
 │   │   ├── local-ai-provider.js     # Browser AI (direct or offscreen proxy)
 │   │   ├── regex-provider.js        # Regex + vector
 │   │   ├── azure-pii-provider.js    # Azure PII (direct API key or OAuth2)
-│   │   ├── purview-provider.js      # Microsoft Purview DLP
 │   │   └── hosted-model-provider.js # Org-hosted models + OCR Extract
 │   └── documents/
-│       ├── document-processor.js    # 50+ file types, ZIP reader, XLSX→CSV
+│       ├── document-processor.js    # Text/document formats, ZIP reader, XLSX→CSV
 │       ├── zip-writer.js            # ZIP builder (CompressionStream + CRC-32)
 │       ├── docx-redactor.js         # Run-aware XML redaction
 │       ├── pdf-renderer.js          # pdf.js page rendering
@@ -321,6 +322,9 @@ Via Settings, or programmatically:
 | v2 | Provider configuration, document upload |
 | v3 | Site filter, AI chat guard, auto-redact, submit/upload guard |
 | v4 | Azure connection mode (direct/enterprise), OAuth2 PKCE |
+| v5 | Purview classification gate |
+| v6 | Fail-closed uploads, mandatory deterministic pass, credential isolation |
+| v7 | Local-only Microsoft sensitivity-label gate; retired unsupported remote Purview route |
 
 ---
 

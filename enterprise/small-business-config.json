@@ -2,7 +2,8 @@
   "_policyVersion": 1,
   "_locked": {
     "aiChatGuard.enabled": true,
-    "submitGuard.enabled": true
+    "submitGuard.enabled": true,
+    "uploadGuard": true
   },
   "detectionMode": "auto",
   "aiChatGuard": {
@@ -16,5 +17,13 @@
   "submitGuard": {
     "enabled": true,
     "onlyOnAiSites": true
+  },
+  "uploadGuard": {
+    "enabled": true,
+    "onlyOnAiSites": true,
+    "confirmBeforeUpload": true,
+    "allowBypass": false,
+    "blockUnsupported": true,
+    "maxFileSizeBytes": 26214400
   }
 }

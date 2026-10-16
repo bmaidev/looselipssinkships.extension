@@ -30,7 +30,10 @@
   "uploadGuard": {
     "enabled": true,
     "onlyOnAiSites": true,
-    "confirmBeforeUpload": true
+    "confirmBeforeUpload": true,
+    "allowBypass": false,
+    "blockUnsupported": true,
+    "maxFileSizeBytes": 26214400
   },
   "siteFilter": {
     "mode": "all",
@@ -56,13 +59,10 @@
       "redactionPolicy": "entityMask"
     },
     "purview": {
-      "enabled": true,
       "gateEnabled": true,
       "blockedLabels": ["PROTECTED", "SECRET", "TOP SECRET"],
       "warnLabels": ["OFFICIAL: Sensitive"],
-      "blockEncrypted": true,
-      "tenantId": "YOUR_TENANT_ID",
-      "clientId": "YOUR_APP_REGISTRATION_CLIENT_ID"
+      "blockEncrypted": true
     }
   }
 }

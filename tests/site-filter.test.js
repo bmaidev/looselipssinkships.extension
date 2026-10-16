@@ -49,6 +49,17 @@ describe("matchesPattern", () => {
     )).toBe(false);
   });
 
+  test("treats URL glob metacharacters literally except for asterisks", () => {
+    expect(matchesPattern(
+      "https://portal.agency.gov.au/app.v2/page",
+      "https://portal.agency.gov.au/app.v2/*"
+    )).toBe(true);
+    expect(matchesPattern(
+      "https://portal.agency.gov.au/appXv2/page",
+      "https://portal.agency.gov.au/app.v2/*"
+    )).toBe(false);
+  });
+
   test("is case-insensitive", () => {
     expect(matchesPattern("https://Example.COM/page", "example.com")).toBe(true);
     expect(matchesPattern("https://example.com", "EXAMPLE.COM")).toBe(true);
@@ -123,6 +134,13 @@ describe("isAiChatService", () => {
 
   test("detects Grok", () => {
     expect(isAiChatService("https://grok.x.ai/")).toBe(true);
+    expect(isAiChatService("https://x.com/i/grok?ref=nav")).toBe(true);
+  });
+
+  test("detects path-scoped AI services without flagging the whole domain", () => {
+    expect(isAiChatService("https://bing.com/chat/thread/123")).toBe(true);
+    expect(isAiChatService("https://huggingface.co/chat/conversation/123")).toBe(true);
+    expect(isAiChatService("https://huggingface.co/models")).toBe(false);
   });
 
   test("detects Perplexity", () => {

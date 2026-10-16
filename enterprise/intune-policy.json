@@ -25,7 +25,11 @@
     },
     "uploadGuard": {
       "enabled": true,
-      "onlyOnAiSites": true
+      "onlyOnAiSites": true,
+      "confirmBeforeUpload": true,
+      "allowBypass": false,
+      "blockUnsupported": true,
+      "maxFileSizeBytes": 26214400
     },
     "providers": {
       "azure_pii": {

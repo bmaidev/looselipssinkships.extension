@@ -9,6 +9,30 @@
   const UPLOAD_CLASS = "llss-upload-btn";
   const SPINNER_CLASS = "llss-spinner";
   const DICTATE_CLASS = "llss-dictate-btn";
+  const MAX_DICTATION_MS = 60_000;
+  const MAX_DOCUMENT_BYTES = 25 * 1024 * 1024;
+  const REDACTED_FILE_EXTENSIONS = Object.freeze({
+    "application/pdf": ".pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "text/plain": ".txt",
+    "text/csv": ".csv",
+    "application/zip": ".zip",
+  });
+  const TEXT_FIELD_SELECTOR = [
+    "textarea",
+    "input:not([type])",
+    'input[type="text"]',
+    'input[type="search"]',
+    'input[type="email"]',
+    'input[type="tel"]',
+    'input[type="url"]',
+    "[contenteditable='true']",
+    "[contenteditable='']",
+    '[role="textbox"]',
+  ].join(", ");
   const MIC_SVG = '<svg class="llss-btn-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M8 10a2.5 2.5 0 0 0 2.5-2.5v-4a2.5 2.5 0 0 0-5 0v4A2.5 2.5 0 0 0 8 10Z"/><path d="M12 7.5a.6.6 0 0 0-1.2 0 2.8 2.8 0 0 1-5.6 0A.6.6 0 0 0 4 7.5a4 4 0 0 0 3.4 3.96V13.4H6a.6.6 0 0 0 0 1.2h4a.6.6 0 0 0 0-1.2H8.6v-1.94A4 4 0 0 0 12 7.5Z"/></svg>';
 
   if (window.__llssInjected) return;
@@ -16,82 +40,40 @@
 
   // ── State ────────────────────────────────────────────────────────────────
 
-  let cachedSettings = {};
-  let pageProtection = { active: true, reason: "normal" };
+  // Start fail-closed until managed/local policy and site classification arrive.
+  // This closes the document_start race where a fast scripted submit or upload
+  // could otherwise occur before the service worker replies.
+  let cachedSettings = {
+    aiChatGuard: { enabled: true, blockSubmitUntilRedacted: true, interceptUploads: true },
+    autoRedact: { enabled: false, onlyOnAiSites: false },
+    submitGuard: {
+      enabled: true,
+      interceptEnter: true,
+      interceptFormSubmit: true,
+      interceptSendButtons: true,
+      onlyOnAiSites: false,
+    },
+    uploadGuard: {
+      enabled: true,
+      onlyOnAiSites: false,
+      confirmBeforeUpload: true,
+      allowBypass: false,
+      blockUnsupported: true,
+      maxFileSizeBytes: 25 * 1024 * 1024,
+    },
+    voiceDetection: { enabled: true, warnOnLeak: false },
+    voiceDictation: { enabled: true, suppressNativeMic: true },
+  };
+  let pageProtection = { active: true, reason: "initializing" };
   let isAiSite = false;
   let pendingRedactions = new Set(); // Track in-flight redactions
+  let dictationCapability = "unknown";
+  let dictationCapabilityPromise = null;
 
-  // ── Direct browser Prompt API (LanguageModel) support ────────────────
-  // Content scripts run in the page's top-level window context where the
-  // LanguageModel global can be available. Using it directly avoids the
-  // round-trip through the service worker (which can't access it anyway).
+  // The service worker owns routing so every path receives the deterministic
+  // regex-first safety pass. Browser AI remains available through its
+  // offscreen provider, but the content script never bypasses that policy.
 
-  const nanoSession = (typeof LLSS_NanoSession !== "undefined")
-    ? new LLSS_NanoSession()
-    : null;
-  let nanoAvailable = null; // null = unchecked, true/false after first probe
-
-  /**
-   * Try to redact text directly through the browser model. Returns null if it is
-   * unavailable so the caller can fall back to background messaging.
-   */
-  async function tryNanoRedact(text) {
-    const dbg = typeof LLSS_debug !== "undefined" ? LLSS_debug : null;
-
-    // Fast exit if we already know Nano is absent
-    if (nanoAvailable === false || !nanoSession) return null;
-
-    // First call — probe availability
-    if (nanoAvailable === null) {
-      try {
-        const avail = await nanoSession.checkAvailability();
-        nanoAvailable = avail.available;
-        if (dbg) dbg.log("nano", "Content script browser-AI probe:", avail.status, avail.detail);
-        if (!nanoAvailable) return null;
-      } catch (err) {
-        if (dbg) dbg.warn("nano", "Content script browser-AI probe failed:", err);
-        nanoAvailable = false;
-        return null;
-      }
-    }
-
-    // Build merged PII types from defaults + user overrides
-    const defaultTypes = (typeof LLSS_PII_TYPES !== "undefined") ? LLSS_PII_TYPES : [];
-    const getMerged = (typeof LLSS_getMergedPiiTypes !== "undefined") ? LLSS_getMergedPiiTypes : null;
-    if (!getMerged || defaultTypes.length === 0) return null;
-    const piiTypes = getMerged(defaultTypes, cachedSettings).filter(t => t.enabled);
-    if (piiTypes.length === 0) return null;
-
-    try {
-      const done = dbg ? dbg.time("nano", `direct redact (${text.length} chars)`) : () => {};
-      const result = await nanoSession.redact(text, piiTypes);
-      done();
-      return {
-        success: true,
-        redacted: result.redacted,
-        engine: result.engine,
-        tier: "local",
-        matchCount: result.matches?.length || 0,
-        matches: result.matches || [],
-      };
-    } catch (err) {
-      if (dbg) dbg.warn("nano", "Direct browser-AI redact failed, falling back:", err);
-      return null;
-    }
-  }
-
-  // ── Smart routing thresholds ──────────────────────────────────────────
-  const AI_SHORT_THRESHOLD = 200;   // chars — below this, regex only (instant)
-  const AI_TIMEOUT_MS = 3000;       // ms — AI must respond within this or regex wins
-
-  /**
-   * Redact text using smart routing by text length:
-   *   Short (<200 chars):  regex only (instant)
-   *   Medium (200-1000):   AI with 3s timeout, regex fallback
-   *   Long (>1000):        regex first, AI optional via background
-   *
-   * In non-auto modes, routing is handled by the background pipeline.
-   */
   // Per-tab vault for reversible tokenization. Memory-only, cleared on tab
   // close; accumulates across submits so a value keeps the same token across
   // the conversation. Never persisted, never sent anywhere.
@@ -116,77 +98,13 @@
     return { ...result, redacted: tok.text, reversible: true, tokensApplied: tok.applied.length };
   }
 
-  // ── Inbound restoration (reversible tokenization) ──────────────────────────
-  // Swap tokens back to their originals in the assistant's rendered reply, for
-  // display only. Editable elements (the composer) are skipped so what actually
-  // gets sent stays tokenized — the vault mapping never leaves the browser.
+  // PII is never restored into the host page. Page scripts can read rendered
+  // DOM, so re-inserting originals would cross the very trust boundary this
+  // extension is intended to protect.
   let inboundObserver = null;
-  const TOKEN_RE = /\[\[[A-Z0-9_]+_\d+\]\]/;
-
-  function _isInEditable(node) {
-    let el = node.parentElement;
-    while (el) {
-      if (el.isContentEditable) return true;
-      if (el.tagName === "TEXTAREA" || el.tagName === "INPUT") return true;
-      el = el.parentElement;
-    }
-    return false;
-  }
-
-  function _restoreTextNode(node) {
-    const val = node.nodeValue;
-    if (!val || !TOKEN_RE.test(val)) return;
-    if (_isInEditable(node)) return; // keep the composer tokenized
-    const restored = LLSS_tokenVault.restore(val, reversibleVault);
-    if (restored !== val) node.nodeValue = restored;
-  }
-
-  function _scanForTokens(root) {
-    if (!root) return;
-    if (root.nodeType === Node.TEXT_NODE) { _restoreTextNode(root); return; }
-    if (root.nodeType !== Node.ELEMENT_NODE) return;
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    let n;
-    while ((n = walker.nextNode())) _restoreTextNode(n);
-  }
-
-  function startInboundRestoration() {
-    const pending = new Set();
-    let scheduled = false;
-    const flush = () => {
-      scheduled = false;
-      const nodes = Array.from(pending);
-      pending.clear();
-      for (const node of nodes) {
-        if (!node || !node.isConnected) continue;
-        if (node.nodeType === Node.TEXT_NODE) _restoreTextNode(node);
-        else _scanForTokens(node);
-      }
-    };
-    const obs = new MutationObserver((muts) => {
-      if (!reversibleVault || reversibleVault.order.length === 0) return;
-      for (const m of muts) {
-        if (m.type === "characterData") pending.add(m.target);
-        else m.addedNodes.forEach((n) => pending.add(n));
-      }
-      // Restoring a text node fires another characterData mutation, but the
-      // restored text no longer matches TOKEN_RE, so it converges (no loop).
-      // setTimeout (not requestAnimationFrame) so restoration still runs while
-      // the tab is backgrounded — rAF pauses in hidden tabs.
-      if (!scheduled) { scheduled = true; setTimeout(flush, 0); }
-    });
-    obs.observe(document.body, { childList: true, subtree: true, characterData: true });
-    _scanForTokens(document.body); // restore anything already on the page
-    return obs;
-  }
 
   function updateInboundRestoration() {
-    const on = isAiSite &&
-      cachedSettings.reversibleTokenization?.enabled === true &&
-      reversibleVault && typeof LLSS_tokenVault !== "undefined";
-    if (on && !inboundObserver) {
-      inboundObserver = startInboundRestoration();
-    } else if (!on && inboundObserver) {
+    if (inboundObserver) {
       inboundObserver.disconnect();
       inboundObserver = null;
     }
@@ -194,63 +112,26 @@
 
   async function _redactTextInner(text) {
     const dbg = typeof LLSS_debug !== "undefined" ? LLSS_debug : null;
-    const mode = cachedSettings.detectionMode || "auto";
-
-    // Non-auto modes go straight to background pipeline
-    if (mode !== "auto") {
-      if (dbg) dbg.log("redact", `${mode} mode → background pipeline`);
-      return _sendToBackground(text);
-    }
-
-    // Auto mode: smart routing by text length
-    const len = text.length;
-
-    // Short text: regex only (instant)
-    if (len < AI_SHORT_THRESHOLD) {
-      if (dbg) dbg.log("redact", `Short text (${len} chars) → regex only`);
-      return _sendToBackground(text);
-    }
-
-    // Medium/long text: try AI with timeout, regex fallback
-    if (!cachedSettings.regexAfterAi) {
-      const nanoResult = await _tryNanoWithTimeout(text);
-      if (nanoResult) {
-        if (dbg) dbg.log("redact", `AI completed (${len} chars)`);
-        return nanoResult;
-      }
-    }
-
-    // AI unavailable/timed out/belt-and-suspenders — use background pipeline
-    if (dbg) dbg.log("redact", `Background pipeline (${len} chars)`);
+    if (dbg) dbg.log("redact", `Policy pipeline (${text.length} chars)`);
     return _sendToBackground(text);
-  }
-
-  /**
-   * Try direct Nano with a timeout. Returns null if Nano is unavailable
-   * or takes too long.
-   */
-  async function _tryNanoWithTimeout(text) {
-    const nanoPromise = tryNanoRedact(text);
-    if (!nanoPromise) return null; // Nano unavailable
-
-    // Race AI against a timeout
-    const timeoutPromise = new Promise((resolve) => {
-      setTimeout(() => resolve(null), AI_TIMEOUT_MS);
-    });
-
-    return Promise.race([nanoPromise, timeoutPromise]);
   }
 
   function _sendToBackground(text) {
     return new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type: "REDACT", text }, resolve);
+      chrome.runtime.sendMessage({ type: "REDACT", text }, (response) => {
+        if (chrome.runtime.lastError) {
+          resolve({ success: false, error: "The protection service is unavailable" });
+          return;
+        }
+        resolve(response || { success: false, error: "The protection service did not respond" });
+      });
     });
   }
 
   // ── Settings ─────────────────────────────────────────────────────────────
 
   function refreshSettings() {
-    chrome.runtime.sendMessage({ type: "GET_SETTINGS" }, (response) => {
+    chrome.runtime.sendMessage({ type: "GET_CONTENT_SETTINGS" }, (response) => {
       if (!response?.settings) return;
       cachedSettings = response.settings;
       // Activate debug logging from settings
@@ -261,12 +142,21 @@
     });
   }
   refreshSettings();
-  setInterval(refreshSettings, 30000);
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg?.type === "SETTINGS_UPDATED") refreshSettings();
+  });
 
   // ── Voice-capture detection bridge ────────────────────────────────────────
   // Receives observe-only detections from the MAIN-world voice detector
   // (lib/voice-detector.js) and forwards leak-risk signals. Attaches once.
   // Disable via managed/remote config: voiceDetection.enabled = false.
+  const VOICE_DETECTION_TYPES = new Set([
+    "audio_capture_to_recorder",
+    "local_speech_recognition",
+    "remote_speech_recognition",
+  ]);
+  let lastVoiceDetectionAt = 0;
+
   function setupVoiceDetectionBridge() {
     window.addEventListener("message", (event) => {
       if (event.source !== window) return;
@@ -275,12 +165,16 @@
       if (cachedSettings.voiceDetection?.enabled === false) return;
 
       const { type, leakRisk } = data.detection;
+      if (!VOICE_DETECTION_TYPES.has(type) || typeof leakRisk !== "boolean") return;
       if (typeof LLSS_debug !== "undefined") {
-        LLSS_debug.warn("voice", `Detected ${type}`, { leakRisk, href: data.href });
+        LLSS_debug.warn("voice", `Detected ${type}`, { leakRisk });
       }
-      // Only the audio-leaves-the-page signal is recorded; local speech
-      // recognition keeps audio inside the browser engine (informational).
+      // Record only potential off-device paths. Explicitly local speech
+      // recognition remains informational.
       if (leakRisk) {
+        const nowTs = Date.now();
+        if (nowTs - lastVoiceDetectionAt < 5000) return;
+        lastVoiceDetectionAt = nowTs;
         try {
           chrome.runtime.sendMessage({
             type: "RECORD_VOICE_CAPTURE_DETECTED",
@@ -306,7 +200,7 @@
     try {
       showToast(
         document.body,
-        "This site is uploading your dictation audio. Spoken PII may bypass redaction — type sensitive details instead."
+        "This site is recording speech through a path that may process audio off-device. Spoken PII may bypass redaction — type sensitive details instead."
       );
     } catch {
       /* toast is best-effort */
@@ -315,9 +209,12 @@
   setupVoiceDetectionBridge();
 
   function updatePageProtection() {
+    const pageUrl = new URL(window.location.href);
+    pageUrl.search = "";
+    pageUrl.hash = "";
     chrome.runtime.sendMessage({
       type: "CHECK_SITE",
-      url: window.location.href,
+      url: pageUrl.toString(),
     }, (response) => {
       if (response) {
         pageProtection = response;
@@ -376,13 +273,34 @@
 
   // Attach the dictation mic to already-wrapped composers (used once AI-site
   // status is known, since wrappers can be created before that).
-  function refreshInlineDictation() {
-    if (!shouldShowInlineDictation()) return;
+  async function refreshInlineDictation() {
+    if (!isAiSite || cachedSettings.voiceDictation?.enabled === false) {
+      removeInlineDictationControls();
+      return;
+    }
+    if (dictationCapability === "unknown") await checkDictationCapability();
+    if (!shouldShowInlineDictation()) {
+      removeInlineDictationControls();
+      return;
+    }
     document.querySelectorAll(".llss-wrapper").forEach((wrapper) => {
       if (wrapper.dataset.llssDictate === "attached") return;
       const el = wrapper.querySelector("textarea, [contenteditable='true'], [contenteditable='']");
       if (el) attachInlineDictation(el, wrapper);
     });
+  }
+
+  function checkDictationCapability() {
+    if (dictationCapabilityPromise) return dictationCapabilityPromise;
+    dictationCapabilityPromise = new Promise((resolve) => {
+      chrome.runtime.sendMessage({ type: "CHECK_DICTATION_CAPABILITY" }, (response) => {
+        dictationCapability = !chrome.runtime.lastError && response?.available === true
+          ? "ready"
+          : "unavailable";
+        resolve(dictationCapability);
+      });
+    });
+    return dictationCapabilityPromise;
   }
 
   // ── Site filter gate ─────────────────────────────────────────────────────
@@ -397,13 +315,17 @@
   let bannerShown = false;
   function showAiBanner() {
     if (bannerShown) return;
+    if (!document.body) {
+      document.addEventListener("DOMContentLoaded", showAiBanner, { once: true });
+      return;
+    }
     bannerShown = true;
 
     const banner = document.createElement("div");
     banner.className = "llss-ai-banner";
     banner.innerHTML = '<span class="llss-ai-banner-icon">&#x1f6e1;</span>' +
       '<span class="llss-ai-banner-text"><strong>Loose Lips Sink Ships</strong> — AI chat protection active. PII will be redacted before submission.</span>' +
-      '<button class="llss-ai-banner-close">&times;</button>';
+      '<button class="llss-ai-banner-close" aria-label="Dismiss protection notice">&times;</button>';
 
     banner.querySelector(".llss-ai-banner-close").addEventListener("click", () => {
       banner.remove();
@@ -427,6 +349,7 @@
     btn.className = BUTTON_CLASS;
     btn.innerHTML = '<svg class="llss-btn-svg" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 1.2a5.8 5.8 0 0 1 3.36 10.53L4.27 5.64A5.78 5.78 0 0 1 8 2.2Zm0 11.6a5.8 5.8 0 0 1-3.36-10.53l7.09 7.09A5.78 5.78 0 0 1 8 13.8Z"/></svg>';
     btn.title = "Redact PII";
+    btn.setAttribute("aria-label", "Redact personal information");
     btn.type = "button";
     return btn;
   }
@@ -434,12 +357,13 @@
   // ── Inline dictation (AI composers) ───────────────────────────────────────
   // A mic button on AI-chat composers: capture speech, transcribe on-device
   // (offscreen/Nano), redact, and insert the clean text — closing the voice
-  // dictation bypass in place. Audio never leaves the device.
+  // dictation bypass in place without selecting a cloud transcription engine.
 
   function shouldShowInlineDictation() {
     if (!isAiSite) return false;
     if (cachedSettings.voiceDictation?.enabled === false) return false;
-    return typeof navigator !== "undefined" &&
+    return dictationCapability === "ready" &&
+      typeof navigator !== "undefined" &&
       navigator.mediaDevices &&
       typeof navigator.mediaDevices.getUserMedia === "function" &&
       typeof MediaRecorder !== "undefined";
@@ -450,8 +374,16 @@
     btn.className = `${BUTTON_CLASS} ${DICTATE_CLASS}`;
     btn.innerHTML = MIC_SVG;
     btn.title = "Dictate (on-device, redacted)";
+    btn.setAttribute("aria-label", "Start on-device dictation");
+    btn.setAttribute("aria-pressed", "false");
     btn.type = "button";
     return btn;
+  }
+
+  const inlineControls = new Map();
+
+  function removeInlineDictationControls() {
+    for (const control of inlineControls.values()) control.cleanup();
   }
 
   function attachInlineDictation(el, wrapper) {
@@ -468,24 +400,40 @@
     document.body.appendChild(btn);
     btn.addEventListener("click", () => toggleInlineDictation(el, btn));
 
-    const reposition = () => positionFloatingDictation(el, btn, reposition);
+    let resizeObserver = null;
+    const cleanup = () => {
+      const recorder = inlineRecorders.get(btn);
+      if (recorder) {
+        inlineRecorders.delete(btn);
+        btn.dataset.recording = "false";
+        recorder.stop().catch(() => {});
+      }
+      btn.remove();
+      window.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+      el.removeEventListener("input", reposition);
+      el.removeEventListener("focus", reposition, true);
+      resizeObserver?.disconnect();
+      delete wrapper.dataset.llssDictate;
+      inlineControls.delete(el);
+    };
+    const reposition = () => positionFloatingDictation(el, btn, cleanup);
+    inlineControls.set(el, { cleanup });
     reposition();
     window.addEventListener("scroll", reposition, true);
     window.addEventListener("resize", reposition);
     el.addEventListener("input", reposition);
     el.addEventListener("focus", reposition, true);
     try {
-      const ro = new ResizeObserver(reposition);
-      ro.observe(el);
+      resizeObserver = new ResizeObserver(reposition);
+      resizeObserver.observe(el);
     } catch { /* ResizeObserver unavailable — event listeners still cover it */ }
   }
 
-  function positionFloatingDictation(el, btn, reposition) {
+  function positionFloatingDictation(el, btn, cleanup) {
     // Clean up if the composer was removed (SPA navigation).
-    if (!el.isConnected) {
-      btn.remove();
-      window.removeEventListener("scroll", reposition, true);
-      window.removeEventListener("resize", reposition);
+    if (!el.isConnected || !btn.isConnected) {
+      cleanup();
       return;
     }
     const r = el.getBoundingClientRect();
@@ -509,6 +457,8 @@
     if (btn.dataset.recording === "true") {
       btn.dataset.recording = "false";
       btn.classList.remove("llss-recording");
+      btn.setAttribute("aria-pressed", "false");
+      btn.setAttribute("aria-label", "Start on-device dictation");
       btn.disabled = true;
       btn.dataset.originalHtml = btn.innerHTML;
       btn.innerHTML = "";
@@ -522,10 +472,10 @@
           return;
         }
         const buffer = await blob.arrayBuffer();
-        const audioBytes = Array.from(new Uint8Array(buffer));
+        const audioBase64 = LLSS_BinaryTransfer.toBase64(buffer, 10 * 1024 * 1024);
         const resp = await chrome.runtime.sendMessage({
           type: "DICTATE_AUDIO",
-          audioBytes,
+          audioBase64,
           mime: blob.type,
         });
         if (resp?.success && resp.redacted) {
@@ -554,18 +504,34 @@
       const mr = new MediaRecorder(stream);
       mr.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
       mr.start();
-      inlineRecorders.set(btn, {
+      const recorderState = {
+        timeoutId: null,
         stop: () => new Promise((resolve) => {
+          if (recorderState.timeoutId) clearTimeout(recorderState.timeoutId);
           mr.onstop = () => {
             try { stream.getTracks().forEach((t) => t.stop()); } catch { /* ignore */ }
             resolve(new Blob(chunks, { type: mr.mimeType || "audio/webm" }));
           };
-          try { mr.stop(); } catch { resolve(new Blob(chunks)); }
+          try {
+            mr.stop();
+          } catch {
+            try { stream.getTracks().forEach((t) => t.stop()); } catch { /* ignore */ }
+            resolve(new Blob(chunks));
+          }
         }),
-      });
+      };
+      recorderState.timeoutId = setTimeout(() => {
+        if (btn.dataset.recording === "true") {
+          showToast(btn.parentNode || document.body, "Dictation stopped after the 60-second safety limit.");
+          btn.click();
+        }
+      }, MAX_DICTATION_MS);
+      inlineRecorders.set(btn, recorderState);
       btn.dataset.recording = "true";
       btn.classList.add("llss-recording");
       btn.title = "Stop dictation";
+      btn.setAttribute("aria-pressed", "true");
+      btn.setAttribute("aria-label", "Stop dictation and redact transcript");
     } catch (err) {
       showToast(btn.parentNode || document.body, "Microphone unavailable or permission denied.");
     }
@@ -609,7 +575,7 @@
 
   const SUPPORTED_ACCEPT =
     // Office documents
-    ".docx,.doc,.xlsx,.xls,.pdf" +
+    ".docx,.xlsx,.pdf" +
     // Web / markup
     ",.html,.htm,.md,.markdown" +
     // Structured text
@@ -644,18 +610,22 @@
       btn.classList.add(SPINNER_CLASS);
 
       try {
+        if (file.size > MAX_DOCUMENT_BYTES) {
+          showToast(btn.parentNode || document.body, "File is larger than the 25 MB safety limit.");
+          return;
+        }
         const buffer = await file.arrayBuffer();
-        const data = Array.from(new Uint8Array(buffer));
+        const data = LLSS_BinaryTransfer.toBase64(buffer, MAX_DOCUMENT_BYTES);
 
         const response = await chrome.runtime.sendMessage({
           type: "REDACT_DOCUMENT",
-          fileData: data,
+          fileDataBase64: data,
           fileName: file.name,
           mimeType: file.type,
         });
 
         if (response && response.success) {
-          if (setText) {
+          if (setText && !response.redactedPreviewTruncated) {
             setText(response.redacted);
           } else {
             showResultOverlay(btn.parentNode || document.body, response, file.name);
@@ -681,13 +651,26 @@
   // ── Result overlay ─────────────────────────────────────────────────────────
 
   function showResultOverlay(parent, response, fileName) {
+    const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const layer = document.createElement("div");
+    layer.className = "llss-result-backdrop";
+
     const overlay = document.createElement("div");
     overlay.className = "llss-result-overlay";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-labelledby", "llss-result-title");
+    overlay.tabIndex = -1;
 
     const header = document.createElement("div");
     header.className = "llss-result-header";
-    header.innerHTML = `<strong>Redacted: ${escapeHtml(fileName)}</strong>` +
-      `<span class="llss-result-meta">${response.engine} · ${response.matchCount || 0} items · ${response.tier || "local"}</span>`;
+    const heading = document.createElement("strong");
+    heading.id = "llss-result-title";
+    heading.textContent = `Redacted: ${fileName}`;
+    const meta = document.createElement("span");
+    meta.className = "llss-result-meta";
+    meta.textContent = `${response.engine || "unknown"} · ${response.matchCount || 0} items · ${response.tier || "local"}`;
+    header.append(heading, meta);
 
     const content = document.createElement("pre");
     content.className = "llss-result-content";
@@ -697,35 +680,45 @@
     actions.className = "llss-result-actions";
 
     const copyBtn = document.createElement("button");
-    copyBtn.textContent = "Copy Text";
+    copyBtn.textContent = "Copy text";
     copyBtn.className = "llss-result-btn";
-    copyBtn.addEventListener("click", () => {
-      navigator.clipboard.writeText(response.redacted);
-      copyBtn.textContent = "Copied!";
-      setTimeout(() => { copyBtn.textContent = "Copy Text"; }, 2000);
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(response.redacted);
+        copyBtn.textContent = "Copied";
+      } catch {
+        copyBtn.textContent = "Copy failed";
+      }
+      setTimeout(() => { copyBtn.textContent = "Copy text"; }, 2000);
     });
 
     actions.appendChild(copyBtn);
 
     // If a redacted file is available (PDF/image), offer download
-    if (response.redactedFile && response.redactedFile.length > 0) {
+    if (response.redactedFileBase64) {
       const downloadBtn = document.createElement("button");
-      downloadBtn.textContent = "Download Redacted File";
+      downloadBtn.textContent = "Download redacted file";
       downloadBtn.className = "llss-result-btn";
       downloadBtn.addEventListener("click", () => {
-        const bytes = new Uint8Array(response.redactedFile);
-        const format = response.redactedFileFormat || "application/pdf";
-        const blob = new Blob([bytes], { type: format });
-        const url = URL.createObjectURL(blob);
-        const ext = format.includes("pdf") ? ".pdf" : format.includes("png") ? ".png" : "";
-        const baseName = fileName.replace(/\.[^.]+$/, "");
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${baseName}_redacted${ext}`;
-        a.click();
-        URL.revokeObjectURL(url);
-        downloadBtn.textContent = "Downloaded!";
-        setTimeout(() => { downloadBtn.textContent = "Download Redacted File"; }, 2000);
+        try {
+          const bytes = LLSS_BinaryTransfer.fromBase64(response.redactedFileBase64, MAX_DOCUMENT_BYTES);
+          const format = response.redactedFileFormat || "application/pdf";
+          const blob = new Blob([bytes], { type: format });
+          const url = URL.createObjectURL(blob);
+          const ext = REDACTED_FILE_EXTENSIONS[format]
+            || fileName.match(/\.[A-Za-z0-9]{1,10}$/)?.[0].toLowerCase()
+            || "";
+          const baseName = fileName.replace(/\.[^.]+$/, "");
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${baseName}_redacted${ext}`;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 0);
+          downloadBtn.textContent = "Downloaded";
+        } catch {
+          downloadBtn.textContent = "Download failed";
+        }
+        setTimeout(() => { downloadBtn.textContent = "Download redacted file"; }, 2000);
       });
       actions.appendChild(downloadBtn);
     }
@@ -733,13 +726,38 @@
     const closeBtn = document.createElement("button");
     closeBtn.textContent = "Close";
     closeBtn.className = "llss-result-btn llss-result-btn-close";
-    closeBtn.addEventListener("click", () => overlay.remove());
+    const close = () => {
+      document.removeEventListener("keydown", onKeyDown, true);
+      layer.remove();
+      if (returnFocus?.isConnected) returnFocus.focus();
+    };
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        close();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const buttons = Array.from(actions.querySelectorAll("button:not([disabled])"));
+      if (!buttons.length) return;
+      if (event.shiftKey && document.activeElement === buttons[0]) {
+        event.preventDefault();
+        buttons[buttons.length - 1].focus();
+      } else if (!event.shiftKey && document.activeElement === buttons[buttons.length - 1]) {
+        event.preventDefault();
+        buttons[0].focus();
+      }
+    };
+    closeBtn.addEventListener("click", close);
+    document.addEventListener("keydown", onKeyDown, true);
 
     actions.appendChild(closeBtn);
     overlay.appendChild(header);
     overlay.appendChild(content);
     overlay.appendChild(actions);
-    document.body.appendChild(overlay);
+    layer.appendChild(overlay);
+    document.body.appendChild(layer);
+    closeBtn.focus();
   }
 
   function escapeHtml(str) {
@@ -851,11 +869,18 @@
 
   const autoRedactTimers = new WeakMap();
   const autoRedactLastText = new WeakMap(); // Last text we processed for this element
+  let autoRedactActive = false;
+
+  function shouldAutoRedact() {
+    const config = cachedSettings.autoRedact || {};
+    const aiGuardActive = isAiSite && cachedSettings.aiChatGuard?.enabled !== false &&
+      cachedSettings.aiChatGuard?.autoRedactOnAiSites === true;
+    return (config.enabled === true || aiGuardActive) && (!config.onlyOnAiSites || isAiSite);
+  }
 
   function setupAutoRedact() {
-    const config = cachedSettings.autoRedact || {};
-    if (!config.enabled && !(isAiSite && cachedSettings.aiChatGuard?.autoRedactOnAiSites)) return;
-    if (config.onlyOnAiSites && !isAiSite) return;
+    if (autoRedactActive) return;
+    autoRedactActive = true;
 
     // Attach auto-redact listeners to all text inputs
     document.addEventListener("input", onAutoRedactInput, true);
@@ -863,11 +888,12 @@
   }
 
   function onAutoRedactInput(e) {
+    const config = cachedSettings.autoRedact || {};
+    if (!shouldAutoRedact()) return;
     const el = e.target;
     if (!isTextInput(el)) return;
     if (el.dataset.llssAutoRedacting === "true") return;
 
-    const config = cachedSettings.autoRedact || {};
     const debounce = config.debounceMs || 2500;
 
     // Clear existing timer
@@ -882,10 +908,11 @@
   }
 
   function onAutoRedactPaste(e) {
+    const config = cachedSettings.autoRedact || {};
+    if (!shouldAutoRedact()) return;
     const el = e.target;
     if (!isTextInput(el)) return;
 
-    const config = cachedSettings.autoRedact || {};
     if (!config.onPaste) return;
 
     // Short delay to let paste complete, then redact
@@ -893,6 +920,7 @@
   }
 
   async function autoRedactElement(el) {
+    if (!shouldAutoRedact()) return;
     const text = getElementText(el).trim();
 
     // Need meaningful content (short fragments are likely still being composed)
@@ -946,33 +974,25 @@
   let submitGuardActive = false;
 
   function setupSubmitGuard() {
-    const config = cachedSettings.submitGuard || {};
-    if (!config.enabled) return;
-    if (config.onlyOnAiSites && !isAiSite) return;
     if (submitGuardActive) return;
     submitGuardActive = true;
 
-    // Intercept Enter key
-    if (config.interceptEnter) {
-      document.addEventListener("keydown", onSubmitKeydown, true);
-    }
-
-    // Intercept form submit
-    if (config.interceptFormSubmit) {
-      document.addEventListener("submit", onFormSubmit, true);
-    }
-
-    // Intercept send button clicks
-    if (config.interceptSendButtons) {
-      document.addEventListener("click", onSendButtonClick, true);
-    }
+    // Attach once; handlers consult current settings so live policy changes do
+    // not require duplicate listeners or a page reload.
+    document.addEventListener("keydown", onSubmitKeydown, true);
+    document.addEventListener("submit", onFormSubmit, true);
+    document.addEventListener("click", onSendButtonClick, true);
   }
 
   async function onSubmitKeydown(e) {
+    const config = cachedSettings.submitGuard || {};
+    if (!isExtensionActive()) return;
+    if (!config.enabled || !config.interceptEnter || (config.onlyOnAiSites && !isAiSite)) return;
     if (e.key !== "Enter") return;
     // Only intercept in text inputs (not in general navigation)
     const el = e.target;
     if (!isTextInput(el)) return;
+    if (el.dataset.llssAllowSubmit === "true") return;
 
     // Shift+Enter is usually newline, not submit
     if (e.shiftKey) return;
@@ -1028,20 +1048,28 @@
         el.dataset.llssAllowSubmit = "true";
         el.dispatchEvent(newEvent);
         el.dataset.llssAllowSubmit = "false";
+      } else {
+        el.dataset.llssSubmitBlocked = "false";
+        removeSubmitIndicator(indicator);
+        showToast(el.parentNode || document.body, "Protection check failed — message not sent.");
       }
     } catch {
       el.dataset.llssSubmitBlocked = "false";
       removeSubmitIndicator(indicator);
+      showToast(el.parentNode || document.body, "Protection check failed — message not sent.");
     }
   }
 
   function onFormSubmit(e) {
+    const config = cachedSettings.submitGuard || {};
+    if (!isExtensionActive()) return;
+    if (!config.enabled || !config.interceptFormSubmit || (config.onlyOnAiSites && !isAiSite)) return;
     // If we already allowed this submit, let it through
     const form = e.target;
     if (form.dataset.llssAllowSubmit === "true") return;
 
     // Find text inputs in the form
-    const textInputs = form.querySelectorAll("textarea, [contenteditable='true'], [contenteditable='']");
+    const textInputs = form.querySelectorAll(TEXT_FIELD_SELECTOR);
     if (textInputs.length === 0) return;
 
     // Check for pending redactions
@@ -1082,7 +1110,8 @@
 
       try {
         const response = await redactText(text);
-        if (response?.success && response.redacted !== text) {
+        if (!response?.success) return false;
+        if (response.redacted !== text) {
           const inserted = setElementText(field, response.redacted);
           if (!inserted) {
             _clipboardFallback(field, response.redacted);
@@ -1091,13 +1120,18 @@
         }
         return true;
       } catch {
-        return true; // redaction failed (not an insertion problem) — don't block
+        return false;
       }
     }));
-    return results.every(Boolean);
+    const safe = results.every(Boolean);
+    if (!safe) showToast(form, "Protection check failed — form not submitted.");
+    return safe;
   }
 
   function onSendButtonClick(e) {
+    const config = cachedSettings.submitGuard || {};
+    if (!isExtensionActive()) return;
+    if (!config.enabled || !config.interceptSendButtons || (config.onlyOnAiSites && !isAiSite)) return;
     const btn = e.target.closest("button, [role='button'], input[type='submit']");
     if (!btn) return;
     // Allow our own buttons through
@@ -1130,7 +1164,11 @@
 
     redactText(text).then((response) => {
       removeSubmitIndicator(indicator);
-      if (response?.success && response.redacted !== text) {
+      if (!response?.success) {
+        showToast(btn.parentNode || document.body, "Protection check failed — message not sent.");
+        return;
+      }
+      if (response.redacted !== text) {
         const inserted = setElementText(textInput, response.redacted);
         if (!inserted) {
           // Editor rejected the redacted text — do not click send with the
@@ -1145,6 +1183,9 @@
       btn.dataset.llssAllowSubmit = "true";
       btn.click();
       btn.dataset.llssAllowSubmit = "false";
+    }).catch(() => {
+      removeSubmitIndicator(indicator);
+      showToast(btn.parentNode || document.body, "Protection check failed — message not sent.");
     });
   }
 
@@ -1177,10 +1218,8 @@
     // Walk up to find a form or container, then find text input within it
     let container = btn.parentNode;
     for (let i = 0; i < 10 && container; i++) {
-      const textarea = container.querySelector("textarea");
-      if (textarea) return textarea;
-      const ce = container.querySelector("[contenteditable='true'], [contenteditable='']");
-      if (ce) return ce;
+      const textField = container.querySelector(TEXT_FIELD_SELECTOR);
+      if (textField) return textField;
       container = container.parentNode;
     }
     return null;
@@ -1199,12 +1238,6 @@
     if (indicator && indicator.parentNode) indicator.remove();
   }
 
-  // Re-entry guard for keydown
-  const _origOnSubmitKeydown = onSubmitKeydown;
-  document.addEventListener("keydown", (e) => {
-    if (e.target.dataset?.llssAllowSubmit === "true") return;
-  }, true);
-
   // ── Upload Interception ───────────────────────────────────────────────────
   // "Security Handshake" — intercepts file uploads, redacts PII at the pixel
   // level, then replaces the original file with the secured version before
@@ -1221,9 +1254,6 @@
   let isRedactedDispatch = false; // Prevents re-intercepting our own dispatched events
 
   function setupUploadGuard() {
-    const config = cachedSettings.uploadGuard || {};
-    if (!config.enabled) return;
-    if (config.onlyOnAiSites && !isAiSite) return;
     if (uploadGuardActive) return;
     uploadGuardActive = true;
 
@@ -1231,14 +1261,10 @@
     document.addEventListener("change", onFileInputChange, true);
     document.addEventListener("drop", onFileDrop, true);
 
-    // Listen for progress updates from background (forwarded from offscreen OCR)
-    // and managed storage policy changes
+    // Listen for progress updates from background (forwarded from offscreen OCR).
     chrome.runtime.onMessage.addListener((msg) => {
       if (msg.type === "REDACT_PROGRESS" && activeOverlay) {
         activeOverlay.updateProgress(msg);
-      }
-      if (msg.type === "SETTINGS_UPDATED") {
-        refreshSettings(); // Immediately apply new managed/remote config
       }
     });
   }
@@ -1247,7 +1273,8 @@
 
   let activeOverlay = null;
 
-  function createSecurityOverlay(fileNames) {
+  function createSecurityOverlay(fileNames, allowBypass = false) {
+    const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const host = document.createElement("div");
     host.setAttribute("data-llss-overlay", "true");
     host.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;z-index:2147483647;pointer-events:all;";
@@ -1293,6 +1320,11 @@
         @keyframes scan {
           0%, 100% { top: 12px; opacity: 0.4; }
           50% { top: 85px; opacity: 1; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .scanner-line { animation: none; top: 48px; }
+          .progress-fill { transition: none; }
         }
 
         .title {
@@ -1346,7 +1378,7 @@
       </style>
 
       <div class="backdrop">
-        <div class="card">
+        <div class="card" role="dialog" aria-modal="true" aria-labelledby="llss-overlay-title" aria-describedby="llss-overlay-status" tabindex="-1">
           <div class="icon-container">
             <svg class="doc-icon" viewBox="0 0 80 100">
               <path d="M10 5 h40 l20 20 v70 a5 5 0 0 1 -5 5 H15 a5 5 0 0 1 -5 -5 V10 a5 5 0 0 1 5 -5z" />
@@ -1358,14 +1390,12 @@
             </svg>
             <div class="scanner-line"></div>
           </div>
-          <div class="title">Securing Documents</div>
+          <div class="title" id="llss-overlay-title">Securing Documents</div>
           <div class="subtitle">Scanning for personal information...</div>
-          <ul class="file-list">
-            ${fileNames.map((n) => `<li data-file="${n}">${n}</li>`).join("")}
-          </ul>
-          <div class="progress-track"><div class="progress-fill"></div></div>
-          <div class="status-text">Preparing...</div>
-          <button class="skip-btn">Skip &mdash; upload without redaction</button>
+          <ul class="file-list"></ul>
+          <div class="progress-track" role="progressbar" aria-label="Document redaction progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-fill"></div></div>
+          <div class="status-text" id="llss-overlay-status" role="status" aria-live="polite">Preparing...</div>
+          <button class="skip-btn"></button>
         </div>
       </div>
     `;
@@ -1373,13 +1403,48 @@
     document.body.appendChild(host);
 
     const card = shadow.querySelector(".card");
+    const progressTrack = shadow.querySelector(".progress-track");
     const progressFill = shadow.querySelector(".progress-fill");
     const statusText = shadow.querySelector(".status-text");
     const titleEl = shadow.querySelector(".title");
     const subtitleEl = shadow.querySelector(".subtitle");
     const skipBtn = shadow.querySelector(".skip-btn");
+    const fileList = shadow.querySelector(".file-list");
+    for (const fileName of fileNames) {
+      const item = document.createElement("li");
+      item.textContent = fileName;
+      fileList.appendChild(item);
+    }
+    skipBtn.textContent = allowBypass ? "Upload original without redaction" : "Cancel upload";
     let skipped = false;
     let _onSkip = null;
+    const onOverlayKeydown = (event) => {
+      const buttons = Array.from(shadow.querySelectorAll("button"))
+        .filter((button) => button.style.display !== "none" && !button.disabled);
+      if (event.key === "Escape") {
+        if (buttons.length) {
+          event.preventDefault();
+          buttons[buttons.length - 1].click();
+        }
+        return;
+      }
+      if (event.key !== "Tab") return;
+      if (!buttons.length) {
+        event.preventDefault();
+        card.focus();
+        return;
+      }
+      const first = buttons[0];
+      const last = buttons[buttons.length - 1];
+      if (event.shiftKey && (shadow.activeElement === first || shadow.activeElement === card)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && shadow.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onOverlayKeydown, true);
 
     const api = {
       /** Update progress from OCR_PROGRESS messages */
@@ -1390,17 +1455,21 @@
         if (phase === "rendering" && totalPages) {
           const pct = Math.round((currentPage / totalPages) * 30); // Render = 0-30%
           progressFill.style.width = pct + "%";
+          progressTrack.setAttribute("aria-valuenow", String(pct));
           statusText.textContent = `Rendering page ${currentPage} of ${totalPages}...`;
         } else if (phase === "ocr" && totalPages) {
           const pct = 30 + Math.round(((completed || currentPage) / totalPages) * 50); // OCR = 30-80%
           progressFill.style.width = pct + "%";
+          progressTrack.setAttribute("aria-valuenow", String(pct));
           statusText.textContent = `OCR: page ${completed || currentPage} of ${totalPages}...`;
         } else if (phase === "redacting" && totalPages) {
           const pct = 80 + Math.round((currentPage / totalPages) * 15); // Redact = 80-95%
           progressFill.style.width = pct + "%";
+          progressTrack.setAttribute("aria-valuenow", String(pct));
           statusText.textContent = `Redacting page ${currentPage} of ${totalPages}...`;
         } else if (phase === "ocr_complete" || phase === "complete") {
           progressFill.style.width = "95%";
+          progressTrack.setAttribute("aria-valuenow", "95");
           statusText.textContent = "Finalising...";
         }
       },
@@ -1418,11 +1487,13 @@
         // Overall file-level progress
         const basePct = Math.round((fileIndex / totalFiles) * 100);
         progressFill.style.width = basePct + "%";
+        progressTrack.setAttribute("aria-valuenow", String(basePct));
       },
 
       /** Mark a single file as done in the list */
       markFileDone(fileName) {
-        const li = shadow.querySelector(`[data-file="${fileName}"]`);
+        const li = Array.from(shadow.querySelectorAll(".file-list li"))
+          .find((item) => item.textContent === fileName);
         if (li) { li.classList.remove("active"); li.classList.add("done"); }
       },
 
@@ -1438,9 +1509,10 @@
           titleEl.textContent = "Documents Secured";
           subtitleEl.textContent = matchCount
             ? `${matchCount} PII item(s) redacted`
-            : "No PII detected — files are clean";
+            : "No configured PII patterns were detected";
         }
         progressFill.style.width = "100%";
+        progressTrack.setAttribute("aria-valuenow", "100");
         statusText.textContent = "";
         skipBtn.style.display = "none";
 
@@ -1459,6 +1531,7 @@
         subtitleEl.textContent = reason || `Document classified "${label}" — upload not permitted`;
         subtitleEl.style.color = "#dc2626";
         progressFill.style.width = "100%";
+        progressTrack.setAttribute("aria-valuenow", "100");
         progressFill.style.background = "#dc2626";
         statusText.textContent = `Classification: ${label}`;
         statusText.style.color = "#dc2626";
@@ -1482,7 +1555,12 @@
       get wasSkipped() { return skipped; },
 
       /** Remove the overlay */
-      remove() { host.remove(); activeOverlay = null; },
+      remove() {
+        document.removeEventListener("keydown", onOverlayKeydown, true);
+        host.remove();
+        activeOverlay = null;
+        if (returnFocus?.isConnected) returnFocus.focus();
+      },
     };
 
     skipBtn.addEventListener("click", () => {
@@ -1492,12 +1570,16 @@
     });
 
     activeOverlay = api;
+    queueMicrotask(() => card.focus());
     return api;
   }
 
   // ── File input interception ───────────────────────────────────────────────
 
   async function onFileInputChange(e) {
+    const config = cachedSettings.uploadGuard || {};
+    if (!isExtensionActive()) return;
+    if (!config.enabled || (config.onlyOnAiSites && !isAiSite)) return;
     const input = e.target;
     if (input.type !== "file") return;
     if (input.dataset.llssOwn === "true") return;
@@ -1506,8 +1588,16 @@
     const files = Array.from(input.files || []);
     if (files.length === 0) return;
 
-    const config = cachedSettings.uploadGuard || {};
     const redactableFiles = files.filter((f) => isRedactableFile(f));
+    const nonRedactable = files.filter((f) => !isRedactableFile(f));
+    if (config.blockUnsupported !== false && nonRedactable.length > 0) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      e.stopPropagation();
+      clearFileInput(input);
+      showToast(document.body, `Upload blocked — ${nonRedactable.length} file(s) use an unsupported format.`);
+      return;
+    }
     if (redactableFiles.length === 0) return;
 
     // Block the original event — we'll replace the files and re-dispatch.
@@ -1518,24 +1608,26 @@
     e.stopPropagation();
 
     if (config.confirmBeforeUpload) {
-      const confirmed = await showUploadConfirmation(redactableFiles);
+      const confirmed = await showUploadConfirmation(redactableFiles, config.allowBypass === true);
       if (!confirmed) {
-        // User chose "Skip" — release the original files to the site
-        releaseFileInput(input, files);
+        if (config.allowBypass === true) releaseFileInput(input, files);
+        else {
+          clearFileInput(input);
+          showToast(document.body, "Upload cancelled. No file was shared with this site.");
+        }
         return;
       }
     }
 
     // Show security overlay
-    const overlay = createSecurityOverlay(redactableFiles.map((f) => f.name));
+    const overlay = createSecurityOverlay(redactableFiles.map((f) => f.name), config.allowBypass === true);
     let totalMatches = 0;
     let skipRequested = false;
     overlay.onSkip(() => { skipRequested = true; });
 
-    // Process files through the queue (max 2 concurrent)
+    // Process sequentially because the offscreen renderer has one isolated
+    // document cache; this also bounds peak memory on large batches.
     const redactedFiles = [];
-    const nonRedactable = files.filter((f) => !isRedactableFile(f));
-
     const errors = [];
     for (let i = 0; i < redactableFiles.length; i++) {
       if (skipRequested) break;
@@ -1548,10 +1640,7 @@
         if (result.redactedFile) {
           redactedFiles.push(result.redactedFile);
         } else {
-          // No pixel redaction available (text-based formats like DOCX/XLSX)
-          // — keep original file. PII was detected but can't be redacted
-          // in the file itself without rebuilding the document format.
-          redactedFiles.push(file);
+          throw new Error("No secured replacement was produced");
         }
         overlay.markFileDone(file.name);
         chrome.runtime.sendMessage({ type: "RECORD_UPLOAD_INTERCEPT" });
@@ -1567,23 +1656,29 @@
           if (dbg) dbg.log("upload", `BLOCKED by classification: ${file.name} (${label})`);
           overlay.blocked(label, reason);
           // Do NOT add to redactedFiles — block the entire upload
+          clearFileInput(input);
           return;
         }
 
         if (dbg) dbg.error("upload", `Failed to redact ${file.name}:`, msg);
         errors.push(`${file.name}: ${msg}`);
-        redactedFiles.push(file);
         overlay.markFileDone(file.name);
+        break;
       }
     }
 
     if (skipRequested) {
-      // User skipped — release originals
-      releaseFileInput(input, files);
+      if (config.allowBypass === true) releaseFileInput(input, files);
+      else clearFileInput(input);
       return;
     }
 
     overlay.complete(totalMatches, errors);
+    if (errors.length > 0 || redactedFiles.length !== redactableFiles.length) {
+      clearFileInput(input);
+      showToast(document.body, "Upload blocked because one or more files could not be secured.");
+      return;
+    }
 
     // Replace the input's files with the redacted versions + any non-redactable files
     const allFiles = [...redactedFiles, ...nonRedactable];
@@ -1603,6 +1698,7 @@
 
   async function onFileDrop(e) {
     const config = cachedSettings.uploadGuard || {};
+    if (!isExtensionActive()) return;
     if (!config.enabled) return;
     if (config.onlyOnAiSites && !isAiSite) return;
     if (isRedactedDispatch) return;
@@ -1611,6 +1707,14 @@
     if (files.length === 0) return;
 
     const redactableFiles = files.filter((f) => isRedactableFile(f));
+    const nonRedactable = files.filter((f) => !isRedactableFile(f));
+    if (config.blockUnsupported !== false && nonRedactable.length > 0) {
+      e.stopImmediatePropagation();
+      e.stopPropagation();
+      e.preventDefault();
+      showToast(document.body, `Upload blocked — ${nonRedactable.length} file(s) use an unsupported format.`);
+      return;
+    }
     if (redactableFiles.length === 0) return;
 
     // Block the drop — we'll re-dispatch with redacted files
@@ -1618,13 +1722,21 @@
     e.stopPropagation();
     e.preventDefault();
 
-    const overlay = createSecurityOverlay(redactableFiles.map((f) => f.name));
+    if (config.confirmBeforeUpload) {
+      const confirmed = await showUploadConfirmation(redactableFiles, config.allowBypass === true);
+      if (!confirmed) {
+        if (config.allowBypass === true) reDispatchDrop(e.target, files);
+        else showToast(document.body, "Upload cancelled. No file was shared with this site.");
+        return;
+      }
+    }
+
+    const overlay = createSecurityOverlay(redactableFiles.map((f) => f.name), config.allowBypass === true);
     let totalMatches = 0;
     let skipRequested = false;
     overlay.onSkip(() => { skipRequested = true; });
 
     const redactedFiles = [];
-    const nonRedactable = files.filter((f) => !isRedactableFile(f));
     const errors = [];
 
     for (let i = 0; i < redactableFiles.length; i++) {
@@ -1638,7 +1750,7 @@
         if (result.redactedFile) {
           redactedFiles.push(result.redactedFile);
         } else {
-          redactedFiles.push(file);
+          throw new Error("No secured replacement was produced");
         }
         overlay.markFileDone(file.name);
         chrome.runtime.sendMessage({ type: "RECORD_UPLOAD_INTERCEPT" });
@@ -1657,18 +1769,21 @@
 
         if (dbg) dbg.error("upload", `Failed to redact ${file.name}:`, msg);
         errors.push(`${file.name}: ${msg}`);
-        redactedFiles.push(file);
         overlay.markFileDone(file.name);
+        break;
       }
     }
 
     if (skipRequested) {
-      // Re-dispatch the original drop
-      reDispatchDrop(e.target, files);
+      if (config.allowBypass === true) reDispatchDrop(e.target, files);
       return;
     }
 
     overlay.complete(totalMatches, errors);
+    if (errors.length > 0 || redactedFiles.length !== redactableFiles.length) {
+      showToast(document.body, "Upload blocked because one or more files could not be secured.");
+      return;
+    }
 
     // Re-dispatch the drop event with redacted files
     const allFiles = [...redactedFiles, ...nonRedactable];
@@ -1678,8 +1793,15 @@
   // ── File processing ───────────────────────────────────────────────────────
 
   async function processFileForRedaction(file) {
+    const maxBytes = Number(cachedSettings.uploadGuard?.maxFileSizeBytes) || (25 * 1024 * 1024);
+    if (!Number.isSafeInteger(file.size) || file.size <= 0) {
+      throw new Error("File is empty or has an invalid size");
+    }
+    if (file.size > maxBytes) {
+      throw new Error(`File exceeds the ${Math.round(maxBytes / (1024 * 1024))} MiB safety limit`);
+    }
     const buffer = await file.arrayBuffer();
-    const data = Array.from(new Uint8Array(buffer));
+    const data = LLSS_BinaryTransfer.toBase64(buffer, maxBytes);
 
     // Open a long-lived port to keep the service worker alive during
     // potentially long document processing (OCR can take minutes).
@@ -1693,7 +1815,7 @@
     try {
       response = await chrome.runtime.sendMessage({
         type: "REDACT_DOCUMENT",
-        fileData: data,
+        fileDataBase64: data,
         fileName: file.name,
         mimeType: file.type,
       });
@@ -1708,22 +1830,13 @@
     }
 
     let redactedFile = null;
-    if (response.redactedFile && response.redactedFile.length > 0) {
+    if (response.redactedFileBase64) {
       // Build a new File from the redacted bytes, preserving the original extension
-      const bytes = new Uint8Array(response.redactedFile);
+      const bytes = LLSS_BinaryTransfer.fromBase64(response.redactedFileBase64, 25 * 1024 * 1024);
       const format = response.redactedFileFormat || file.type;
-      // Map MIME types to extensions
-      const extMap = {
-        'application/pdf': '.pdf',
-        'image/png': '.png',
-        'image/jpeg': '.jpg',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.csv',
-        'text/plain': '.txt',
-        'text/csv': '.csv',
-        'application/zip': '.zip',
-      };
-      const ext = extMap[format] || file.name.match(/\.[^.]+$/)?.[0] || '';
+      const ext = REDACTED_FILE_EXTENSIONS[format]
+        || file.name.match(/\.[A-Za-z0-9]{1,10}$/)?.[0].toLowerCase()
+        || '';
       const baseName = file.name.replace(/\.[^.]+$/, "");
       redactedFile = new File([bytes], `${baseName}_secured${ext}`, { type: format });
     }
@@ -1768,6 +1881,15 @@
     }
   }
 
+  function clearFileInput(input) {
+    try {
+      const dt = new DataTransfer();
+      input.files = dt.files;
+    } catch {
+      input.value = "";
+    }
+  }
+
   /**
    * Release the original files to the target site (user chose "skip").
    */
@@ -1805,8 +1927,14 @@
   function isRedactableFile(file) {
     const ext = "." + (file.name || "").split(".").pop().toLowerCase();
     const redactableExts = [
-      ".docx", ".doc", ".xlsx", ".xls", ".pdf", ".html", ".htm",
-      ".md", ".markdown", ".txt", ".csv",
+      ".docx", ".xlsx", ".pdf", ".html", ".htm", ".md", ".markdown",
+      ".txt", ".text", ".csv", ".tsv", ".tab", ".json", ".jsonl",
+      ".xml", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf",
+      ".env", ".log", ".rtf", ".rst", ".adoc", ".tex", ".latex",
+      ".py", ".rb", ".php", ".js", ".ts", ".jsx", ".tsx", ".java",
+      ".cs", ".go", ".rs", ".swift", ".kt", ".scala", ".c", ".cpp",
+      ".h", ".hpp", ".sh", ".bash", ".zsh", ".ps1", ".bat", ".sql", ".r",
+      ".zip",
       ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".tif",
     ];
     return redactableExts.includes(ext);
@@ -1814,17 +1942,22 @@
 
   // ── Upload confirmation dialog ────────────────────────────────────────────
 
-  function showUploadConfirmation(files) {
+  function showUploadConfirmation(files, allowBypass = false) {
     return new Promise((resolve) => {
+      const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       const overlay = document.createElement("div");
       overlay.className = "llss-confirm-overlay";
 
       const dialog = document.createElement("div");
       dialog.className = "llss-confirm-dialog";
+      dialog.setAttribute("role", "dialog");
+      dialog.setAttribute("aria-modal", "true");
+      dialog.setAttribute("aria-labelledby", "llss-confirm-title");
+      dialog.tabIndex = -1;
       dialog.innerHTML = `
         <div class="llss-confirm-header">
           <span class="llss-ai-banner-icon">&#x1f6e1;</span>
-          <strong>PII Check Required</strong>
+          <strong id="llss-confirm-title">PII Check Required</strong>
         </div>
         <p class="llss-confirm-body">
           ${files.length} file(s) will be uploaded. Would you like to check for PII first?
@@ -1833,22 +1966,42 @@
           ${files.map((f) => `<li>${escapeHtml(f.name)} (${formatSize(f.size)})</li>`).join("")}
         </ul>
         <div class="llss-confirm-actions">
-          <button class="llss-result-btn" data-action="skip">Skip (Upload as-is)</button>
+          <button class="llss-result-btn" data-action="skip">${allowBypass ? "Upload Original" : "Cancel Upload"}</button>
           <button class="llss-result-btn llss-result-btn-close" data-action="redact">Check &amp; Redact</button>
         </div>
       `;
 
-      dialog.querySelector('[data-action="skip"]').addEventListener("click", () => {
+      const finish = (value) => {
+        document.removeEventListener("keydown", onKeyDown, true);
         overlay.remove();
-        resolve(false);
-      });
-      dialog.querySelector('[data-action="redact"]').addEventListener("click", () => {
-        overlay.remove();
-        resolve(true);
-      });
+        if (returnFocus?.isConnected) returnFocus.focus();
+        resolve(value);
+      };
+      const onKeyDown = (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          finish(false);
+          return;
+        }
+        if (event.key !== "Tab") return;
+        const buttons = Array.from(dialog.querySelectorAll("button:not([disabled])"));
+        const first = buttons[0];
+        const last = buttons[buttons.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      };
+      dialog.querySelector('[data-action="skip"]').addEventListener("click", () => finish(false));
+      dialog.querySelector('[data-action="redact"]').addEventListener("click", () => finish(true));
+      document.addEventListener("keydown", onKeyDown, true);
 
       overlay.appendChild(dialog);
       document.body.appendChild(overlay);
+      dialog.querySelector('[data-action="redact"]').focus();
     });
   }
 
@@ -1863,7 +2016,7 @@
   function isTextInput(el) {
     if (!el) return false;
     if (el.tagName === "TEXTAREA") return true;
-    if (el.tagName === "INPUT" && el.type === "text") return true;
+    if (el.tagName === "INPUT" && ["text", "search", "email", "tel", "url"].includes(el.type)) return true;
     if (el.getAttribute("contenteditable") === "true" || el.getAttribute("contenteditable") === "") return true;
     // Check role
     if (el.getAttribute("role") === "textbox") return true;
@@ -1885,9 +2038,17 @@
   // clipboard rather than send the un-redacted original.
   function setElementText(el, text) {
     if (el.tagName === "TEXTAREA" || el.tagName === "INPUT") {
-      el.value = text;
+      const prototype = el.tagName === "TEXTAREA"
+        ? HTMLTextAreaElement.prototype
+        : HTMLInputElement.prototype;
+      const nativeSetter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+      if (nativeSetter) nativeSetter.call(el, text);
+      else el.value = text;
       el.dispatchEvent(new Event("input", { bubbles: true }));
-      return true;
+      // A controlled framework or synchronous page handler may restore the old
+      // value. Never report success unless the shared DOM contains the redacted
+      // text after its input handlers have run.
+      return el.value === text;
     }
     // contenteditable / rich editors (ProseMirror, Lexical): replace the whole
     // content via execCommand so the editor's change tracking registers it,
@@ -1931,7 +2092,6 @@
                         engine === "regex+vector" ? "Regex+Names" :
                         engine.includes("+") ? engine.replace("local_ai+regex", "AI+Regex") :
                         engine.includes("azure") ? "Azure PII" :
-                        engine.includes("purview") ? "Purview" :
                         engine.includes("hosted") ? "Hosted" : engine;
 
     const tierIcon = tier === "local" ? "\u{1F3E0}" :
@@ -1949,6 +2109,8 @@
   function showToast(parent, message) {
     const toast = document.createElement("div");
     toast.className = "llss-toast";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
     toast.textContent = message;
     (parent || document.body).appendChild(toast);
     setTimeout(() => toast.remove(), 4000);
@@ -1960,6 +2122,9 @@
     if (!root || !root.querySelectorAll) return;
     if (!isExtensionActive()) return;
 
+    // Avoid re-parenting compact single-line inputs: doing so can break site
+    // layout/framework bindings. Submit and auto-redact guards still cover
+    // those fields through TEXT_FIELD_SELECTOR/isTextInput.
     root.querySelectorAll("textarea").forEach(attachToTextarea);
 
     if (cachedSettings.enableContentEditable) {
@@ -1972,30 +2137,41 @@
     }
   }
 
-  // Initial scan.
-  scanElement(document);
+  function startDomProtection() {
+    if (!document.body) return;
+    scanElement(document);
 
-  // Watch for dynamically added elements (SPAs, lazy-loaded UI).
-  const observer = new MutationObserver((mutations) => {
-    if (!isExtensionActive()) return;
-    for (const mutation of mutations) {
-      for (const node of mutation.addedNodes) {
-        if (node.nodeType !== Node.ELEMENT_NODE) continue;
+    // Watch for dynamically added elements (SPAs, lazy-loaded UI).
+    const observer = new MutationObserver((mutations) => {
+      if (!isExtensionActive()) return;
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (node.nodeType !== Node.ELEMENT_NODE) continue;
 
-        if (node.tagName === "TEXTAREA") {
-          attachToTextarea(node);
-        } else if (
-          node.getAttribute &&
-          (node.getAttribute("contenteditable") === "true" ||
-           node.getAttribute("contenteditable") === "")
-        ) {
-          attachToContentEditable(node);
-        } else {
-          scanElement(node);
+          if (node.tagName === "TEXTAREA") {
+            attachToTextarea(node);
+          } else if (
+            node.getAttribute &&
+            (node.getAttribute("contenteditable") === "true" ||
+             node.getAttribute("contenteditable") === "")
+          ) {
+            attachToContentEditable(node);
+          } else {
+            scanElement(node);
+          }
         }
       }
-    }
-  });
+    });
 
-  observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
+  // Register capture-phase guards before page scripts install their own event
+  // handlers. Each handler consults the asynchronously loaded settings.
+  setupAutoRedact();
+  setupSubmitGuard();
+  setupUploadGuard();
+
+  if (document.body) startDomProtection();
+  else document.addEventListener("DOMContentLoaded", startDomProtection, { once: true });
 })();

@@ -1,7 +1,7 @@
 # Security Policy
 
-Loose Lips Sink Ships is a privacy tool — security reports are taken seriously
-and are genuinely appreciated.
+Loose Lips Sink Ships is a privacy and disclosure-risk reduction tool. Security
+and detection-bypass reports are taken seriously and are genuinely appreciated.
 
 ## Reporting a Vulnerability
 
@@ -23,8 +23,8 @@ You can expect an acknowledgement within a few business days.
 
 Reports of particular interest:
 
-- **Redaction bypass** — any way PII can reach the network despite guards being
-  enabled (submit guard, upload interception, AI chat guard)
+- **Redaction or interception bypass** — a supported guarded flow releases an
+  original value or file despite the relevant guards being enabled
 - **Recoverable redaction** — redacted output (PDF, image, DOCX) from which the
   original content can be recovered
 - **Credential handling** — leakage of configured API keys, OAuth tokens, or
@@ -32,10 +32,18 @@ Reports of particular interest:
 - **Content script injection issues** — XSS or privilege escalation via the
   extension's DOM handling
 
-Out of scope: issues requiring a compromised browser or machine, and the
-inherent accuracy limits of PII detection engines (missed detections are quality
-bugs — report those as regular issues).
+Issues requiring a compromised browser or operating system are normally out of
+scope. Detection false negatives are still valuable reports; use private
+reporting whenever the example, method, or attachment contains real sensitive
+data or describes a broadly exploitable bypass.
 
 ## Supported Versions
 
 Only the latest released version of the extension receives security fixes.
+
+## Security Model
+
+The engineering security model, high-assurance deployment profile, and known
+limitations are documented in [SECURITY_ASSURANCE.md](SECURITY_ASSURANCE.md).
+The project does not claim an IRAP assessment, ASD certification, or equivalence
+to a classified-environment security control.

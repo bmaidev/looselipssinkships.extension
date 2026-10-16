@@ -324,8 +324,8 @@ footer{
 <section class="hero" id="home">
   <div class="hero-inner">
     <div class="hero-eyebrow">Local-First PII Protection</div>
-    <h1>Stop PII before<br>it leaves the browser.</h1>
-    <p class="hero-sub">Enterprise-grade, local-first redaction for Chrome and Edge. Every text field, document, and upload is scanned before it reaches the destination.</p>
+    <h1>Reduce PII exposure<br>at the point of use.</h1>
+    <p class="hero-sub">Local-first redaction controls for supported Chrome and Edge text submissions and file uploads, with fail-closed document handling.</p>
     <div class="hero-actions">
       <a href="https://chromewebstore.google.com/detail/loose-lips-sink-ships/bkjmleaamcpimcnlgfcejocbfgbhgldp" class="btn-primary" target="_blank" rel="noopener">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0Zm3.5 8.5h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0v3h3a.5.5 0 0 1 0 1Z"/></svg>
@@ -334,7 +334,7 @@ footer{
       <a href="https://github.com/bmaidev/looselipssinkships.extension" class="btn-secondary">View on GitHub</a>
     </div>
     <div class="stats-bar">
-      <div class="stat"><div class="stat-value">50+</div><div class="stat-label">File Types</div></div>
+      <div class="stat"><div class="stat-value">Local</div><div class="stat-label">Default Processing</div></div>
       <div class="stat"><div class="stat-value">17</div><div class="stat-label">AU PII Patterns</div></div>
       <div class="stat"><div class="stat-value">6</div><div class="stat-label">Detection Engines</div></div>
       <div class="stat"><div class="stat-value">Chrome + Edge</div><div class="stat-label">Browser Targets</div></div>
@@ -349,12 +349,12 @@ footer{
   <div class="section-inner">
     <div class="section-label">Capabilities</div>
     <h2 class="section-title">Built for the worst-case scenario</h2>
-    <p class="section-subtitle">Every feature designed to prevent PII from leaving your organisation &mdash; whether typed into a chat, pasted into a form, or dragged into an AI service.</p>
+    <p class="section-subtitle">Layered controls for accidental disclosure through supported text, document, upload, and AI-chat workflows.</p>
     <div class="features-grid">
       <div class="feature-card">
         <div class="feature-icon">&#x1f6e1;</div>
         <h3>Real-Time Text Protection</h3>
-        <p>Auto-redacts as you type. Intercepts Enter, form submit, and send buttons. PII is replaced with tokens before the page can dispatch.</p>
+        <p>Can redact as you type and intercept supported Enter, form-submit, and send-button flows. Deterministic checks run after AI processing.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">&#x1f4c4;</div>
@@ -369,28 +369,28 @@ footer{
       <div class="feature-card">
         <div class="feature-icon">&#x1f916;</div>
         <h3>AI Chat Guard</h3>
-        <p>Auto-detects 30+ AI services (ChatGPT, Claude, Gemini, Copilot, Grok). Enforces redaction before submit on all detected AI platforms.</p>
+        <p>Recognises common AI services (ChatGPT, Claude, Gemini, Copilot, Grok) and guards supported DOM submits on detected sites.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">&#x1f3a4;</div>
         <h3>On-Device Voice Dictation</h3>
-        <p>When the browser exposes a supported local Web Speech or multimodal Prompt API, a microphone button transcribes and redacts speech before it reaches the chat box. Audio is never uploaded, and dictation stays disabled rather than falling back to a cloud engine.</p>
+        <p>When the browser's on-device audio model reports ready, a microphone button temporarily captures speech in memory, transcribes it locally, and redacts the result. No cloud transcription fallback is selected.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">&#x1f512;</div>
         <h3>Classification Gate</h3>
-        <p>Reads Microsoft Information Protection labels from documents. Blocks uploads of PROTECTED, SECRET, and TOP SECRET classified files outright.</p>
+        <p>Reads supported Microsoft Information Protection metadata and blocks labels selected by the administrator before the redaction pipeline.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">&#x2601;</div>
         <h3>Azure PII Integration</h3>
-        <p>Azure AI Language with OAuth2 PKCE. Native document API for server-side PDF/DOCX redaction. Managed identity for zero stored credentials.</p>
+        <p>Azure AI Language with delegated OAuth2 PKCE. Native document API for server-side PDF/DOCX redaction and managed-identity storage access.</p>
       </div>
     </div>
 
     <div style="margin-top:48px">
       <h3 style="font-size:16px;font-weight:600;color:var(--navy);margin-bottom:4px">Supported File Types</h3>
-      <p style="font-size:14px;color:var(--text-mid);margin-bottom:16px">50+ formats recognised. If it&rsquo;s text-based, it&rsquo;s covered.</p>
+      <p style="font-size:14px;color:var(--text-mid);margin-bottom:16px">Supported formats are explicitly inspected; unsupported or partially inspectable content is blocked by the fail-closed upload guard.</p>
       <div class="file-types">
         <span class="file-tag highlight">.docx</span>
         <span class="file-tag highlight">.pdf</span>
@@ -414,7 +414,7 @@ footer{
         <span class="file-tag">.jpg</span>
         <span class="file-tag">.gif</span>
         <span class="file-tag">.tiff</span>
-        <span class="file-tag">+30 more</span>
+        <span class="file-tag">and other listed text formats</span>
       </div>
     </div>
   </div>
@@ -439,17 +439,17 @@ footer{
       </div>
       <div class="ent-card">
         <h3>Azure AD OAuth2 PKCE</h3>
-        <p>No API keys stored anywhere. Users sign in via Azure AD popup. Short-lived tokens auto-refresh. MFA and Conditional Access policies apply.</p>
-        <span class="tag">Zero stored credentials</span>
+        <p>No client secret is accepted. Users sign in through Microsoft Entra; short-lived delegated tokens auto-refresh, and tenant Conditional Access policies can apply.</p>
+        <span class="tag">Public-client PKCE</span>
       </div>
       <div class="ent-card">
         <h3>Classification Gate</h3>
         <p>Reads MSIP sensitivity labels from DOCX/XLSX files. Blocks PROTECTED and above from uploading to external services. Configurable blocked/warn lists.</p>
-        <span class="tag">Australian PSPF aligned</span>
+        <span class="tag">Administrator-defined policy</span>
       </div>
       <div class="ent-card">
         <h3>Detection Modes</h3>
-        <p>Auto (local-first), AI Only, Regex Only, Hosted Only, Cloud Only. Route all traffic through your organisation&rsquo;s own infrastructure if required.</p>
+        <p>Auto (local-first), AI Only, Regex Only, Hosted Only, Cloud Only. Route redaction processing through organisation-controlled infrastructure when configured.</p>
         <span class="tag">5 processing modes</span>
       </div>
     </div>
@@ -482,7 +482,7 @@ footer{
   <div class="section-inner">
     <div class="section-label">Legal</div>
     <h2 class="section-title">Privacy Policy</h2>
-    <p class="section-subtitle">Last updated: August 2026</p>
+    <p class="section-subtitle">Last updated: October 2026</p>
 
     <div class="prose">
       <h3>Overview</h3>
@@ -490,12 +490,12 @@ footer{
 
       <h3>Data Processing</h3>
       <p><strong>Local-first by default.</strong> The Extension processes text and documents within the browser. In the default configuration, local regex and vector engines are always available, and a browser-provided on-device language model is used when supported. No hosted or cloud provider is enabled by default.</p>
-      <p><strong>No telemetry.</strong> The Extension does not collect analytics, usage metrics, crash reports, or any form of telemetry. It does not phone home to any server.</p>
+      <p><strong>No product telemetry.</strong> The Extension does not contain an analytics or product phone-home endpoint. Configured provider, OAuth, remote-policy, and browser model-download traffic are explicit exceptions.</p>
       <p><strong>No user tracking.</strong> The Extension does not track browsing history, page visits, or user behaviour. It does not use cookies, fingerprinting, or any tracking mechanism.</p>
 
       <h3>Data Accessed</h3>
       <ul>
-        <li><strong>Text field content</strong> — The Extension reads text from input fields, textareas, and contenteditable elements on web pages for PII detection. This data is processed locally and never transmitted unless a cloud provider is explicitly configured.</li>
+        <li><strong>Text field content</strong> — The Extension reads text from input fields, textareas, and contenteditable elements for PII detection. Redaction-provider processing is local by default; content is transmitted when a user or administrator explicitly configures a hosted or cloud provider.</li>
         <li><strong>Uploaded files</strong> — When file upload interception is enabled, the Extension reads file content (DOCX, PDF, images, etc.) for PII scanning. Files are processed in the browser via an Offscreen Document.</li>
         <li><strong>Page URL</strong> — Used to determine if the current site is an AI chat service (for AI Chat Guard) and to apply site filtering rules. URLs are checked locally against a built-in list and user-configured patterns.</li>
         <li><strong>Microphone audio</strong> — Accessed only after the user starts an available on-device dictation feature. Audio is held in memory, processed locally, and never stored or sent to a cloud transcription service.</li>
@@ -506,7 +506,7 @@ footer{
       <ul>
         <li><strong>Azure AI Language</strong> — Text is sent to the Azure PII detection API for entity recognition. Azure's privacy policy applies.</li>
         <li><strong>Azure Blob Storage</strong> — When native document redaction is enabled, documents are uploaded to Azure Blob Storage for server-side processing.</li>
-        <li><strong>Microsoft Purview</strong> — When Purview DLP is configured, content may be sent to the Microsoft Graph API for classification.</li>
+        <li><strong>Microsoft sensitivity labels</strong> — Embedded DOCX/XLSX label metadata is checked locally and is not sent to Microsoft.</li>
         <li><strong>Organisation-hosted models</strong> — When hosted providers are configured, text is sent to the organisation's own endpoints.</li>
       </ul>
       <p><strong>No cloud provider is enabled by default.</strong> Users must explicitly configure endpoints and credentials before any data is transmitted externally.</p>
@@ -517,7 +517,7 @@ footer{
         <li><strong>API credentials</strong> — API keys (Direct mode) are stored in <code>chrome.storage.local</code>. OAuth2 tokens (Enterprise mode) are stored in <code>chrome.storage.session</code> (memory-only, cleared on browser close).</li>
         <li><strong>Managed settings</strong> — Enterprise administrators may push configuration via <code>chrome.storage.managed</code> (read-only to the Extension).</li>
         <li><strong>Statistics</strong> — Redaction counts (number of items redacted, by type) are stored locally. No PII content is stored in statistics.</li>
-        <li><strong>No PII is ever stored.</strong> The Extension processes PII in memory and immediately replaces it with redaction tokens. Original PII content is never persisted to disk or any storage mechanism.</li>
+        <li><strong>Protected content</strong> — The Extension does not intentionally persist submitted text or document contents to extension storage. Reversible token mappings, document working data, and dictation audio are memory-only. Host pages, the browser, operating system, and configured external services have their own storage behaviour.</li>
       </ul>
 
       <h3>Permissions</h3>
@@ -526,7 +526,11 @@ footer{
         <li><strong>offscreen</strong> — Create an offscreen document for PDF rendering and OCR (Canvas/WASM access).</li>
         <li><strong>identity</strong> — Azure AD OAuth2 sign-in flow (Enterprise mode only).</li>
         <li><strong>alarms</strong> — Periodic remote config refresh and token renewal.</li>
+        <li><strong>Optional host access</strong> — Requested for the exact HTTPS/loopback origins a user configures for hosted providers, Azure services, or remote policy.</li>
       </ul>
+
+      <h3>Security Limits</h3>
+      <p>PII detection and DOM interception reduce accidental disclosure risk but are not a network firewall and cannot guarantee that every identifier is detected. A website can observe or transmit text while it is typed. High-assurance deployments should combine the Extension with browser policy, egress controls, endpoint DLP, testing, and organisational handling procedures.</p>
 
       <h3>Third-Party Services</h3>
       <p>The Extension does not use any third-party analytics, advertising, or tracking services. Third-party libraries used (pdf.js, Tesseract.js) run entirely locally within the browser.</p>

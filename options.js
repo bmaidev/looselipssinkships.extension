@@ -6,23 +6,120 @@
 let currentSettings = null;
 let editingCustomIndex = -1; // -1 = adding new, >= 0 = editing existing
 let editingHostedIndex = -1;
+let activeModalOverlay = null;
+let modalReturnFocus = null;
+
+function showModalOverlay(overlay, initialFocusId) {
+  modalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  activeModalOverlay = overlay;
+  overlay.classList.remove("hidden");
+  overlay.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+  queueMicrotask(() => {
+    const initial = document.getElementById(initialFocusId) || overlay.querySelector("[role='dialog']");
+    initial?.focus();
+  });
+}
+
+function hideModalOverlay(overlay) {
+  overlay.classList.add("hidden");
+  overlay.setAttribute("aria-hidden", "true");
+  if (activeModalOverlay === overlay) activeModalOverlay = null;
+  document.body.style.overflow = "";
+  const returnTarget = modalReturnFocus;
+  modalReturnFocus = null;
+  if (returnTarget?.isConnected) returnTarget.focus();
+}
+
+document.addEventListener("keydown", (event) => {
+  if (!activeModalOverlay) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    if (activeModalOverlay.id === "hosted-modal-overlay") closeHostedModal();
+    else closeModal();
+    return;
+  }
+  if (event.key !== "Tab") return;
+
+  const focusable = Array.from(activeModalOverlay.querySelectorAll(
+    "button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])"
+  )).filter((element) => element.offsetParent !== null);
+  if (focusable.length === 0) {
+    event.preventDefault();
+    activeModalOverlay.querySelector("[role='dialog']")?.focus();
+    return;
+  }
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+});
+
+function sendRuntimeMessage(message, timeoutMs = 5000) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        resolve(null);
+      }
+    }, timeoutMs);
+
+    try {
+      chrome.runtime.sendMessage(message, (response) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(chrome.runtime.lastError ? null : (response || null));
+      });
+    } catch {
+      clearTimeout(timer);
+      settled = true;
+      resolve(null);
+    }
+  });
+}
+
+function setSettingsLoadFailure(failed) {
+  document.getElementById("settings-load-error").classList.toggle("hidden", !failed);
+  const controls = document.querySelectorAll(".card[data-cat] input, .card[data-cat] select, .card[data-cat] textarea, .card[data-cat] button, #btn-save");
+  for (const control of controls) {
+    if (failed) {
+      if (!Object.prototype.hasOwnProperty.call(control.dataset, "loadPreviousDisabled")) {
+        control.dataset.loadPreviousDisabled = String(control.disabled);
+      }
+      control.disabled = true;
+    } else if (Object.prototype.hasOwnProperty.call(control.dataset, "loadPreviousDisabled")) {
+      control.disabled = control.dataset.loadPreviousDisabled === "true";
+      delete control.dataset.loadPreviousDisabled;
+    }
+  }
+}
 
 // ── Load settings and populate UI ──────────────────────────────────────────
 
 async function init() {
-  return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type: "GET_SETTINGS" }, (response) => {
-      currentSettings = response?.settings || {};
-      // Ensure providers object exists
-      if (!currentSettings.providers) currentSettings.providers = {};
-      if (!currentSettings.providers.hosted) currentSettings.providers.hosted = [];
-      populateUI();
-      applyManagedState();
-      loadStats();
-      loadProviderStatus();
-      resolve();
-    });
-  });
+  const response = await sendRuntimeMessage({ type: "GET_SETTINGS" });
+  if (!response?.settings) {
+    setSettingsLoadFailure(true);
+    return false;
+  }
+
+  setSettingsLoadFailure(false);
+  currentSettings = response.settings;
+  // Ensure providers object exists
+  if (!currentSettings.providers) currentSettings.providers = {};
+  if (!currentSettings.providers.hosted) currentSettings.providers.hosted = [];
+  populateUI();
+  applyManagedState();
+  loadStats();
+  loadProviderStatus();
+  return true;
 }
 
 function populateUI() {
@@ -36,7 +133,7 @@ function populateUI() {
 
   // Checkboxes.
   document.getElementById("enableVectorFallback").checked = s.enableVectorFallback !== false;
-  document.getElementById("regexAfterAi").checked = !!s.regexAfterAi;
+  document.getElementById("regexAfterAi").checked = true;
   document.getElementById("showRedactButton").checked = s.showRedactButton !== false;
   document.getElementById("enableContentEditable").checked = s.enableContentEditable !== false;
   document.getElementById("enableDocumentUpload").checked = s.enableDocumentUpload !== false;
@@ -133,19 +230,13 @@ function populateUI() {
   document.getElementById("azure-redaction-policy").value = providers.azure_pii?.redactionPolicy || "entityMask";
   updateNativeDocHelp(azureMode);
 
-  // Purview
-  document.getElementById("provider-purview").checked = providers.purview?.enabled || false;
-  document.getElementById("purview-tenant").value = providers.purview?.tenantId || "";
-  document.getElementById("purview-clientid").value = providers.purview?.clientId || "";
-  document.getElementById("purview-secret").value = providers.purview?.clientSecret || "";
-  // Purview classification gate
+  // Local Microsoft sensitivity-label gate
   const gateEnabled = providers.purview?.gateEnabled || false;
   document.getElementById("purview-gate-enabled").checked = gateEnabled;
   document.getElementById("purview-gate-fields").classList.toggle("hidden", !gateEnabled);
   document.getElementById("purview-blocked-labels").value = (providers.purview?.blockedLabels || []).join("\n");
   document.getElementById("purview-warn-labels").value = (providers.purview?.warnLabels || []).join("\n");
   document.getElementById("purview-block-encrypted").checked = providers.purview?.blockEncrypted !== false;
-  document.getElementById("purview-check-api").checked = providers.purview?.checkViaApi || false;
 
   // Hosted providers list.
   renderHostedProviders();
@@ -195,7 +286,7 @@ const SETTING_MAP = {
   "providers.azure_pii":             { type: "section", id: "azure-config" },
   "providers.azure_pii.enabled":     { type: "checkbox", id: "provider-azure-pii" },
   "providers.purview":               { type: "section", id: "purview-config" },
-  "providers.purview.enabled":       { type: "checkbox", id: "provider-purview" },
+  "providers.purview.gateEnabled":   { type: "checkbox", id: "purview-gate-enabled" },
 };
 
 function isSettingLocked(meta, dotPath) {
@@ -337,7 +428,7 @@ function renderHostedProviders() {
         <input type="checkbox" class="hosted-toggle" data-index="${i}" ${h.enabled ? "checked" : ""}>
         <span>
           <strong>${escapeHtml(h.displayName || h.providerId)}</strong>
-          <span class="hosted-detail">${escapeHtml(h.endpoint || "")} · ${h.apiMode || "openai"}</span>
+          <span class="hosted-detail">${escapeHtml(h.endpoint || "")} · ${escapeHtml(h.apiMode || "openai")}</span>
         </span>
       </label>
       <div class="pii-type-actions">
@@ -406,11 +497,11 @@ function openHostedModal(index) {
   }
 
   document.getElementById("hosted-modal-errors").textContent = "";
-  overlay.classList.remove("hidden");
+  showModalOverlay(overlay, "hosted-name");
 }
 
 function closeHostedModal() {
-  document.getElementById("hosted-modal-overlay").classList.add("hidden");
+  hideModalOverlay(document.getElementById("hosted-modal-overlay"));
   editingHostedIndex = -1;
 }
 
@@ -582,11 +673,11 @@ function openModal(customIndex) {
   }
 
   document.getElementById("modal-errors").textContent = "";
-  overlay.classList.remove("hidden");
+  showModalOverlay(overlay, "modal-name");
 }
 
 function closeModal() {
-  document.getElementById("modal-overlay").classList.add("hidden");
+  hideModalOverlay(document.getElementById("modal-overlay"));
   editingCustomIndex = -1;
 }
 
@@ -680,25 +771,6 @@ function testAzureConnection() {
   );
 }
 
-function testPurviewConnection() {
-  const result = document.getElementById("purview-test-result");
-  result.textContent = "Testing...";
-  result.className = "test-inline-result";
-
-  chrome.runtime.sendMessage(
-    { type: "CHECK_PROVIDER", providerId: "purview" },
-    (response) => {
-      if (response?.available) {
-        result.textContent = "Connected";
-        result.className = "test-inline-result test-success";
-      } else {
-        result.textContent = response?.detail || "Failed";
-        result.className = "test-inline-result test-fail";
-      }
-    }
-  );
-}
-
 // ── Statistics ─────────────────────────────────────────────────────────────
 
 function loadStats() {
@@ -731,8 +803,8 @@ function loadStats() {
         <div class="label">Local / Hosted / Cloud</div>
       </div>
       <div class="stat-card">
-        <div class="value">${stats.engineUsage?.azure_pii || 0} / ${stats.engineUsage?.purview || 0}</div>
-        <div class="label">Azure / Purview</div>
+        <div class="value">${stats.engineUsage?.azure_pii || 0}</div>
+        <div class="label">Azure PII</div>
       </div>
     `;
   });
@@ -740,12 +812,12 @@ function loadStats() {
 
 // ── Save settings ──────────────────────────────────────────────────────────
 
-function saveSettings() {
+async function saveSettings() {
   // Collect values from the UI.
   const mode = document.querySelector('input[name="detectionMode"]:checked');
   currentSettings.detectionMode = mode ? mode.value : "auto";
   currentSettings.enableVectorFallback = document.getElementById("enableVectorFallback").checked;
-  currentSettings.regexAfterAi = document.getElementById("regexAfterAi").checked;
+  currentSettings.regexAfterAi = true;
   currentSettings.showRedactButton = document.getElementById("showRedactButton").checked;
   currentSettings.enableContentEditable = document.getElementById("enableContentEditable").checked;
   currentSettings.enableDocumentUpload = document.getElementById("enableDocumentUpload").checked;
@@ -777,16 +849,10 @@ function saveSettings() {
   };
 
   currentSettings.providers.purview = {
-    ...currentSettings.providers.purview,
-    enabled: document.getElementById("provider-purview").checked,
-    tenantId: document.getElementById("purview-tenant").value.trim(),
-    clientId: document.getElementById("purview-clientid").value.trim(),
-    clientSecret: document.getElementById("purview-secret").value,
     gateEnabled: document.getElementById("purview-gate-enabled").checked,
     blockedLabels: parseLines(document.getElementById("purview-blocked-labels").value),
     warnLabels: parseLines(document.getElementById("purview-warn-labels").value),
     blockEncrypted: document.getElementById("purview-block-encrypted").checked,
-    checkViaApi: document.getElementById("purview-check-api").checked,
   };
 
   // Hosted providers are already updated via renderHostedProviders toggles
@@ -828,6 +894,7 @@ function saveSettings() {
 
   // Upload guard
   currentSettings.uploadGuard = {
+    ...(currentSettings.uploadGuard || {}),
     enabled: document.getElementById("uploadGuardEnabled").checked,
     onlyOnAiSites: document.getElementById("uploadGuardOnlyAi").checked,
     confirmBeforeUpload: document.getElementById("uploadGuardConfirm").checked,
@@ -856,21 +923,43 @@ function saveSettings() {
   // Remote config URL
   currentSettings.configUrl = document.getElementById("configUrl").value.trim();
 
-  chrome.runtime.sendMessage(
-    { type: "SAVE_SETTINGS", settings: currentSettings },
-    (response) => {
-      const status = document.getElementById("save-status");
-      if (response?.success) {
-        status.textContent = "Settings saved!";
-        status.style.color = "#22c55e";
-        loadProviderStatus(); // Refresh status after re-init
-      } else {
-        status.textContent = "Failed to save.";
-        status.style.color = "#dc2626";
-      }
-      setTimeout(() => { status.textContent = ""; }, 3000);
+  const status = document.getElementById("save-status");
+  const saveButton = document.getElementById("btn-save");
+  saveButton.disabled = true;
+  saveButton.textContent = "Saving…";
+  status.className = "save-status";
+  status.textContent = "";
+
+  try {
+    const granted = await requestConfiguredHostPermissions(currentSettings);
+    if (!granted) {
+      status.textContent = "Settings not saved — network access was not granted.";
+      status.classList.add("error");
+      return;
     }
-  );
+
+    const response = await new Promise((resolve) => {
+      chrome.runtime.sendMessage({ type: "SAVE_SETTINGS", settings: currentSettings }, (result) => {
+        resolve(chrome.runtime.lastError ? null : result);
+      });
+    });
+
+    if (response?.success) {
+      status.textContent = "Settings saved";
+      status.classList.add("success");
+      loadProviderStatus(); // Refresh status after re-init
+    } else {
+      status.textContent = "Settings could not be saved.";
+      status.classList.add("error");
+    }
+  } catch {
+    status.textContent = "Settings could not be saved.";
+    status.classList.add("error");
+  } finally {
+    saveButton.disabled = false;
+    saveButton.textContent = "Save settings";
+    setTimeout(() => { status.textContent = ""; }, 4000);
+  }
 }
 
 // ── Utility ────────────────────────────────────────────────────────────────
@@ -883,6 +972,52 @@ function escapeHtml(str) {
 
 function parseLines(text) {
   return (text || "").split("\n").map(l => l.trim()).filter(Boolean);
+}
+
+function permissionPatternForUrl(value) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    const loopback = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+    if (url.protocol !== "https:" && !(url.protocol === "http:" && loopback)) return null;
+    return `${url.protocol}//${url.hostname}/*`;
+  } catch {
+    return null;
+  }
+}
+
+function collectConfiguredNetworkOrigins(settings) {
+  const values = [];
+  const azure = settings.providers?.azure_pii || {};
+  if (azure.enabled) {
+    values.push(azure.endpoint, azure.sourceContainerUrl, azure.targetContainerUrl);
+    if (azure.connectionMode === "enterprise") values.push("https://login.microsoftonline.com/");
+  }
+  for (const hosted of settings.providers?.hosted || []) {
+    if (hosted.enabled) values.push(hosted.endpoint);
+  }
+  values.push(settings.configUrl);
+  return [...new Set(values.map(permissionPatternForUrl).filter(Boolean))];
+}
+
+function requestConfiguredHostPermissions(settings) {
+  const origins = collectConfiguredNetworkOrigins(settings);
+  if (origins.length === 0) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    chrome.permissions.request({ origins }, (granted) => {
+      resolve(!chrome.runtime.lastError && granted === true);
+    });
+  });
+}
+
+function requestUrlPermission(value) {
+  const origin = permissionPatternForUrl(value);
+  if (!origin) return Promise.resolve(false);
+  return new Promise((resolve) => {
+    chrome.permissions.request({ origins: [origin] }, (granted) => {
+      resolve(!chrome.runtime.lastError && granted === true);
+    });
+  });
 }
 
 function updateSiteFilterVisibility(mode) {
@@ -939,7 +1074,11 @@ document.getElementById("hosted-modal-test").addEventListener("click", async () 
   errEl.textContent = "Testing connection...";
   errEl.style.color = "#6b7280";
 
+  let timeoutId;
   try {
+    if (!await requestUrlPermission(endpoint)) {
+      throw new Error("Network access was not granted for this endpoint");
+    }
     let checkUrl;
     if (apiMode === "openai") {
       checkUrl = `${endpoint.replace(/\/$/, "")}/models`;
@@ -951,10 +1090,15 @@ document.getElementById("hosted-modal-test").addEventListener("click", async () 
     if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-    const response = await fetch(checkUrl, { method: "GET", headers, signal: controller.signal });
-    clearTimeout(timeoutId);
-
+    timeoutId = setTimeout(() => controller.abort(), 10000);
+    const response = await fetch(checkUrl, {
+      method: "GET",
+      headers,
+      signal: controller.signal,
+      redirect: "error",
+      credentials: "omit",
+      cache: "no-store",
+    });
     if (response.ok) {
       errEl.textContent = `Connected (HTTP ${response.status})`;
       errEl.style.color = "#059669";
@@ -965,6 +1109,8 @@ document.getElementById("hosted-modal-test").addEventListener("click", async () 
   } catch (err) {
     errEl.textContent = err.name === "AbortError" ? "Connection timed out (10s)" : `Failed: ${err.message}`;
     errEl.style.color = "#dc2626";
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
   }
 });
 // ── Azure connection mode toggle and OAuth2 ──────────────────────────────────
@@ -992,13 +1138,17 @@ function updateNativeDocHelp(mode) {
     targetLabel.textContent = "Target Container URL";
     sourceInput.placeholder = "https://account.blob.core.windows.net/source";
     targetInput.placeholder = "https://account.blob.core.windows.net/target";
+    sourceInput.type = "url";
+    targetInput.type = "url";
   } else {
     directHelp.classList.remove("hidden");
     enterpriseHelp.classList.add("hidden");
     sourceLabel.textContent = "Source Container URL (with SAS token)";
     targetLabel.textContent = "Target Container URL (with SAS token)";
-    sourceInput.placeholder = "https://account.blob.core.windows.net/source?sv=2022-11-02&ss=b&srt=co&sp=rl&se=...";
-    targetInput.placeholder = "https://account.blob.core.windows.net/target?sv=2022-11-02&ss=b&srt=co&sp=wl&se=...";
+    sourceInput.placeholder = "https://account.blob.core.windows.net/source?sp=rwl&spr=https&se=...&sig=...";
+    targetInput.placeholder = "https://account.blob.core.windows.net/target?sp=rwl&spr=https&se=...&sig=...";
+    sourceInput.type = "password";
+    targetInput.type = "password";
   }
 }
 
@@ -1020,7 +1170,7 @@ function refreshAzureAuthStatus() {
   });
 }
 
-function azureSignIn() {
+async function azureSignIn() {
   const tenantId = document.getElementById("azure-tenant-id").value.trim();
   const clientId = document.getElementById("azure-client-id").value.trim();
   const resultEl = document.getElementById("azure-auth-result");
@@ -1031,6 +1181,11 @@ function azureSignIn() {
   }
   resultEl.textContent = "Signing in...";
   resultEl.style.color = "#6b7280";
+  if (!await requestUrlPermission("https://login.microsoftonline.com/")) {
+    resultEl.textContent = "Sign-in cancelled — Microsoft login access was not granted.";
+    resultEl.style.color = "#dc2626";
+    return;
+  }
   chrome.runtime.sendMessage({ type: "AZURE_SIGN_IN", tenantId, clientId }, (response) => {
     if (response?.success) {
       resultEl.textContent = `Signed in as ${response.userInfo?.name || "user"}`;
@@ -1064,7 +1219,6 @@ document.getElementById("purview-gate-enabled").addEventListener("change", (e) =
 });
 
 document.getElementById("btn-test-azure").addEventListener("click", testAzureConnection);
-document.getElementById("btn-test-purview").addEventListener("click", testPurviewConnection);
 
 // Remote config fetch
 document.getElementById("btn-fetch-config").addEventListener("click", async () => {
@@ -1078,14 +1232,16 @@ document.getElementById("btn-fetch-config").addEventListener("click", async () =
   resultEl.textContent = "Fetching...";
   resultEl.style.color = "#6b7280";
   try {
-    const response = await fetch(url, { cache: "no-cache" });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const config = await response.json();
-    // Save to local storage
-    chrome.storage.local.set({ llss_remote_config: config }, () => {
-      const keys = Object.keys(config).filter(k => !k.startsWith("_"));
-      const locked = Object.keys(config._locked || {}).filter(k => config._locked[k]);
-      resultEl.textContent = `Fetched: ${keys.length} settings, ${locked.length} locked. Save and reload to apply.`;
+    if (!await requestUrlPermission(url)) {
+      throw new Error("Network access was not granted for this configuration URL");
+    }
+    chrome.runtime.sendMessage({ type: "REFRESH_REMOTE_CONFIG", url }, (response) => {
+      if (!response?.success) {
+        resultEl.textContent = `Failed: ${response?.error || "No response"}`;
+        resultEl.style.color = "#dc2626";
+        return;
+      }
+      resultEl.textContent = "Configuration fetched, validated and cached. Save to make this URL active.";
       resultEl.style.color = "#059669";
     });
   } catch (err) {
@@ -1124,7 +1280,12 @@ function setupCategoryNav() {
     sections.forEach((sec) => {
       sec.classList.toggle("cat-hidden", sec.dataset.cat !== cat);
     });
-    navItems.forEach((n) => n.classList.toggle("active", n.dataset.target === cat));
+    navItems.forEach((n) => {
+      const active = n.dataset.target === cat;
+      n.classList.toggle("active", active);
+      if (active) n.setAttribute("aria-current", "page");
+      else n.removeAttribute("aria-current");
+    });
     if (titleEl) titleEl.textContent = CAT_TITLES[cat];
     try { localStorage.setItem("llss_settings_cat", cat); } catch { /* ignore */ }
     window.scrollTo({ top: 0 });
@@ -1154,4 +1315,5 @@ function detectAiCapability() {
 detectAiCapability();
 
 // Initialise.
+document.getElementById("btn-retry-load").addEventListener("click", init);
 init();

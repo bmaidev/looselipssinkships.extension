@@ -10,6 +10,7 @@ const EDGE_SUPPORTED_APIS = new Set([
   'alarms',
   'identity',
   'offscreen',
+  'permissions',
   'runtime',
   'storage',
   'tabs',
@@ -106,7 +107,8 @@ function validateExtension(root, target, options = {}) {
 
   const csp = manifest.content_security_policy?.extension_pages || '';
   if (!csp.includes("script-src 'self'")) errors.push("Extension CSP must restrict scripts to 'self'");
-  if (/https?:/i.test(csp)) errors.push('Extension CSP must not allow remote script origins');
+  const scriptDirective = csp.split(';').find((directive) => directive.trim().startsWith('script-src')) || '';
+  if (/https?:/i.test(scriptDirective)) errors.push('Extension CSP must not allow remote script origins');
 
   if (target === 'edge') {
     const listingText = `${manifest.name} ${manifest.description}`;

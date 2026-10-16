@@ -10,33 +10,41 @@
   <div class="app-shell">
     <aside class="sidebar">
       <div class="sidebar-head">
-        <span class="sidebar-logo">&#x1f6e1;&#xfe0f;</span>
+        <img class="sidebar-logo" src="icons/icon48.png" width="35" height="35" alt="">
         <div>
           <div class="sidebar-title">Loose Lips Sink Ships</div>
           <div class="sidebar-sub">Settings</div>
         </div>
       </div>
-      <nav class="side-nav" id="side-nav">
-        <button type="button" class="side-nav-item active" data-target="general"><span class="side-ico">&#x2699;&#xfe0f;</span>General</button>
-        <button type="button" class="side-nav-item" data-target="providers"><span class="side-ico">&#x1f50c;</span>Providers</button>
-        <button type="button" class="side-nav-item" data-target="protection"><span class="side-ico">&#x1f6e1;&#xfe0f;</span>AI Protection</button>
-        <button type="button" class="side-nav-item" data-target="voice"><span class="side-ico">&#x1f3a4;</span>Voice</button>
-        <button type="button" class="side-nav-item" data-target="documents"><span class="side-ico">&#x1f4c4;</span>Documents</button>
-        <button type="button" class="side-nav-item" data-target="rules"><span class="side-ico">&#x1f50d;</span>PII Rules</button>
-        <button type="button" class="side-nav-item" data-target="enterprise"><span class="side-ico">&#x1f3e2;</span>Enterprise</button>
-        <button type="button" class="side-nav-item" data-target="diagnostics"><span class="side-ico">&#x1f527;</span>Diagnostics</button>
+      <nav class="side-nav" id="side-nav" aria-label="Settings sections">
+        <button type="button" class="side-nav-item active" data-target="general" aria-current="page"><span class="side-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6"/></svg></span>General</button>
+        <button type="button" class="side-nav-item" data-target="providers"><span class="side-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 22 4-4-3-3 5-5-4-4-5 5-3-3-4 4 10 10ZM15 3l6 6"/></svg></span>Providers</button>
+        <button type="button" class="side-nav-item" data-target="protection"><span class="side-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></span>AI Protection</button>
+        <button type="button" class="side-nav-item" data-target="voice"><span class="side-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8"/></svg></span>Voice</button>
+        <button type="button" class="side-nav-item" data-target="documents"><span class="side-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></span>Documents</button>
+        <button type="button" class="side-nav-item" data-target="rules"><span class="side-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5M8 11h6M11 8v6"/></svg></span>PII Rules</button>
+        <button type="button" class="side-nav-item" data-target="enterprise"><span class="side-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 22V5l8-3 8 3v17M2 22h20M8 8h1M15 8h1M8 12h1M15 12h1M8 16h1M15 16h1"/></svg></span>Enterprise</button>
+        <button type="button" class="side-nav-item" data-target="diagnostics"><span class="side-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5-5L7.5 3.5l3 3 2.2-2.2a4 4 0 0 0 2 2Z"/><path d="m9.5 6.5-7 7a2.1 2.1 0 0 0 3 3l7-7M14 14l7 7M17 14l-3 3"/></svg></span>Diagnostics</button>
       </nav>
     </aside>
 
-    <main class="main">
+    <main class="main" aria-labelledby="panel-title">
       <div class="main-inner">
         <header class="main-head">
           <h1 id="panel-title">General</h1>
           <p class="subtitle">PII Redaction Settings</p>
         </header>
 
+    <div id="settings-load-error" class="load-error hidden" role="alert">
+      <div>
+        <strong>Settings could not be loaded</strong>
+        <p>No changes can be saved until the extension service is available.</p>
+      </div>
+      <button id="btn-retry-load" class="btn secondary btn-sm" type="button">Retry</button>
+    </div>
+
     <!-- Managed policy banner (hidden unless enterprise-managed) -->
-    <div id="managed-banner" class="managed-banner hidden">
+    <div id="managed-banner" class="managed-banner hidden" role="status">
       <span class="managed-banner-icon">&#x1f3e2;</span>
       <div>
         <strong>Organisation-managed settings</strong>
@@ -46,7 +54,7 @@
     </div>
 
     <!-- On-device AI capability note (shown only when the browser lacks it) -->
-    <div id="ai-capability-note" class="capability-note hidden">
+    <div id="ai-capability-note" class="capability-note hidden" role="status">
       <span class="capability-note-icon">&#x2139;&#xfe0f;</span>
       <div>
         <strong>On-device AI isn't available in this browser</strong>
@@ -77,7 +85,7 @@
         </label>
         <label class="radio-label">
           <input type="radio" name="detectionMode" value="cloud_only">
-          <span><strong>Cloud Only</strong> — Azure PII / Purview (requires configured cloud provider, regex fallback)</span>
+          <span><strong>Cloud Only</strong> — Azure PII (requires a configured cloud provider, with deterministic regex fallback)</span>
         </label>
       </div>
     </section>
@@ -92,7 +100,7 @@
         <div class="provider-item">
           <label class="checkbox-label">
             <input type="checkbox" id="provider-local-ai">
-            <span><strong>Browser On-Device AI</strong> — Gemini Nano in Chrome or the Microsoft model in Edge; zero network calls</span>
+            <span><strong>Browser On-Device AI</strong> — the browser's local model; model installation may use the network, while inference content stays on-device</span>
           </label>
         </div>
         <div class="provider-item">
@@ -105,7 +113,7 @@
       <div class="provider-tier">
         <div class="tier-label">Hosted (Organisation Infrastructure)</div>
         <div id="hosted-providers-list"></div>
-        <button id="btn-add-hosted" class="btn secondary">+ Add Hosted Provider</button>
+        <button id="btn-add-hosted" class="btn secondary" type="button">+ Add hosted provider</button>
       </div>
 
       <div class="provider-tier">
@@ -118,8 +126,8 @@
           <div class="provider-config" id="azure-config">
             <!-- Connection Mode Toggle -->
             <div class="form-group">
-              <label>Connection Mode</label>
-              <div class="radio-group">
+              <span class="form-label" id="azure-connection-label">Connection mode</span>
+              <div class="radio-group" role="radiogroup" aria-labelledby="azure-connection-label">
                 <label class="radio-label">
                   <input type="radio" name="azureConnectionMode" value="direct" checked>
                   <span><strong>Direct</strong> — API key authentication</span>
@@ -133,15 +141,15 @@
 
             <!-- Shared: Endpoint URL -->
             <div class="form-group">
-              <label>Endpoint URL</label>
-              <input type="text" id="azure-endpoint" class="input" placeholder="https://yourinstance.cognitiveservices.azure.com">
+              <label for="azure-endpoint">Endpoint URL</label>
+              <input type="url" id="azure-endpoint" class="input" placeholder="https://yourinstance.cognitiveservices.azure.com" autocomplete="off" spellcheck="false">
             </div>
 
             <!-- Direct mode: API Key -->
             <div id="azure-direct-fields">
               <div class="form-group">
-                <label>API Key</label>
-                <input type="password" id="azure-apikey" class="input" placeholder="Subscription key">
+                <label for="azure-apikey">API key</label>
+                <input type="password" id="azure-apikey" class="input" placeholder="Subscription key" autocomplete="off" spellcheck="false">
               </div>
             </div>
 
@@ -149,23 +157,23 @@
             <div id="azure-enterprise-fields" class="hidden">
               <div class="form-row">
                 <div class="form-group" style="flex:1">
-                  <label>Tenant ID</label>
-                  <input type="text" id="azure-tenant-id" class="input" placeholder="Azure AD tenant GUID">
+                  <label for="azure-tenant-id">Tenant ID</label>
+                  <input type="text" id="azure-tenant-id" class="input" placeholder="Azure AD tenant GUID" autocomplete="off" spellcheck="false">
                 </div>
                 <div class="form-group" style="flex:1">
-                  <label>Client ID (App Registration)</label>
-                  <input type="text" id="azure-client-id" class="input" placeholder="Application (client) ID">
+                  <label for="azure-client-id">Client ID (App Registration)</label>
+                  <input type="text" id="azure-client-id" class="input" placeholder="Application (client) ID" autocomplete="off" spellcheck="false">
                 </div>
               </div>
               <div id="azure-auth-section" style="margin: 8px 0 12px;">
-                <button class="btn primary btn-sm" id="btn-azure-signin">Sign in with Azure AD</button>
+                <button class="btn primary btn-sm" id="btn-azure-signin" type="button">Sign in with Azure AD</button>
                 <div id="azure-user-info" class="hidden" style="margin-top: 8px; font-size: 12px;">
                   <span style="color: #059669; font-weight: 600;">Signed in:</span>
                   <span id="azure-user-display" style="font-weight: 600;"></span>
                   <span id="azure-user-email" style="color: #6b7280; margin-left: 4px;"></span>
-                  <button class="btn secondary btn-sm" id="btn-azure-signout" style="margin-left: 8px;">Sign out</button>
+                  <button class="btn secondary btn-sm" id="btn-azure-signout" type="button" style="margin-left: 8px;">Sign out</button>
                 </div>
-                <span id="azure-auth-result" class="test-inline-result"></span>
+                <span id="azure-auth-result" class="test-inline-result" role="status" aria-live="polite"></span>
               </div>
               <p class="help">Requires an Azure AD App Registration with redirect URI: <code>https://&lt;extension-id&gt;.chromiumapp.org/</code>, API permission <code>Azure Cognitive Services &gt; user_impersonation</code>, and public client flows enabled.</p>
             </div>
@@ -173,11 +181,11 @@
             <!-- Shared: Language & Domain -->
             <div class="form-row">
               <div class="form-group" style="flex:1">
-                <label>Language</label>
+                <label for="azure-language">Language</label>
                 <input type="text" id="azure-language" class="input input-sm" value="en">
               </div>
               <div class="form-group" style="flex:1">
-                <label>Domain</label>
+                <label for="azure-domain">Domain</label>
                 <select id="azure-domain" class="input">
                   <option value="none">General</option>
                   <option value="phi">Protected Health Info</option>
@@ -193,8 +201,8 @@
             <div id="azure-native-doc-fields" class="hidden">
               <div id="azure-native-doc-help-direct" class="help">
                 Requires Azure Blob Storage. Generate SAS tokens in Azure Portal → Storage Account → Shared access signature.<br>
-                Source: read + write + list permissions (extension uploads, Language API reads).<br>
-                Target: read + write + list permissions (Language API writes, extension downloads).
+                Source: HTTPS-only, expiring read + write SAS (list optional; extension uploads, Language API reads).<br>
+                Target: HTTPS-only, expiring read + write SAS (list optional; Language API writes, extension downloads).
               </div>
               <div id="azure-native-doc-help-enterprise" class="help hidden">
                 Requires Azure Blob Storage. Admin must enable managed identity on the Language resource and grant it:<br>
@@ -202,79 +210,53 @@
                 The App Registration also needs <code>https://storage.azure.com/user_impersonation</code> API permission for the extension to upload/download files.
               </div>
               <div class="form-group">
-                <label id="azure-source-label">Source Container URL</label>
-                <input type="text" id="azure-source-url" class="input" placeholder="https://account.blob.core.windows.net/source">
+                <label id="azure-source-label" for="azure-source-url">Source container URL</label>
+                <input type="password" id="azure-source-url" class="input" autocomplete="off" placeholder="https://account.blob.core.windows.net/source">
               </div>
               <div class="form-group">
-                <label id="azure-target-label">Target Container URL</label>
-                <input type="text" id="azure-target-url" class="input" placeholder="https://account.blob.core.windows.net/target">
+                <label id="azure-target-label" for="azure-target-url">Target container URL</label>
+                <input type="password" id="azure-target-url" class="input" autocomplete="off" placeholder="https://account.blob.core.windows.net/target">
               </div>
               <div class="form-group">
-                <label>Redaction Policy</label>
+                <label for="azure-redaction-policy">Redaction policy</label>
                 <select id="azure-redaction-policy" class="input">
                   <option value="entityMask">Entity Mask — [PERSON_1], [PHONENUMBER_1]</option>
                   <option value="characterMask">Character Mask — ********</option>
-                  <option value="noMask">No Mask — detect only, no redaction in document</option>
                 </select>
               </div>
             </div>
 
-            <button class="btn secondary btn-sm" id="btn-test-azure">Test Connection</button>
-            <span id="azure-test-result" class="test-inline-result"></span>
+            <button class="btn secondary btn-sm" id="btn-test-azure" type="button">Test connection</button>
+            <span id="azure-test-result" class="test-inline-result" role="status" aria-live="polite"></span>
           </div>
         </div>
 
         <div class="provider-item">
           <label class="checkbox-label">
-            <input type="checkbox" id="provider-purview">
-            <span><strong>Microsoft Purview DLP</strong> — M365 sensitive information types</span>
+            <input type="checkbox" id="purview-gate-enabled">
+            <span><strong>Microsoft sensitivity-label gate</strong> — locally block classified documents before upload</span>
           </label>
           <div class="provider-config" id="purview-config">
-            <div class="form-group">
-              <label>Tenant ID</label>
-              <input type="text" id="purview-tenant" class="input" placeholder="Azure AD tenant GUID">
-            </div>
-            <div class="form-group">
-              <label>Client ID (App Registration)</label>
-              <input type="text" id="purview-clientid" class="input" placeholder="Application (client) ID">
-            </div>
-            <div class="form-group">
-              <label>Client Secret</label>
-              <input type="password" id="purview-secret" class="input" placeholder="Client secret value">
-            </div>
-            <button class="btn secondary btn-sm" id="btn-test-purview">Test Connection</button>
-            <span id="purview-test-result" class="test-inline-result"></span>
-
-            <!-- Classification Gate -->
-            <hr style="margin: 12px 0; border: none; border-top: 1px solid #e5e7eb;">
-            <label class="checkbox-label">
-              <input type="checkbox" id="purview-gate-enabled">
-              <span><strong>Classification gate</strong> — block uploads of documents with restricted sensitivity labels (e.g., PROTECTED, SECRET)</span>
-            </label>
             <div id="purview-gate-fields" class="hidden">
-              <p class="help">Documents with MSIP sensitivity labels matching the blocked list will be prevented from uploading to any site. The check reads label metadata directly from the file — no API call needed for DOCX/XLSX.</p>
+              <p class="help">Reads embedded Microsoft Information Protection metadata directly from DOCX/XLSX files. Files and metadata stay on the device; no Microsoft API call or sign-in is used.</p>
               <div class="form-group">
-                <label>Blocked labels (one per line — upload is prevented)</label>
+                <label for="purview-blocked-labels">Blocked labels (one per line — upload is prevented)</label>
                 <textarea id="purview-blocked-labels" class="input" rows="3" placeholder="PROTECTED&#10;SECRET&#10;TOP SECRET"></textarea>
               </div>
               <div class="form-group">
-                <label>Warn labels (one per line — upload allowed with warning)</label>
+                <label for="purview-warn-labels">Warn labels (one per line — upload allowed with warning)</label>
                 <textarea id="purview-warn-labels" class="input" rows="2" placeholder="OFFICIAL: Sensitive"></textarea>
               </div>
               <label class="checkbox-label">
                 <input type="checkbox" id="purview-block-encrypted" checked>
                 <span>Block encrypted/protected files (ContentBits includes ENCRYPT flag)</span>
               </label>
-              <label class="checkbox-label">
-                <input type="checkbox" id="purview-check-api">
-                <span>Also check via Graph API (requires Purview auth above)</span>
-              </label>
             </div>
           </div>
         </div>
       </div>
 
-      <div id="provider-status" class="provider-status"></div>
+      <div id="provider-status" class="provider-status" role="status" aria-live="polite"></div>
     </section>
 
     <!-- Site Filtering -->
@@ -334,7 +316,7 @@
         <span>Show protection banner on AI chat sites</span>
       </label>
       <div class="form-group">
-        <label>Additional AI domains (one per line)</label>
+        <label for="aiGuardCustomDomains">Additional AI domains (one per line)</label>
         <textarea id="aiGuardCustomDomains" class="input" rows="3" placeholder="internal-ai.company.com&#10;*.ai-platform.agency.gov.au"></textarea>
       </div>
     </section>
@@ -404,7 +386,7 @@
     <!-- Reversible Tokenization -->
     <section class="card" data-cat="protection">
       <h2>Reversible Tokenization</h2>
-      <p class="help">Replace PII with unique, numbered tokens (<code>[[EMAIL_1]]</code>, <code>[[PERSON_1]]</code>) instead of generic masks, so the AI can reason over the placeholders. The token&#8596;value mapping is kept in memory only (never stored or sent), and tokens in the AI's reply are automatically swapped back to the real values for display — while your composer keeps the tokens, so what's sent stays redacted. <strong>Experimental.</strong> When off, PII is masked irreversibly (the safer default).</p>
+      <p class="help">Replace PII with unique, numbered tokens (<code>[[EMAIL_1]]</code>, <code>[[PERSON_1]]</code>) instead of generic masks, so the AI can reason over consistent placeholders. The token&#8596;value mapping is memory-only and original values are never restored into the website's DOM. <strong>Experimental.</strong> When off, PII is masked irreversibly (the safer default).</p>
       <label class="checkbox-label">
         <input type="checkbox" id="reversibleTokenizationEnabled">
         <span><strong>Use reversible tokens instead of masks</strong></span>
@@ -414,14 +396,14 @@
     <!-- Voice Capture Detection -->
     <section class="card" data-cat="voice">
       <h2>Voice Dictation Detection</h2>
-      <p class="help">Detects when a site captures your microphone for dictation and uploads the audio off-device — spoken PII that would otherwise bypass text redaction. Detection is local and observe-only; no audio is recorded or sent anywhere. Works on any site, with no domain list.</p>
+      <p class="help">Detects potential dictation bypass paths: microphone capture packaged for later use, and speech recognition not explicitly marked local. This is a risk signal, not proof of upload. Detection is observe-only and records no audio.</p>
       <label class="checkbox-label">
         <input type="checkbox" id="voiceDetectionEnabled">
-        <span><strong>Detect microphone dictation uploads</strong></span>
+        <span><strong>Detect potential microphone dictation bypasses</strong></span>
       </label>
       <label class="checkbox-label">
         <input type="checkbox" id="voiceDetectionWarn">
-        <span>Warn me when a site uploads dictation audio</span>
+        <span>Warn me when a potential off-device speech path is used</span>
       </label>
       <hr style="margin: 12px 0; border: none; border-top: 1px solid #e5e7eb;">
       <label class="checkbox-label">
@@ -457,8 +439,8 @@
         <span id="thresholdValue">0.45</span>
       </div>
       <label class="checkbox-label">
-        <input type="checkbox" id="regexAfterAi">
-        <span>Also run regex after AI (belt-and-suspenders mode)</span>
+        <input type="checkbox" id="regexAfterAi" checked disabled>
+        <span>Mandatory deterministic safety pass after AI</span>
       </label>
     </section>
 
@@ -500,7 +482,7 @@
       </div>
       <textarea id="test-sample" class="input" rows="3" placeholder="Paste sample text here..."></textarea>
       <button id="btn-test-regex" class="btn secondary">Test Pattern</button>
-      <div id="test-results" class="test-results"></div>
+      <div id="test-results" class="test-results" role="status" aria-live="polite"></div>
     </section>
 
     <!-- Remote Configuration (small business) -->
@@ -508,11 +490,11 @@
       <h2>Remote Configuration</h2>
       <p class="help">For organisations without enterprise MDM: paste a URL to a hosted JSON configuration file. The extension will fetch it periodically and apply the settings. Your admin will provide this URL.</p>
       <div class="form-group">
-        <label>Configuration URL</label>
-        <input type="text" id="configUrl" class="input" placeholder="https://config.yourorg.com/llss-config.json">
+        <label for="configUrl">Configuration URL</label>
+        <input type="url" id="configUrl" class="input" placeholder="https://config.yourorg.com/llss-config.json" autocomplete="off" spellcheck="false">
       </div>
-      <button id="btn-fetch-config" class="btn secondary btn-sm">Fetch Now</button>
-      <span id="config-fetch-result" class="test-inline-result"></span>
+      <button id="btn-fetch-config" class="btn secondary btn-sm" type="button">Fetch now</button>
+      <span id="config-fetch-result" class="test-inline-result" role="status" aria-live="polite"></span>
     </section>
 
     <!-- Debug -->
@@ -529,69 +511,69 @@
     <section class="card" data-cat="diagnostics">
       <h2>Statistics</h2>
       <div id="stats-display" class="stats-grid"></div>
-      <button id="btn-reset-stats" class="btn secondary">Reset Statistics</button>
+      <button id="btn-reset-stats" class="btn secondary" type="button">Reset statistics</button>
     </section>
 
         <!-- Save -->
         <div class="save-bar">
-          <span id="save-status" class="save-status"></span>
-          <button id="btn-save" class="btn primary">Save Settings</button>
+          <span id="save-status" class="save-status" role="status" aria-live="polite"></span>
+          <button id="btn-save" class="btn primary" type="button">Save settings</button>
         </div>
       </div>
     </main>
   </div>
 
   <!-- Modal for adding/editing custom PII types -->
-  <div id="modal-overlay" class="modal-overlay hidden">
-    <div class="modal">
+  <div id="modal-overlay" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-errors" tabindex="-1">
       <h3 id="modal-title">Add Custom Rule</h3>
       <div class="form-group">
-        <label>Name</label>
+        <label for="modal-name">Name</label>
         <input type="text" id="modal-name" class="input" placeholder="e.g. Student ID">
       </div>
       <div class="form-group">
-        <label>Description</label>
+        <label for="modal-desc">Description</label>
         <input type="text" id="modal-desc" class="input" placeholder="What this rule detects">
       </div>
       <div class="form-group">
-        <label>Replacement Token</label>
+        <label for="modal-token">Replacement token</label>
         <input type="text" id="modal-token" class="input" placeholder="e.g. [REDACTED_STUDENT_ID]">
       </div>
       <div class="form-group">
-        <label>Regex Pattern</label>
+        <label for="modal-regex">Regex pattern</label>
         <input type="text" id="modal-regex" class="input" placeholder="e.g. STU-\d{6}">
       </div>
       <div class="form-group">
-        <label>Regex Flags</label>
+        <label for="modal-flags">Regex flags</label>
         <input type="text" id="modal-flags" class="input input-sm" value="gi">
       </div>
-      <div id="modal-errors" class="error-text"></div>
+      <div id="modal-errors" class="error-text" role="alert" aria-live="assertive"></div>
       <div class="modal-actions">
-        <button id="modal-cancel" class="btn secondary">Cancel</button>
-        <button id="modal-save" class="btn primary">Save Rule</button>
+        <button id="modal-cancel" class="btn secondary" type="button">Cancel</button>
+        <button id="modal-save" class="btn primary" type="button">Save rule</button>
       </div>
     </div>
   </div>
 
   <!-- Modal for hosted provider configuration -->
-  <div id="hosted-modal-overlay" class="modal-overlay hidden">
-    <div class="modal modal-wide">
+  <div id="hosted-modal-overlay" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="hosted-modal-title" aria-describedby="hosted-modal-errors" tabindex="-1">
       <h3 id="hosted-modal-title">Add Hosted Provider</h3>
       <div class="form-group">
-        <label>Display Name</label>
+        <label for="hosted-name">Display name</label>
         <input type="text" id="hosted-name" class="input" placeholder="e.g. Agency LLM (On-Prem)">
       </div>
       <div class="form-group">
-        <label>Endpoint URL</label>
+        <label for="hosted-endpoint">Endpoint URL</label>
         <input type="text" id="hosted-endpoint" class="input" placeholder="https://internal-llm.agency.gov.au/v1">
       </div>
       <div class="form-group">
-        <label>API Key / Token</label>
-        <input type="password" id="hosted-apikey" class="input" placeholder="Bearer token or API key">
+        <label for="hosted-apikey">API key / token</label>
+        <input type="password" id="hosted-apikey" class="input" placeholder="Bearer token or API key" autocomplete="off" spellcheck="false">
       </div>
       <div class="form-row">
         <div class="form-group" style="flex:1">
-          <label>API Mode</label>
+          <label for="hosted-apimode">API mode</label>
           <select id="hosted-apimode" class="input">
             <option value="openai">OpenAI-Compatible (vLLM, TGI, Ollama, Azure OpenAI)</option>
             <option value="pii_api">Custom PII Detection API</option>
@@ -599,23 +581,23 @@
           </select>
         </div>
         <div class="form-group" style="flex:1">
-          <label>Model Name</label>
+          <label for="hosted-model">Model name</label>
           <input type="text" id="hosted-model" class="input" placeholder="e.g. llama-3-70b">
         </div>
       </div>
       <div class="form-row">
         <div class="form-group" style="flex:1">
-          <label>Timeout (ms)</label>
+          <label for="hosted-timeout">Timeout (ms)</label>
           <input type="number" id="hosted-timeout" class="input input-sm" value="30000">
         </div>
         <div class="form-group" style="flex:1">
-          <label>Priority (lower = preferred)</label>
+          <label for="hosted-priority">Priority (lower = preferred)</label>
           <input type="number" id="hosted-priority" class="input input-sm" value="30">
         </div>
       </div>
       <div class="form-group">
-        <label>Capabilities</label>
-        <div class="checkbox-group-inline">
+        <span class="form-label" id="hosted-capabilities-label">Capabilities</span>
+        <div class="checkbox-group-inline" role="group" aria-labelledby="hosted-capabilities-label">
           <label class="checkbox-label"><input type="checkbox" id="hosted-cap-text" checked> Text</label>
           <label class="checkbox-label"><input type="checkbox" id="hosted-cap-docx"> Documents (DOCX)</label>
           <label class="checkbox-label"><input type="checkbox" id="hosted-cap-xlsx"> Spreadsheets (XLSX)</label>
@@ -623,11 +605,11 @@
           <label class="checkbox-label"><input type="checkbox" id="hosted-cap-pdf"> PDF</label>
         </div>
       </div>
-      <div id="hosted-modal-errors" class="error-text"></div>
+      <div id="hosted-modal-errors" class="error-text" role="alert" aria-live="assertive"></div>
       <div class="modal-actions">
-        <button id="hosted-modal-cancel" class="btn secondary">Cancel</button>
-        <button id="hosted-modal-test" class="btn secondary">Test Connection</button>
-        <button id="hosted-modal-save" class="btn primary">Save Provider</button>
+        <button id="hosted-modal-cancel" class="btn secondary" type="button">Cancel</button>
+        <button id="hosted-modal-test" class="btn secondary" type="button">Test connection</button>
+        <button id="hosted-modal-save" class="btn primary" type="button">Save provider</button>
       </div>
     </div>
   </div>

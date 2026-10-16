@@ -10,13 +10,13 @@
  * Protocol (all messages have target: 'offscreen'):
  *
  *   RENDER_AND_OCR
- *     Input:  { fileData: number[], fileName, contentType }
+ *     Input:  { fileDataBase64, fileName, contentType }
  *     Output: { pages: [{pageNumber, text, blocks, width, height}], fullText }
  *     Side:   sends OCR_PROGRESS messages to background during processing
  *
  *   APPLY_REDACTIONS
  *     Input:  { pageRedactions: [{pageNumber, regions: [{x,y,w,h}]}], outputFormat }
- *     Output: { file: number[], format, pageCount }
+ *     Output: { fileBase64, format, pageCount }
  *
  *   OCR_IMAGE
  *     Input:  { imageData: number[], width, height }
@@ -30,11 +30,17 @@
 (() => {
   'use strict';
 
-  // ── Startup diagnostic (always logs, not dependent on debug setting) ─────
-  console.log('[LLSS:offscreen] Phase 1 status:',
-    'Tesseract=' + (typeof Tesseract !== 'undefined' ? 'OK' : 'MISSING'),
-    'LLSS_ocrPages=' + (typeof LLSS_ocrPages !== 'undefined' ? 'OK' : 'MISSING'),
-    '(pdf.js loads in Phase 2 via module bridge)');
+  async function withTimeout(promise, timeoutMs, message) {
+    let timeoutId;
+    try {
+      const timeout = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+      });
+      return await Promise.race([promise, timeout]);
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
 
   // ── Debug logging activation ──────────────────────────────────────────────
   // The offscreen document doesn't load settings.js, so we check storage
@@ -72,17 +78,22 @@
   let cachedFileData = null;
   let cachedContentType = null;
   let cachedPageMeta = null; // [{pageNumber, width, height}] — no canvas data
+  const MAX_PDF_PAGES = 50;
+  const MAX_PAGE_PIXELS = 25_000_000;
+  const MAX_IMAGE_PIXELS = 40_000_000;
+  const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
   let cacheTimeout = null;
-  const CACHE_TTL = 120000; // 2 minutes (large docs take time)
+  const CACHE_TTL = 5 * 60_000;
+  const PROCESSING_CACHE_TTL = 11 * 60_000;
   const RENDER_CHUNK_SIZE = 5; // Render 5 pages at a time to limit memory
 
-  function resetCacheTimer() {
+  function resetCacheTimer(ttl = CACHE_TTL) {
     if (cacheTimeout) clearTimeout(cacheTimeout);
     cacheTimeout = setTimeout(() => {
       cachedFileData = null;
       cachedContentType = null;
       cachedPageMeta = null;
-    }, CACHE_TTL);
+    }, ttl);
   }
 
   function sendProgress(data) {
@@ -100,11 +111,16 @@
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message.target !== 'offscreen') return false;
+    const extensionOrigin = chrome.runtime.getURL('');
+    const trustedSender = _sender?.id === chrome.runtime.id &&
+      !_sender.tab &&
+      (typeof _sender.url !== 'string' || _sender.url.startsWith(extensionOrigin));
+    if (!trustedSender) return false;
 
     switch (message.type) {
       case 'RENDER_AND_OCR': {
         const dbg = typeof LLSS_debug !== 'undefined' ? LLSS_debug : null;
-        if (dbg) dbg.log('offscreen', 'RENDER_AND_OCR received', { contentType: message.contentType, dataLen: message.fileData?.length });
+        if (dbg) dbg.log('offscreen', 'RENDER_AND_OCR received', { contentType: message.contentType });
         handleRenderAndOcr(message)
           .then((result) => {
             if (dbg) dbg.log('offscreen', 'RENDER_AND_OCR complete', { pages: result.pages?.length, textLen: result.fullText?.length });
@@ -141,6 +157,18 @@
           .then(sendResponse)
           .catch((err) => sendResponse({ error: err?.message || String(err) }));
         return true;
+
+      case 'CHECK_TRANSCRIBE_AUDIO': {
+        const transcriber = (typeof LLSS_voiceTranscriber !== 'undefined') ? LLSS_voiceTranscriber : null;
+        (transcriber
+          ? transcriber.nanoAudioAvailability()
+          : Promise.resolve({ ready: false, state: 'unavailable' })
+        ).then((capability) => sendResponse({
+          available: capability.ready === true,
+          state: capability.state || 'unavailable',
+        })).catch(() => sendResponse({ available: false, state: 'unavailable' }));
+        return true;
+      }
 
       // ── Nano proxy messages (from service worker) ─────────────────────
       case 'NANO_CHECK_AVAILABILITY': {
@@ -189,13 +217,13 @@
   // Only OCR results (text + bboxes) are kept in memory.
 
   async function handleRenderAndOcr(message) {
-    const { fileData, contentType } = message;
-    const buffer = new Uint8Array(fileData).buffer;
+    const { fileDataBase64, contentType } = message;
+    const buffer = LLSS_BinaryTransfer.fromBase64(fileDataBase64, 25 * 1024 * 1024).buffer;
 
     // Cache raw data for APPLY_REDACTIONS phase
     cachedFileData = buffer;
     cachedContentType = contentType;
-    resetCacheTimer();
+    resetCacheTimer(PROCESSING_CACHE_TTL);
 
     const ocrAdaptive = globalThis.LLSS_ocrPagesAdaptive;
     const ocrPages = globalThis.LLSS_ocrPages;
@@ -213,10 +241,11 @@
       const bufferCopy = buffer.slice(0);
       const textResult = await tryPdfTextExtraction(bufferCopy);
       if (textResult) {
-        console.log('[LLSS:offscreen] PDF text extraction succeeded:', textResult.fullText.length, 'chars');
+        cachedFileData = null;
+        cachedContentType = null;
+        if (cacheTimeout) clearTimeout(cacheTimeout);
         return textResult;
       }
-      console.log('[LLSS:offscreen] PDF text extraction empty, falling back to render+OCR');
       allOcrResults = await renderAndOcrPdf(buffer, ocrFn);
     } else {
       allOcrResults = await renderAndOcrImage(buffer, contentType, ocrFn);
@@ -228,6 +257,7 @@
       width: r.width,
       height: r.height,
     }));
+    resetCacheTimer();
 
     // Build combined text with page boundaries
     const fullText = allOcrResults.map((r) => r.text).join('\n');
@@ -293,16 +323,36 @@
     try {
       const pdfjsLib = await waitForPdfjs();
       const pdfDoc = await pdfjsLib.getDocument({ data: buffer }).promise;
-      const totalPages = Math.min(pdfDoc.numPages, 50);
+      if (pdfDoc.numPages > MAX_PDF_PAGES) {
+        await pdfDoc.destroy();
+        throw new Error(`PDF exceeds the ${MAX_PDF_PAGES}-page safety limit`);
+      }
+      const totalPages = pdfDoc.numPages;
 
       const pageTexts = [];
       let offset = 0;
       const pages = [];
+      let requiresOcr = false;
+      const imageOperations = new Set([
+        pdfjsLib.OPS.paintImageMaskXObject,
+        pdfjsLib.OPS.paintImageMaskXObjectGroup,
+        pdfjsLib.OPS.paintImageXObject,
+        pdfjsLib.OPS.paintInlineImageXObject,
+        pdfjsLib.OPS.paintInlineImageXObjectGroup,
+        pdfjsLib.OPS.paintImageXObjectRepeat,
+        pdfjsLib.OPS.paintImageMaskXObjectRepeat,
+      ]);
 
       for (let i = 1; i <= totalPages; i++) {
         const page = await pdfDoc.getPage(i);
-        const textContent = await page.getTextContent();
+        const [textContent, operatorList] = await Promise.all([
+          page.getTextContent(),
+          page.getOperatorList(),
+        ]);
         const pageText = textContent.items.map(item => item.str).join(' ');
+        if (pageText.trim().length < 10 || operatorList.fnArray.some(op => imageOperations.has(op))) {
+          requiresOcr = true;
+        }
         page.cleanup();
 
         if (pageText.trim().length > 0) {
@@ -323,11 +373,12 @@
       pdfDoc.destroy();
 
       const fullText = pageTexts.join('\n');
-      if (fullText.trim().length < 10) return null; // Too little text — probably scanned
+      if (requiresOcr || fullText.trim().length < 10) return null;
 
       return { pages, fullText };
     } catch (err) {
-      console.warn('[LLSS:offscreen] PDF text extraction failed:', err?.message || err);
+      const dbg = typeof LLSS_debug !== 'undefined' ? LLSS_debug : null;
+      if (dbg) dbg.warn('offscreen', 'PDF text extraction unavailable; using OCR');
       return null;
     }
   }
@@ -337,13 +388,13 @@
     if (!renderPdf) throw new Error('PDF renderer not available');
 
     // Wait for pdf.js (loaded as deferred ES module)
-    console.log('[LLSS:offscreen] renderAndOcrPdf: waiting for pdf.js...');
     const pdfjsLib = await waitForPdfjs();
-    console.log('[LLSS:offscreen] renderAndOcrPdf: pdfjsLib ready, calling getDocument...');
-    console.log('[LLSS:offscreen] pdfjsWorker check:', typeof globalThis.pdfjsWorker?.WorkerMessageHandler);
     const pdfDoc = await pdfjsLib.getDocument({ data: buffer }).promise;
-    console.log('[LLSS:offscreen] renderAndOcrPdf: PDF loaded, pages:', pdfDoc.numPages);
-    const totalPages = Math.min(pdfDoc.numPages, 50);
+    if (pdfDoc.numPages > MAX_PDF_PAGES) {
+      await pdfDoc.destroy();
+      throw new Error(`PDF exceeds the ${MAX_PDF_PAGES}-page safety limit`);
+    }
+    const totalPages = pdfDoc.numPages;
 
     sendProgress({ phase: 'render_start', totalPages });
 
@@ -357,21 +408,22 @@
 
       // Render this chunk
       for (let i = start; i < end; i++) {
-        console.log(`[LLSS:offscreen] Rendering page ${i + 1}/${totalPages}...`);
         const page = await pdfDoc.getPage(i + 1);
         const viewport = page.getViewport({ scale });
+        if (viewport.width * viewport.height > MAX_PAGE_PIXELS) {
+          throw new Error(`PDF page ${i + 1} exceeds the ${MAX_PAGE_PIXELS.toLocaleString()}-pixel safety limit`);
+        }
         const canvas = document.createElement('canvas');
         canvas.width = Math.floor(viewport.width);
         canvas.height = Math.floor(viewport.height);
         const ctx = canvas.getContext('2d');
 
         // Timeout per page — fake worker can hang on complex pages
-        const renderResult = await Promise.race([
+        await withTimeout(
           page.render({ canvasContext: ctx, viewport, intent: 'print' }).promise,
-          new Promise((_, reject) => setTimeout(() => reject(new Error(`Page ${i + 1} render timed out after 30s`)), 30000)),
-        ]);
-
-        console.log(`[LLSS:offscreen] Page ${i + 1} rendered: ${canvas.width}x${canvas.height}`);
+          30000,
+          `Page ${i + 1} render timed out after 30s`
+        );
 
         chunkPages.push({
           pageNumber: i + 1,
@@ -423,6 +475,11 @@
    */
   async function renderAndOcrImage(buffer, contentType, ocrFn) {
     const canvas = await loadImageToCanvas(buffer, contentType);
+    if (canvas.width * canvas.height > MAX_IMAGE_PIXELS) {
+      canvas.width = 0;
+      canvas.height = 0;
+      throw new Error(`Image exceeds the ${MAX_IMAGE_PIXELS.toLocaleString()}-pixel safety limit`);
+    }
     const imageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
 
     sendProgress({ phase: 'ocr', currentPage: 1, totalPages: 1 });
@@ -480,16 +537,16 @@
     }
 
     // Build output
-    let fileArray;
+    let fileBytes;
     if (outputFormat === 'pdf' && assemblePdf) {
       const pdfBytes = await assemblePdf(redactedCanvases);
-      fileArray = Array.from(pdfBytes);
+      fileBytes = pdfBytes;
     } else {
       // Single image output
       const canvas = redactedCanvases[0];
       const blob = await new Promise((r) => canvas.toBlob(r, outputFormat === 'pdf' ? 'image/png' : outputFormat));
       const buf = await blob.arrayBuffer();
-      fileArray = Array.from(new Uint8Array(buf));
+      fileBytes = new Uint8Array(buf);
     }
 
     // Release canvases
@@ -507,7 +564,7 @@
     sendProgress({ phase: 'complete' });
 
     return {
-      file: fileArray,
+      fileBase64: LLSS_BinaryTransfer.toBase64(fileBytes, 25 * 1024 * 1024),
       format: outputFormat === 'pdf' ? 'application/pdf' : outputFormat,
       pageCount: redactedCanvases.length,
     };
@@ -528,14 +585,18 @@
     for (const meta of cachedPageMeta) {
       const page = await pdfDoc.getPage(meta.pageNumber);
       const viewport = page.getViewport({ scale });
+      if (viewport.width * viewport.height > MAX_PAGE_PIXELS) {
+        throw new Error(`PDF page ${meta.pageNumber} exceeds the pixel safety limit`);
+      }
       const canvas = document.createElement('canvas');
       canvas.width = Math.floor(viewport.width);
       canvas.height = Math.floor(viewport.height);
       const ctx = canvas.getContext('2d');
-      await Promise.race([
+      await withTimeout(
         page.render({ canvasContext: ctx, viewport, intent: 'print' }).promise,
-        new Promise((_, reject) => setTimeout(() => reject(new Error(`Page ${meta.pageNumber} redaction render timed out after 30s`)), 30000)),
-      ]);
+        30000,
+        `Page ${meta.pageNumber} redaction render timed out after 30s`
+      );
 
       // Apply redactions if any
       const regions = redactionMap.get(meta.pageNumber);
@@ -563,6 +624,11 @@
   async function reRenderAndRedactImage(redactionMap) {
     const redactFn = globalThis.LLSS_redactCanvasRegions;
     const canvas = await loadImageToCanvas(cachedFileData, cachedContentType);
+    if (canvas.width * canvas.height > MAX_IMAGE_PIXELS) {
+      canvas.width = 0;
+      canvas.height = 0;
+      throw new Error('Image exceeds the pixel safety limit');
+    }
 
     const regions = redactionMap.get(1);
     if (regions && regions.length > 0) {
@@ -601,13 +667,14 @@
   }
 
   // Transcribe a captured audio clip with the browser's on-device model. The clip is
-  // sent from the content script as raw bytes (JSON-safe number array); no audio
+  // sent from the content script as bounded base64; no audio
   // is stored or uploaded. Returns the plain transcript for the caller to redact.
   async function handleTranscribeAudio(message) {
     const transcriber = (typeof LLSS_voiceTranscriber !== 'undefined') ? LLSS_voiceTranscriber : null;
     if (!transcriber) throw new Error('Voice transcriber not loaded');
-    const bytes = new Uint8Array(message.audioBytes || []);
-    if (!bytes.length) throw new Error('Empty audio clip');
+    const capability = await transcriber.nanoAudioAvailability();
+    if (!capability.ready) throw new Error('On-device audio transcription is not ready on this browser');
+    const bytes = LLSS_BinaryTransfer.fromBase64(message.audioBase64, MAX_AUDIO_BYTES);
     const blob = new Blob([bytes], { type: message.mime || 'audio/webm' });
     const transcript = await transcriber.transcribeWithNano(blob);
     return { transcript };

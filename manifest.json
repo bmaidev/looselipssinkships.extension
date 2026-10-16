@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Loose Lips Sink Ships",
-  "version": "4.3.0",
+  "version": "4.4.0",
   "description": "Enterprise last-mile PII Interception & redaction with local-first processing.",
   "permissions": [
     "storage",
@@ -9,11 +9,16 @@
     "alarms",
     "identity"
   ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
   "storage": {
     "managed_schema": "managed_schema.json"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; object-src 'self'"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; object-src 'none'; base-uri 'none'; frame-src 'none'; connect-src https: http://localhost:* http://127.0.0.1:*"
   },
   "background": {
     "service_worker": "background.js"
@@ -37,8 +42,11 @@
     },
     {
       "matches": ["<all_urls>"],
-      "js": ["lib/debug.js", "lib/browser-ai.js", "lib/pii-types.js", "lib/settings.js", "lib/ai-entity-parser.js", "lib/nano-session.js", "lib/token-vault.js", "content.js"],
-      "css": ["content.css"]
+      "js": ["lib/binary-transfer.js", "lib/debug.js", "lib/token-vault.js", "content.js"],
+      "css": ["content.css"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true
     }
   ],
   "icons": {

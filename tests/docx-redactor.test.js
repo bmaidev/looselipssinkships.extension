@@ -60,6 +60,13 @@ describe("buildRunMap", () => {
       expect(virtualText.substring(run.charStart, run.charEnd)).toBe(run.text);
     }
   });
+
+  test("decodes XML entities while retaining raw XML replacement offsets", () => {
+    const xml = '<w:p><w:r><w:t>Smith &amp; Jones john@example.com</w:t></w:r></w:p>';
+    const { virtualText, runs } = buildRunMap(xml);
+    expect(virtualText).toContain('Smith & Jones john@example.com');
+    expect(runs[0].text).toContain('Smith & Jones');
+  });
 });
 
 // ── applyRedactionsToXml ───────────────────────────────────────────────────
@@ -126,6 +133,30 @@ describe("applyRedactionsToXml", () => {
     // The replacement should be XML-escaped
     expect(result).toContain("T&amp;J&lt;&gt;");
     expect(result).toContain(" and Jerry");
+  });
+
+  test("preserves existing XML entities without double-escaping them", () => {
+    const xml = '<w:p><w:r><w:t>Smith &amp; Jones john@test.com</w:t></w:r></w:p>';
+    const { virtualText, runs } = buildRunMap(xml);
+    const original = 'john@test.com';
+    const result = applyRedactionsToXml(xml, [{
+      index: virtualText.indexOf(original),
+      original,
+      token: '[EMAIL]',
+    }], runs);
+
+    expect(result).toContain('Smith &amp; Jones [EMAIL]');
+    expect(result).not.toContain('&amp;amp;');
+  });
+
+  test("rejects a match that does not map exactly to DOCX text", () => {
+    const xml = '<w:p><w:r><w:t>John Smith</w:t></w:r></w:p>';
+    const { runs } = buildRunMap(xml);
+    expect(() => applyRedactionsToXml(xml, [{
+      index: 1,
+      original: 'John Smith',
+      token: '[NAME]',
+    }], runs)).toThrow(/could not be mapped exactly/);
   });
 
   test("processes matches in correct order (right-to-left)", () => {

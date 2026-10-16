@@ -37,6 +37,12 @@
   transform: scale(1.1);
 }
 
+.llss-redact-btn:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.38);
+  outline-offset: 2px;
+  opacity: 1;
+}
+
 .llss-redact-btn:disabled {
   cursor: wait;
   opacity: 0.4;
@@ -129,29 +135,40 @@
 }
 
 /* Document result overlay */
-.llss-result-overlay {
+.llss-result-backdrop {
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
   z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(3, 15, 28, 0.58);
+  backdrop-filter: blur(3px);
+  font-family: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+.llss-result-overlay {
   width: 90vw;
   max-width: 700px;
   max-height: 80vh;
   background: #fff;
-  border: 2px solid #1a3a5c;
-  border-radius: 8px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 14px;
+  box-shadow: 0 24px 70px rgba(3, 15, 28, 0.34);
   display: flex;
   flex-direction: column;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow: hidden;
+  font-family: inherit;
 }
+
+.llss-result-overlay:focus { outline: none; }
 
 .llss-result-header {
   padding: 12px 16px;
   background: #1a3a5c;
   color: #fff;
-  border-radius: 6px 6px 0 0;
+  border-radius: 13px 13px 0 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -186,14 +203,21 @@
 }
 
 .llss-result-btn {
-  padding: 6px 16px;
+  min-height: 36px;
+  padding: 7px 16px;
   font-size: 12px;
   font-weight: 600;
   border: 1px solid #d1d5db;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
   background: #fff;
   color: #1a3a5c;
+}
+
+.llss-result-btn:focus-visible,
+.llss-ai-banner-close:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.34);
+  outline-offset: 2px;
 }
 
 .llss-result-btn:hover {
@@ -286,12 +310,14 @@
 
 .llss-confirm-dialog {
   background: #fff;
-  border-radius: 10px;
+  border-radius: 14px;
   padding: 20px;
   width: 400px;
   max-width: 90vw;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 24px 70px rgba(3, 15, 28, 0.3);
 }
+
+.llss-confirm-dialog:focus { outline: none; }
 
 .llss-confirm-header {
   display: flex;
@@ -352,4 +378,18 @@
   bottom: auto;
   right: auto;
   z-index: 2147483000;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .llss-redact-btn,
+  .llss-spinner::after,
+  .llss-badge,
+  .llss-toast,
+  .llss-ai-banner,
+  .llss-submit-indicator,
+  .llss-dictate-btn {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

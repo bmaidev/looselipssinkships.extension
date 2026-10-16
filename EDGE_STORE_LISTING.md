@@ -2,7 +2,7 @@
 
 ## Package
 
-Upload `dist/loose-lips-sink-ships-edge-v4.3.0.zip`.
+Upload `dist/loose-lips-sink-ships-edge-v4.4.0.zip`.
 
 ## Name
 
@@ -14,7 +14,7 @@ Enterprise PII redaction for Microsoft Edge. Local-first protection for text, do
 
 ## Description
 
-Loose Lips Sink Ships detects and redacts personally identifiable information before it leaves Microsoft Edge. It is designed for Australian government agencies and enterprise environments, with local-first processing, central policy control, and optional organisation-managed providers.
+Loose Lips Sink Ships helps detect and redact configured PII categories in supported Microsoft Edge text submissions and file uploads. It is designed for Australian organisations and enterprise-managed environments, with local-first processing, central policy control, and optional organisation-managed providers.
 
 LOCAL-FIRST PROTECTION
 
@@ -24,9 +24,9 @@ WHAT IT PROTECTS
 
 • Text fields — detects and redacts PII as users type or paste, and checks form submissions and send-button actions.
 
-• File uploads — scans and replaces files before a protected website receives them.
+• File uploads — inspects supported files and replaces them with a redacted output before release; unsupported or partially inspectable files are blocked by default.
 
-• Documents and images — supports DOCX, XLSX, PDF, images, ZIP archives, source code, structured data, configuration files, logs, and more than 50 recognised extensions.
+• Documents and images — supports DOCX, XLSX, PDF, images, safely inspectable ZIP archives, source code, structured data, configuration files, and logs.
 
 • AI services — identifies ChatGPT, Microsoft Copilot, Claude, Gemini, Grok, DeepSeek, Perplexity, and other AI chat sites, with support for custom organisation domains.
 
@@ -38,15 +38,15 @@ ENTERPRISE CONTROLS
 
 • Push read-only settings through managed storage and lock individual controls.
 
-• Use Microsoft Entra ID OAuth2 PKCE with MFA and Conditional Access for Azure AI Language.
+• Use Microsoft Entra ID delegated OAuth2 PKCE; tenant Conditional Access can require MFA for Azure AI Language.
 
-• Route detection through Azure AI Language, Microsoft Purview, Azure native document processing, or organisation-hosted models when an administrator explicitly configures them.
+• Route detection through Azure AI Language, Azure native document processing, or organisation-hosted models when an administrator explicitly configures them.
 
 • Read Microsoft Information Protection labels and block classified documents according to policy.
 
 PRIVACY AND SECURITY
 
-• No telemetry, analytics, advertising, or user tracking.
+• No product telemetry, analytics, advertising, or user tracking. Configured provider, OAuth, remote-policy, and browser model-download traffic are explicit exceptions.
 
 • No remote executable code. pdf.js, Tesseract.js, OCR language data, and WASM dependencies are bundled in the extension package.
 
@@ -73,7 +73,7 @@ Productivity
 3. AI privacy
 4. document redaction
 5. Australian privacy
-6. Microsoft Purview
+6. sensitivity labels
 7. Azure PII
 
 ## Store assets
@@ -91,7 +91,7 @@ Select **Yes** when Partner Center asks whether the extension accesses, collects
 
 - Purpose: detect and redact PII in website text and user-selected documents before submission or upload.
 - Local data: settings, provider configuration, policy cache, and aggregate redaction counters. Original PII is not persisted.
-- Optional transmission: website text or documents are sent only to Azure, Microsoft Purview, or organisation-hosted endpoints explicitly configured by the user or administrator.
+- Optional transmission: website text or documents are sent only to Azure or organisation-hosted endpoints explicitly configured by the user or administrator. Sensitivity-label checks are local.
 - Selling/sharing: none.
 - Advertising/analytics: none.
 - Remote code: **No**. All executable code and third-party runtime files are packaged with the extension.
@@ -104,6 +104,7 @@ Select **Yes** when Partner Center asks whether the extension accesses, collects
 | `offscreen` | Provides DOM, Canvas, Web Worker, and WASM facilities for local PDF rendering, OCR, image redaction, and supported on-device AI calls. |
 | `alarms` | Schedules managed remote-configuration refresh and OAuth token renewal. |
 | `identity` | Runs the optional Microsoft Entra ID OAuth2 PKCE sign-in flow through `launchWebAuthFlow`. |
+| Optional HTTPS/loopback host access | Requested at setup time for the exact provider or remote-policy origins the user configures; there is no persistent blanket host permission. |
 | `<all_urls>` content scripts | PII can be entered or uploaded on any website. Site filtering and AI-site rules run locally and can narrow protection by policy. |
 | `wasm-unsafe-eval` CSP | Required to instantiate the packaged Tesseract OCR WebAssembly module; it does not permit remote scripts. |
 
@@ -117,4 +118,6 @@ The extension is fully functional with no account and no cloud configuration. To
 4. Use the Redact control or submit guard and confirm the value is replaced by a `[REDACTED_*]` token.
 5. Open the toolbar popup, choose **Redact Files**, and test a synthetic TXT or CSV file.
 
-The browser on-device language model is optional and capability-detected. Microsoft Edge stable devices without the preview Prompt API use the local deterministic engines automatically. Azure, Purview, organisation-hosted providers, and Entra sign-in require customer-owned infrastructure and are not required to verify the extension's core purpose.
+The browser on-device language model is optional and capability-detected. Microsoft Edge devices without a compatible Prompt API use the local deterministic engines automatically. Azure, organisation-hosted providers, and Entra sign-in require customer-owned infrastructure and are not required to verify the extension's core purpose.
+
+This extension reduces accidental disclosure risk but is not a network firewall. Detection can miss novel PII, and a website can observe or transmit text while it is typed. High-assurance deployments should combine it with managed browser policy, egress controls, endpoint DLP, testing, and organisational handling procedures.

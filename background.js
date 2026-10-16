@@ -1,9 +1,10 @@
 // background.js — Core service worker for the Loose Lips Sink Ships extension.
 // Thin orchestrator: loads providers, initialises the pipeline, routes messages.
-// Architecture: LOCAL (browser AI + Regex) → HOSTED (org models) → CLOUD (Azure/Purview)
+// Architecture: LOCAL (browser AI + Regex) → HOSTED (org models) → CLOUD (Azure)
 
 importScripts(
   "lib/debug.js",
+  "lib/binary-transfer.js",
   "lib/browser-ai.js",
   "lib/pii-types.js",
   "lib/regex-engine.js",
@@ -19,7 +20,6 @@ importScripts(
   "lib/providers/local-ai-provider.js",
   "lib/providers/regex-provider.js",
   "lib/providers/azure-pii-provider.js",
-  "lib/providers/purview-provider.js",
   "lib/providers/hosted-model-provider.js",
   "lib/providers/provider-registry.js",
   "lib/documents/document-processor.js",
@@ -32,6 +32,89 @@ importScripts(
 // ── Provider Registry ──────────────────────────────────────────────────────
 
 const registry = new LLSS_ProviderRegistry();
+const MAX_TEXT_CHARS = 1_000_000;
+const MAX_DOCUMENT_BYTES = 25 * 1024 * 1024;
+const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
+
+const PRIVILEGED_MESSAGE_TYPES = new Set([
+  "CHECK_STATUS", "GET_SETTINGS", "SAVE_SETTINGS", "GET_STATS", "RESET_STATS",
+  "TEST_REGEX", "GET_PROVIDERS", "CHECK_PROVIDER", "DESTROY_SESSION",
+  "REFRESH_REMOTE_CONFIG", "AZURE_SIGN_IN", "AZURE_SIGN_OUT", "AZURE_AUTH_STATUS",
+]);
+
+function isTrustedExtensionSender(sender) {
+  const extensionOrigin = chrome.runtime.getURL("");
+  return sender?.id === chrome.runtime.id &&
+    !sender.tab &&
+    (typeof sender.url !== "string" || sender.url.startsWith(extensionOrigin));
+}
+
+function contentSettings(settings) {
+  const allowed = [
+    "detectionMode", "regexAfterAi", "showRedactButton", "enableContentEditable",
+    "enableDocumentUpload", "aiChatGuard", "autoRedact", "submitGuard",
+    "uploadGuard", "voiceDetection", "voiceDictation", "reversibleTokenization",
+  ];
+  return Object.fromEntries(allowed.map((key) => [key, settings[key]]));
+}
+
+async function restrictStorageToExtensionContexts() {
+  const trustedOnly = { accessLevel: "TRUSTED_CONTEXTS" };
+  for (const area of [chrome.storage.local, chrome.storage.managed, chrome.storage.sync]) {
+    if (typeof area?.setAccessLevel !== "function") continue;
+    try {
+      await area.setAccessLevel(trustedOnly);
+    } catch (err) {
+      LLSS_debug.warn("storage", "Could not restrict a storage area:", err.message);
+    }
+  }
+}
+
+function broadcastSettingsUpdated() {
+  chrome.tabs.query({}, (tabs) => {
+    for (const tab of tabs) {
+      if (tab.id == null) continue;
+      chrome.tabs.sendMessage(tab.id, { type: "SETTINGS_UPDATED" }).catch(() => {});
+    }
+  });
+}
+
+function hasPrefix(bytes, prefix) {
+  return prefix.every((value, index) => bytes[index] === value);
+}
+
+function validateDocumentSignature(fileData, contentType) {
+  const bytes = new Uint8Array(fileData);
+  if (['docx', 'xlsx', 'zip'].includes(contentType)) {
+    if (!hasPrefix(bytes, [0x50, 0x4b, 0x03, 0x04])) throw new Error('File content is not a valid ZIP/Office document');
+    if (contentType === 'docx') return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    if (contentType === 'xlsx') return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    return 'application/zip';
+  }
+  if (contentType === 'pdf') {
+    if (!hasPrefix(bytes, [0x25, 0x50, 0x44, 0x46, 0x2d])) throw new Error('File content is not a valid PDF');
+    return 'application/pdf';
+  }
+  if (contentType === 'image') {
+    if (hasPrefix(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return 'image/png';
+    if (hasPrefix(bytes, [0xff, 0xd8, 0xff])) return 'image/jpeg';
+    if (hasPrefix(bytes, [0x47, 0x49, 0x46, 0x38])) return 'image/gif';
+    if (hasPrefix(bytes, [0x42, 0x4d])) return 'image/bmp';
+    if (hasPrefix(bytes, [0x49, 0x49, 0x2a, 0x00]) || hasPrefix(bytes, [0x4d, 0x4d, 0x00, 0x2a])) return 'image/tiff';
+    if (hasPrefix(bytes, [0x52, 0x49, 0x46, 0x46]) && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP') return 'image/webp';
+    throw new Error('File content is not a supported image');
+  }
+  if (['text', 'csv', 'html', 'markdown'].includes(contentType)) {
+    if (bytes.includes(0)) throw new Error('Text document contains binary data');
+    try {
+      new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } catch {
+      throw new Error('Text document is not valid UTF-8');
+    }
+    return contentType === 'csv' ? 'text/csv' : 'text/plain';
+  }
+  throw new Error('Unsupported document type');
+}
 
 /**
  * Initialise providers from current settings.
@@ -85,14 +168,6 @@ async function initProviders() {
     }));
   }
 
-  // Purview — only if configured
-  if (providerConfig.purview) {
-    registry.register(new LLSS_PurviewProvider({
-      enabled: providerConfig.purview.enabled || false,
-      settings: providerConfig.purview,
-    }));
-  }
-
   // Hosted models — can have multiple instances
   const hostedConfigs = providerConfig.hosted || [];
   for (const hostedConfig of hostedConfigs) {
@@ -105,6 +180,26 @@ async function initProviders() {
   }
 
   LLSS_debug.log("init", "Providers initialised:", registry.getAll().map(p => `${p.id}(${p.tier})`).join(", "));
+}
+
+// Provider replacement is destructive (the old sessions are torn down), so
+// serialise refreshes and make all consumers await the current generation.
+let providerInitPromise = Promise.resolve();
+
+function scheduleProviderInit() {
+  const operation = providerInitPromise
+    .catch(() => {})
+    .then(() => initProviders());
+  providerInitPromise = operation;
+  return operation;
+}
+
+async function waitForProviders() {
+  if (extensionInitialization) {
+    await extensionInitialization;
+    return;
+  }
+  await providerInitPromise;
 }
 
 // ── Offscreen Document Management ────────────────────────────────────────────
@@ -175,8 +270,19 @@ async function sendToOffscreen(type, data = {}, timeoutMs = 120000) {
  * delegate Canvas/WASM work without knowing about Chrome's offscreen API.
  */
 const offscreenProcessor = {
-  renderAndOcr: (data) => sendToOffscreen('RENDER_AND_OCR', data),
-  applyRedactions: (data) => sendToOffscreen('APPLY_REDACTIONS', data),
+  renderAndOcr: (data) => sendToOffscreen('RENDER_AND_OCR', {
+    ...data,
+    fileData: undefined,
+    fileDataBase64: LLSS_BinaryTransfer.toBase64(data.fileData, MAX_DOCUMENT_BYTES),
+  }, 10 * 60_000),
+  applyRedactions: async (data) => {
+    const response = await sendToOffscreen('APPLY_REDACTIONS', data, 10 * 60_000);
+    return {
+      ...response,
+      fileBase64: undefined,
+      file: LLSS_BinaryTransfer.fromBase64(response.fileBase64, MAX_DOCUMENT_BYTES),
+    };
+  },
 };
 
 // ── Progress forwarding ─────────────────────────────────────────────────────
@@ -184,6 +290,18 @@ const offscreenProcessor = {
 // messages from the offscreen document to the right content script.
 
 let processingTabId = null;
+let pendingDocumentJobs = 0;
+let documentJobQueue = Promise.resolve();
+
+function enqueueDocumentJob(operation) {
+  if (pendingDocumentJobs >= 2) {
+    return Promise.reject(new Error('Document processor is busy; try again when the current files finish'));
+  }
+  pendingDocumentJobs++;
+  const job = documentJobQueue.catch(() => {}).then(operation);
+  documentJobQueue = job.then(() => undefined, () => undefined);
+  return job.finally(() => { pendingDocumentJobs--; });
+}
 
 // ── Service worker keep-alive ────────────────────────────────────────────────
 // MV3 kills service workers after ~30s of inactivity.  Long-running operations
@@ -220,13 +338,16 @@ async function resetIdleTimer() {
   idleTimer = setTimeout(() => {
     const localAi = registry.get("local_ai");
     if (localAi) localAi.destroy();
-    console.log("[LLSS] Idle timeout — local AI session destroyed.");
+    LLSS_debug.log("session", "Idle timeout — local AI session destroyed.");
   }, timeout);
 }
 
 // ── Main redaction handlers ─────────────────────────────────────────────────
 
 async function handleRedactText(text, options = {}) {
+  if (typeof text !== "string") throw new Error("Text must be a string");
+  if (text.length > MAX_TEXT_CHARS) throw new Error("Text exceeds the 1,000,000 character safety limit");
+  await waitForProviders();
   const settings = await LLSS_loadSettings();
   const piiTypes = LLSS_getMergedPiiTypes(LLSS_PII_TYPES, settings);
 
@@ -249,6 +370,13 @@ async function handleRedactText(text, options = {}) {
 }
 
 async function handleRedactDocument(fileData, fileName, mimeType, options = {}) {
+  if (!(fileData instanceof ArrayBuffer)) throw new Error("Document data is invalid");
+  if (fileData.byteLength === 0) throw new Error("Document is empty");
+  if (fileData.byteLength > MAX_DOCUMENT_BYTES) throw new Error("Document exceeds the 25 MiB safety limit");
+  if (typeof fileName !== "string" || fileName.length === 0 || fileName.length > 255) {
+    throw new Error("Document name is invalid");
+  }
+  await waitForProviders();
   const settings = await LLSS_loadSettings();
   const piiTypes = LLSS_getMergedPiiTypes(LLSS_PII_TYPES, settings);
 
@@ -256,9 +384,10 @@ async function handleRedactDocument(fileData, fileName, mimeType, options = {}) 
   if (!contentType) {
     throw new Error(`Unsupported file type: ${fileName} (${mimeType})`);
   }
+  const verifiedMimeType = validateDocumentSignature(fileData, contentType);
 
   const enabledPiiTypes = piiTypes.filter(t => t.enabled);
-  LLSS_debug.log("doc", `Processing ${contentType}: ${fileName}, ${enabledPiiTypes.length} PII types enabled`);
+  LLSS_debug.log("doc", `Processing ${contentType} document, ${enabledPiiTypes.length} PII types enabled`);
 
   // Classification gate: check if file is blocked by sensitivity label
   if (LLSS_PurviewGate && settings.providers?.purview?.gateEnabled) {
@@ -266,11 +395,11 @@ async function handleRedactDocument(fileData, fileName, mimeType, options = {}) 
       fileData, fileName, mimeType, contentType, settings.providers.purview
     );
     if (!gateResult.allowed) {
-      LLSS_debug.log("purview-gate", `BLOCKED: ${fileName} — ${gateResult.reason}`);
+      LLSS_debug.log("purview-gate", `BLOCKED: ${gateResult.reason}`);
       throw new Error(`CLASSIFICATION_BLOCKED:${gateResult.label || 'Unknown'}:${gateResult.reason}`);
     }
     if (gateResult.severity === 'warned') {
-      LLSS_debug.log("purview-gate", `WARNING: ${fileName} — ${gateResult.reason}`);
+      LLSS_debug.log("purview-gate", `WARNING: ${gateResult.reason}`);
       // Warning is noted but processing continues
     }
   }
@@ -280,16 +409,13 @@ async function handleRedactDocument(fileData, fileName, mimeType, options = {}) 
     piiTypes: enabledPiiTypes,
     settings,
     fileName,
+    verifiedMimeType,
     forceProvider: options.forceProvider,
     forceTier: options.forceTier,
     offscreenProcessor,
   });
 
   LLSS_debug.log("doc", `Result: engine=${result.engine} matches=${result.matches?.length} redacted_len=${result.redacted?.length} steps=[${result.pipelineSteps?.join("→")}]`);
-  if (result.redacted) {
-    LLSS_debug.log("doc", `Extracted text preview (first 200 chars): "${result.redacted.substring(0, 200)}"`);
-  }
-
   // Record statistics
   const engineKey = result.engine.includes("+") ? result.engine.split("+")[0] : result.engine;
   await LLSS_recordRedaction(engineKey, result.matches || [], {
@@ -303,6 +429,14 @@ async function handleRedactDocument(fileData, fileName, mimeType, options = {}) 
 // ── Message listener ────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (!message || typeof message !== "object" || typeof message.type !== "string") {
+    sendResponse({ success: false, error: "Invalid message" });
+    return false;
+  }
+  if (PRIVILEGED_MESSAGE_TYPES.has(message.type) && !isTrustedExtensionSender(_sender)) {
+    sendResponse({ success: false, error: "This operation is only available to extension pages" });
+    return false;
+  }
   resetIdleTimer();
   LLSS_debug.log("msg", `← ${message.type}`, message.target ? `(target: ${message.target})` : "");
 
@@ -310,6 +444,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     case "CHECK_STATUS": {
       (async () => {
         try {
+          await waitForProviders();
           const settings = await LLSS_loadSettings();
           const statusSummary = await registry.getStatusSummary();
           const localAi = statusSummary.find(p => p.id === "local_ai");
@@ -356,46 +491,59 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     case "REDACT_DOCUMENT": {
-      LLSS_debug.log("doc", `REDACT_DOCUMENT: ${message.fileName} (${message.mimeType}, ${message.fileData?.length || 0} bytes)`);
-      startKeepAlive(); // Prevent service worker termination during long OCR
-      // fileData arrives as an array (serialised ArrayBuffer)
-      const buffer = message.fileData instanceof ArrayBuffer
-        ? message.fileData
-        : new Uint8Array(message.fileData).buffer;
+      if (pendingDocumentJobs >= 2) {
+        sendResponse({ success: false, error: "Document processor is busy; try again when the current files finish" });
+        return false;
+      }
+      let buffer;
+      try {
+        const bytes = LLSS_BinaryTransfer.fromBase64(message.fileDataBase64, MAX_DOCUMENT_BYTES);
+        buffer = bytes.buffer;
+      } catch {
+        sendResponse({ success: false, error: "Document data is invalid or exceeds the 25 MiB safety limit" });
+        return false;
+      }
+      LLSS_debug.log("doc", `REDACT_DOCUMENT: ${message.mimeType || "unknown"}, ${buffer.byteLength} bytes`);
+      const requestingTabId = _sender.tab?.id || null;
 
-      // Track the requesting tab so OCR_PROGRESS messages can be forwarded
-      processingTabId = _sender.tab?.id || null;
-
-      handleRedactDocument(buffer, message.fileName, message.mimeType, {
-        forceProvider: message.forceProvider,
-        forceTier: message.forceTier,
-      })
-        .then((result) => {
-          stopKeepAlive();
+      enqueueDocumentJob(async () => {
+        startKeepAlive();
+        processingTabId = requestingTabId;
+        try {
+          const result = await handleRedactDocument(buffer, message.fileName, message.mimeType, {
+            forceProvider: message.forceProvider,
+            forceTier: message.forceTier,
+          });
           LLSS_debug.log("doc", `REDACT_DOCUMENT complete: engine=${result.engine} matches=${result.matches?.length || 0} steps=[${result.pipelineSteps?.join("→")}]`);
-          processingTabId = null;
-          sendResponse({
+          const redactedFile = result.redactedFile
+            ? LLSS_BinaryTransfer.toBase64(new Uint8Array(result.redactedFile), MAX_DOCUMENT_BYTES)
+            : null;
+          return {
             success: true,
-            redacted: result.redacted,
+            redacted: typeof result.redacted === "string" ? result.redacted.slice(0, 10_000) : "",
+            redactedPreviewTruncated: typeof result.redacted === "string" && result.redacted.length > 10_000,
             engine: result.engine,
             tier: result.tier,
             matchCount: result.matches?.length || 0,
             pipelineSteps: result.pipelineSteps,
-            metadata: result.metadata,
-            redactedFile: result.redactedFile || null,
+            redactedFileBase64: redactedFile,
             redactedFileFormat: result.redactedFileFormat || null,
-          });
-        })
-        .catch((err) => {
-          stopKeepAlive();
-          LLSS_debug.error("doc", "REDACT_DOCUMENT failed:", err.message);
+          };
+        } finally {
           processingTabId = null;
+          stopKeepAlive();
+        }
+      })
+        .then(sendResponse)
+        .catch((err) => {
+          LLSS_debug.error("doc", "REDACT_DOCUMENT failed:", err.message);
           sendResponse({ success: false, error: err.message });
         });
       return true;
     }
 
     case "OCR_PROGRESS": {
+      if (!isTrustedExtensionSender(_sender)) return false;
       // Forwarded from offscreen document → content script
       if (processingTabId) {
         chrome.tabs.sendMessage(processingTabId, {
@@ -414,11 +562,29 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       return true;
     }
 
+    case "GET_CONTENT_SETTINGS": {
+      LLSS_loadSettings().then((settings) => sendResponse({ settings: contentSettings(settings) }));
+      return true;
+    }
+
     case "SAVE_SETTINGS": {
       LLSS_saveSettings(message.settings)
         .then(async () => {
           // Reinitialise providers with new config
-          await initProviders();
+          await scheduleProviderInit();
+          broadcastSettingsUpdated();
+          sendResponse({ success: true });
+        })
+        .catch((err) => sendResponse({ success: false, error: err.message }));
+      return true;
+    }
+
+    case "REFRESH_REMOTE_CONFIG": {
+      LLSS_fetchRemoteConfig(message.url)
+        .then(async (config) => {
+          if (!config) throw new Error("Remote configuration could not be loaded");
+          await scheduleProviderInit();
+          broadcastSettingsUpdated();
           sendResponse({ success: true });
         })
         .catch((err) => sendResponse({ success: false, error: err.message }));
@@ -446,14 +612,16 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     case "GET_PROVIDERS": {
-      registry.getStatusSummary()
+      waitForProviders()
+        .then(() => registry.getStatusSummary())
         .then((summary) => sendResponse({ providers: summary }))
         .catch((err) => sendResponse({ providers: [], error: err.message }));
       return true;
     }
 
     case "CHECK_PROVIDER": {
-      registry.checkAvailability(message.providerId, true)
+      waitForProviders()
+        .then(() => registry.checkAvailability(message.providerId, true))
         .then((result) => sendResponse(result))
         .catch((err) => sendResponse({ available: false, status: "no", detail: err.message }));
       return true;
@@ -468,52 +636,60 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     case "RECORD_AUTO_REDACTION": {
-      LLSS_loadStats().then(async (stats) => {
+      LLSS_mutateStats((stats) => {
         stats.autoRedactions = (stats.autoRedactions || 0) + 1;
         stats.totalMatches += (message.matchCount || 0);
-        if (typeof chrome !== "undefined" && chrome.storage) {
-          chrome.storage.local.set({ llss_stats: stats });
-        }
-        sendResponse({ success: true });
-      });
+      }).then(() => sendResponse({ success: true }))
+        .catch(() => sendResponse({ success: false, error: "Could not update statistics" }));
       return true;
     }
 
     case "RECORD_SUBMIT_INTERCEPT": {
-      LLSS_loadStats().then(async (stats) => {
+      LLSS_mutateStats((stats) => {
         stats.submitsIntercepted = (stats.submitsIntercepted || 0) + 1;
-        if (typeof chrome !== "undefined" && chrome.storage) {
-          chrome.storage.local.set({ llss_stats: stats });
-        }
-        sendResponse({ success: true });
-      });
+      }).then(() => sendResponse({ success: true }))
+        .catch(() => sendResponse({ success: false, error: "Could not update statistics" }));
       return true;
     }
 
     case "RECORD_UPLOAD_INTERCEPT": {
-      LLSS_loadStats().then(async (stats) => {
+      LLSS_mutateStats((stats) => {
         stats.uploadsIntercepted = (stats.uploadsIntercepted || 0) + 1;
-        if (typeof chrome !== "undefined" && chrome.storage) {
-          chrome.storage.local.set({ llss_stats: stats });
-        }
-        sendResponse({ success: true });
-      });
+      }).then(() => sendResponse({ success: true }))
+        .catch(() => sendResponse({ success: false, error: "Could not update statistics" }));
+      return true;
+    }
+
+    case "CHECK_DICTATION_CAPABILITY": {
+      sendToOffscreen("CHECK_TRANSCRIBE_AUDIO", {}, 15_000)
+        .then((result) => sendResponse({
+          available: result?.available === true,
+          state: result?.state || "unavailable",
+        }))
+        .catch(() => sendResponse({ available: false, state: "unavailable" }));
       return true;
     }
 
     case "DICTATE_AUDIO": {
-      // Transcribe a captured audio clip on-device (offscreen/Nano), then redact
-      // the transcript through the normal pipeline. Audio never leaves the device.
-      const dictDone = LLSS_debug.time("dictate", `audio (${message.audioBytes?.length || 0} bytes)`);
+      let audioBytes;
+      try {
+        audioBytes = LLSS_BinaryTransfer.fromBase64(message.audioBase64, MAX_AUDIO_BYTES);
+      } catch {
+        sendResponse({ success: false, error: "Audio data is invalid or exceeds the 10 MiB safety limit" });
+        return false;
+      }
+      // Transcribe a captured audio clip with the browser's on-device model,
+      // then redact the transcript through the normal pipeline.
+      const dictDone = LLSS_debug.time("dictate", `audio (${audioBytes.byteLength} bytes)`);
       sendToOffscreen("TRANSCRIBE_AUDIO", {
-        audioBytes: message.audioBytes,
+        audioBase64: message.audioBase64,
         mime: message.mime,
       })
         .then(async (res) => {
           const transcript = (res?.transcript || "").trim();
           if (!transcript) {
             dictDone();
-            sendResponse({ success: true, transcript: "", redacted: "", matchCount: 0 });
+            sendResponse({ success: true, redacted: "", matchCount: 0 });
             return;
           }
           const result = await handleRedactText(transcript, {});
@@ -521,7 +697,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           LLSS_debug.log("dictate", `transcript=${transcript.length}ch engine=${result.engine} matches=${result.matches?.length || 0}`);
           sendResponse({
             success: true,
-            transcript,
             redacted: result.redacted,
             engine: result.engine,
             tier: result.tier,
@@ -537,13 +712,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     case "RECORD_VOICE_CAPTURE_DETECTED": {
-      LLSS_loadStats().then(async (stats) => {
+      LLSS_mutateStats((stats) => {
         stats.voiceCapturesDetected = (stats.voiceCapturesDetected || 0) + 1;
-        if (typeof chrome !== "undefined" && chrome.storage) {
-          chrome.storage.local.set({ llss_stats: stats });
-        }
-        sendResponse({ success: true });
-      });
+      }).then(() => sendResponse({ success: true }))
+        .catch(() => sendResponse({ success: false, error: "Could not update statistics" }));
       return true;
     }
 
@@ -564,7 +736,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
     case "AZURE_SIGN_OUT": {
       LLSS_AzureAuth.signOut()
-        .then(() => { initProviders(); sendResponse({ success: true }); })
+        .then(() => scheduleProviderInit())
+        .then(() => sendResponse({ success: true }))
         .catch((err) => sendResponse({ success: false, error: err.message }));
       return true;
     }
@@ -590,7 +763,7 @@ chrome.runtime.onConnect.addListener((port) => {
     startKeepAlive();
     port.onDisconnect.addListener(() => {
       LLSS_debug.log("keepalive", "Content script disconnected");
-      stopKeepAlive();
+      if (pendingDocumentJobs === 0) stopKeepAlive();
     });
   }
 });
@@ -602,13 +775,8 @@ chrome.runtime.onConnect.addListener((port) => {
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === "managed") {
     LLSS_debug.log("policy", "Managed storage changed:", Object.keys(changes));
-    initProviders();
-    // Broadcast to all tabs so content scripts refresh settings immediately
-    chrome.tabs.query({}, (tabs) => {
-      for (const tab of tabs) {
-        chrome.tabs.sendMessage(tab.id, { type: "SETTINGS_UPDATED" }).catch(() => {});
-      }
-    });
+    scheduleProviderInit().catch((err) => LLSS_debug.error("init", "Policy refresh failed:", err.message));
+    broadcastSettingsUpdated();
   }
 });
 
@@ -624,9 +792,10 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === "llss-remote-config-refresh") {
     const settings = await LLSS_loadSettings();
     if (settings.configUrl) {
-      LLSS_debug.log("remote-config", "Periodic refresh from:", settings.configUrl);
+      LLSS_debug.log("remote-config", "Periodic refresh requested");
       await LLSS_fetchRemoteConfig(settings.configUrl);
-      await initProviders();
+      await scheduleProviderInit();
+      broadcastSettingsUpdated();
     }
   }
 });
@@ -643,11 +812,25 @@ async function setupRemoteConfigAlarm() {
 
 // ── Startup ─────────────────────────────────────────────────────────────────
 
+let extensionInitialization = null;
+function initializeExtension() {
+  if (!extensionInitialization) {
+    extensionInitialization = (async () => {
+      await restrictStorageToExtensionContexts();
+      await setupRemoteConfigAlarm();
+      await scheduleProviderInit();
+    })().catch((err) => {
+      extensionInitialization = null;
+      LLSS_debug.error("init", "Extension initialisation failed:", err.message);
+      throw err;
+    });
+  }
+  return extensionInitialization;
+}
+
 chrome.runtime.onInstalled.addListener(() => {
-  initProviders();
-  setupRemoteConfigAlarm();
+  initializeExtension().catch(() => {});
 });
 
-// Also init on service worker startup (covers restarts)
-initProviders();
-setupRemoteConfigAlarm();
+// Also initialise on service worker startup (covers restarts).
+initializeExtension().catch(() => {});

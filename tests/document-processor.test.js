@@ -4,7 +4,9 @@ const {
   extractMarkdownText,
   MIME_TO_TYPE,
   EXT_TO_TYPE,
+  parseZipEntries,
 } = require("../lib/documents/document-processor");
+const { buildZip } = require("../lib/documents/zip-writer");
 
 describe("detectContentType", () => {
   test("detects from MIME type", () => {
@@ -83,6 +85,11 @@ describe("extractHtmlText", () => {
 
   test("handles empty content", () => {
     expect(extractHtmlText("")).toBe("");
+  });
+
+  test("rejects invalid UTF-8 instead of silently replacing bytes", () => {
+    const invalid = Uint8Array.from([0xc3, 0x28]).buffer;
+    expect(() => extractHtmlText(invalid)).toThrow();
   });
 });
 
@@ -205,5 +212,47 @@ describe("detectContentType — expanded formats", () => {
     expect(detectContentType("script.py")).toBe("text");
     expect(detectContentType("app.tsx")).toBe("text");
     expect(detectContentType("query.sql")).toBe("text");
+  });
+});
+
+describe("ZIP safety limits", () => {
+  test("rejects path traversal entry names", async () => {
+    const zip = await buildZip([{ name: "../secret.txt", data: new TextEncoder().encode("secret") }]);
+    await expect(parseZipEntries(zip.buffer)).rejects.toThrow(/unsafe file name/);
+  });
+
+  test("rejects an entry declaring an oversized expansion", async () => {
+    const header = new ArrayBuffer(30);
+    const view = new DataView(header);
+    view.setUint32(0, 0x04034b50, true);
+    view.setUint32(18, 1, true);
+    view.setUint32(22, 26 * 1024 * 1024, true);
+    await expect(parseZipEntries(header)).rejects.toThrow(/25 MiB safety limit/);
+  });
+
+  test("rejects entries whose data fails the ZIP CRC integrity check", async () => {
+    const zip = await buildZip([{ name: "note.txt", data: new TextEncoder().encode("secret") }]);
+    const tampered = new Uint8Array(zip);
+    const fileNameLength = new DataView(tampered.buffer).getUint16(26, true);
+    tampered[30 + fileNameLength] ^= 0xff;
+    await expect(parseZipEntries(tampered.buffer)).rejects.toThrow(/integrity check/);
+  });
+
+  test("rejects duplicate entry names", async () => {
+    const zip = await buildZip([
+      { name: "note.txt", data: new TextEncoder().encode("one") },
+      { name: "note.txt", data: new TextEncoder().encode("two") },
+    ]);
+    await expect(parseZipEntries(zip.buffer)).rejects.toThrow(/duplicate entry names/);
+  });
+
+  test("preserves legitimate empty files and directory entries", async () => {
+    const zip = await buildZip([
+      { name: "folder/", data: new Uint8Array(0) },
+      { name: "folder/empty.txt", data: new Uint8Array(0) },
+    ]);
+    const entries = await parseZipEntries(zip.buffer);
+    expect(entries.map((entry) => entry.name)).toEqual(["folder/", "folder/empty.txt"]);
+    expect(entries.every((entry) => entry.data.byteLength === 0)).toBe(true);
   });
 });

@@ -93,7 +93,7 @@ Azure's native document API processes PDF, DOCX, and TXT files entirely server-s
 
 | Mode | Source Container | Target Container | Language Resource → Storage |
 |------|---|---|---|
-| **Direct** | URL with SAS token (read + list) | URL with SAS token (write + list) | SAS tokens in job URLs |
+| **Direct** | URL with expiring HTTPS-only read + write SAS | URL with expiring HTTPS-only read + write SAS | SAS tokens in job URLs |
 | **Enterprise** | Plain URL (no SAS) | Plain URL (no SAS) | Language resource managed identity |
 
 ### Enterprise Storage Setup (Managed Identity)
@@ -110,8 +110,8 @@ Azure's native document API processes PDF, DOCX, and TXT files entirely server-s
 ### Direct Storage Setup (SAS Tokens)
 
 1. Azure Portal → Storage Account → Shared access signature
-2. Generate a SAS token for the **source container** with **Read + Write + List** permissions (extension uploads the file, Language API reads it)
-3. Generate a SAS token for the **target container** with **Read + Write + List** permissions (Language API writes results, extension downloads them)
+2. Generate an HTTPS-only, expiring SAS token for the **source container** with **Read + Write** permissions (List is optional; extension uploads the file, Language API reads it)
+3. Generate an HTTPS-only, expiring SAS token for the **target container** with **Read + Write** permissions (List is optional; Language API writes results, extension downloads them)
 4. Paste the full URLs (including `?sv=...` SAS query string) into the extension settings
 
 ### Supported Formats
@@ -139,7 +139,7 @@ Configure the Microsoft Edge `ExtensionSettings` policy through the Microsoft Ed
   "YOUR_EDGE_ADDONS_EXTENSION_ID": {
     "installation_mode": "force_installed",
     "update_url": "https://edge.microsoft.com/extensionwebstorebase/v1/crx",
-    "minimum_version_required": "4.3.0",
+    "minimum_version_required": "4.4.0",
     "toolbar_state": "force_shown"
   }
 }
@@ -275,8 +275,10 @@ Edit the hosted JSON file. All users pick up changes within 6 hours (or immediat
 ### Limitations
 
 - Less secure than managed storage (users could clear local storage via DevTools)
-- Requires HTTPS for the config URL
+- Requires HTTPS for the config URL (loopback HTTP is accepted only for development)
 - Users must manually enter the URL once (cannot be pre-configured without MDM)
+- Remote policy cannot define providers, credentials, network destinations, or debug mode, and cannot enable upload bypass. Use authenticated managed storage for those settings.
+- The extension requests the exact configured HTTPS origin at setup time. Administrators should pre-grant required optional host permissions through browser policy for unattended rollouts.
 
 ---
 
@@ -291,8 +293,8 @@ See `managed_schema.json` in the extension root for the full schema. Key section
 | `providers.azure_pii.nativeDocEnabled` | Enable server-side PDF/DOCX redaction |
 | `providers.azure_pii.sourceContainerUrl` | Blob storage source (with SAS in direct, plain in enterprise) |
 | `providers.azure_pii.targetContainerUrl` | Blob storage target (with SAS in direct, plain in enterprise) |
-| `providers.azure_pii.redactionPolicy` | `entityMask`, `characterMask`, or `noMask` |
-| `providers.purview` | Microsoft Purview DLP configuration |
+| `providers.azure_pii.redactionPolicy` | `entityMask` or `characterMask` |
+| `providers.purview` | Local Microsoft sensitivity-label gate (legacy key name retained for policy compatibility) |
 | `providers.hosted[]` | Organisation-hosted model endpoints |
 | `aiChatGuard` | AI chat service protection settings |
 | `submitGuard` | Form submission interception |
@@ -304,12 +306,11 @@ See `managed_schema.json` in the extension root for the full schema. Key section
 
 ## Classification Gate
 
-The Purview classification gate blocks uploads of documents with restricted sensitivity labels **before any processing occurs**. This is a pre-upload check — blocked files never enter the redaction pipeline.
+The Microsoft sensitivity-label gate blocks uploads of DOCX/XLSX documents with restricted embedded labels **before any processing occurs**. Blocked files never enter the redaction pipeline, and the check does not transmit the file or its metadata.
 
 ### How It Works
 
-1. **Layer 1 (local, instant)**: Reads MSIP_Label_* metadata from DOCX/XLSX file custom properties. No API call needed.
-2. **Layer 2 (optional, API)**: Evaluates classification via Microsoft Graph beta API for deeper policy checking.
+The extension locally reads `MSIP_Label_*` metadata from DOCX/XLSX custom properties. There is no remote Graph classification step. Label policy must be configured explicitly because the extension does not infer tenant policy or classify unlabeled files.
 
 If a document's label matches the `blockedLabels` list, the upload is blocked with a red "Upload Blocked" overlay showing the classification and reason. The user must dismiss the overlay — there is no skip option.
 
@@ -322,8 +323,7 @@ If a document's label matches the `blockedLabels` list, the upload is blocked wi
       "gateEnabled": true,
       "blockedLabels": ["PROTECTED", "SECRET", "TOP SECRET"],
       "warnLabels": ["OFFICIAL: Sensitive"],
-      "blockEncrypted": true,
-      "checkViaApi": false
+      "blockEncrypted": true
     }
   },
   "_locked": {

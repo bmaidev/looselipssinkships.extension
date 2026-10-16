@@ -10,6 +10,36 @@ const providersList = document.getElementById("providers-list");
 const statRedactions = document.getElementById("stat-redactions");
 const statMatches = document.getElementById("stat-matches");
 const statDocs = document.getElementById("stat-docs");
+const resetStatsButton = document.getElementById("btn-reset-stats");
+
+function sendMessage(message, timeoutMs = 4000) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        resolve(null);
+      }
+    }, timeoutMs);
+
+    try {
+      chrome.runtime.sendMessage(message, (response) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (chrome.runtime.lastError) {
+          resolve(null);
+          return;
+        }
+        resolve(response || null);
+      });
+    } catch {
+      clearTimeout(timer);
+      settled = true;
+      resolve(null);
+    }
+  });
+}
 
 // Handles both old API values (readily, after-download) and new API values
 // (available, downloadable, downloading, unavailable).
@@ -38,8 +68,12 @@ const TIER_LABELS = { local: "Local", hosted: "Hosted", cloud: "Cloud" };
 // ── Check Nano availability directly (popup is a document context) ────────
 
 async function checkNanoDirectly() {
-  const result = await LLSS_BrowserAI.checkTextAvailability();
-  return result.status;
+  try {
+    const result = await LLSS_BrowserAI.checkTextAvailability();
+    return result?.status || "unavailable";
+  } catch {
+    return "unavailable";
+  }
 }
 
 // ── Main status fetch ─────────────────────────────────────────────────────
@@ -48,9 +82,7 @@ async function checkNanoDirectly() {
   // Run Nano check and background status fetch in parallel
   const [nanoStatus, bgResponse] = await Promise.all([
     checkNanoDirectly(),
-    new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type: "CHECK_STATUS" }, resolve);
-    }),
+    sendMessage({ type: "CHECK_STATUS" }),
   ]);
 
   // Use direct Nano check for local_ai status (authoritative — we're in
@@ -98,20 +130,35 @@ async function checkNanoDirectly() {
   });
 
   if (providers.length > 0) {
-    providersList.innerHTML = providers.map(p => {
-      const dotCls = p.available ? "on" : "off";
-      const tier = TIER_LABELS[p.tier] || p.tier;
-      return `<div class="provider-row">
-        <span class="provider-dot ${dotCls}"></span>
-        <span class="provider-name">${escapeHtml(p.name)}</span>
-        <span class="provider-tier">${tier}</span>
-      </div>`;
-    }).join("");
+    const fragment = document.createDocumentFragment();
+    for (const provider of providers) {
+      const row = document.createElement("div");
+      row.className = "provider-row";
+      row.setAttribute("role", "listitem");
+
+      const providerDot = document.createElement("span");
+      providerDot.className = `provider-dot ${provider.available ? "on" : "off"}`;
+      providerDot.setAttribute("aria-hidden", "true");
+
+      const name = document.createElement("span");
+      name.className = "provider-name";
+      name.textContent = provider.name || "Provider";
+
+      const tier = document.createElement("span");
+      tier.className = "provider-tier";
+      tier.textContent = TIER_LABELS[provider.tier] || provider.tier || "";
+
+      row.setAttribute("aria-label", `${name.textContent}: ${provider.available ? "available" : "unavailable"}`);
+      row.append(providerDot, name, tier);
+      fragment.appendChild(row);
+    }
+    providersList.replaceChildren(fragment);
   }
 })();
 
 // Fetch stats.
-chrome.runtime.sendMessage({ type: "GET_STATS" }, (response) => {
+(async () => {
+  const response = await sendMessage({ type: "GET_STATS" });
   if (response?.stats) {
     const s = response.stats;
     statRedactions.textContent = s.totalRedactions || 0;
@@ -128,7 +175,7 @@ chrome.runtime.sendMessage({ type: "GET_STATS" }, (response) => {
       guardEl.textContent = guardStats.join(" · ");
     }
   }
-});
+})();
 
 // Open redact tool in a new tab.
 document.getElementById("btn-redact").addEventListener("click", () => {
@@ -141,16 +188,16 @@ document.getElementById("btn-options").addEventListener("click", () => {
 });
 
 // Reset stats.
-document.getElementById("btn-reset-stats").addEventListener("click", () => {
-  chrome.runtime.sendMessage({ type: "RESET_STATS" }, () => {
+resetStatsButton.addEventListener("click", async () => {
+  resetStatsButton.disabled = true;
+  const response = await sendMessage({ type: "RESET_STATS" });
+  if (response !== null) {
     statRedactions.textContent = "0";
     statMatches.textContent = "0";
     statDocs.textContent = "0";
-  });
+    document.getElementById("guard-stats").textContent = "Activity cleared";
+  } else {
+    document.getElementById("guard-stats").textContent = "Could not clear activity";
+  }
+  resetStatsButton.disabled = false;
 });
-
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
-}

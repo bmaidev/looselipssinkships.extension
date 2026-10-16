@@ -6,7 +6,8 @@ Deploy and configure Loose Lips Sink Ships across your organisation.
 
 | Scenario | Mechanism | Config Delivery |
 |----------|-----------|-----------------|
-| **Large enterprise** (Intune, GPO) | Force-install + chrome.storage.managed | Windows Registry / Intune profile |
+| **Microsoft Edge enterprise** (Intune, GPO, Edge management) | Edge Add-ons force-install + managed storage | Edge policy / Windows Registry |
+| **Google Chrome enterprise** (Intune, GPO) | Chrome Web Store force-install + managed storage | Chrome policy / Windows Registry |
 | **Google Workspace** | Admin Console force-install | Managed configuration JSON |
 | **Small business** (no MDM) | Manual install + remote config URL | Hosted JSON file |
 
@@ -80,7 +81,7 @@ Secure, credential-free setup for production enterprise:
 4. **Authentication** → Enable public client flows: **Yes**
 5. **Supported account types**: Single tenant (or multi-tenant for cross-org)
 
-The extension ID is visible at `chrome://extensions` after installation.
+The extension ID is visible at `chrome://extensions` or `edge://extensions` after installation. Chrome Web Store and Microsoft Edge Add-ons assign different IDs, so register both redirect URIs when both browser versions are deployed.
 
 ---
 
@@ -125,7 +126,52 @@ For scanned PDFs and images, the extension falls back to local OCR (Tesseract.js
 
 ---
 
-## Scenario 1: Microsoft Intune
+## Scenario 1: Microsoft Edge (Intune, Edge Management, or GPO)
+
+Use the Edge Add-ons package for a first-class Edge deployment. The Edge store assigns its own extension ID after the first Partner Center submission.
+
+### Force-install from Microsoft Edge Add-ons
+
+Configure the Microsoft Edge `ExtensionSettings` policy through the Microsoft Edge management service, Intune Settings Catalog, or Group Policy:
+
+```json
+{
+  "YOUR_EDGE_ADDONS_EXTENSION_ID": {
+    "installation_mode": "force_installed",
+    "update_url": "https://edge.microsoft.com/extensionwebstorebase/v1/crx",
+    "minimum_version_required": "4.3.0",
+    "toolbar_state": "force_shown"
+  }
+}
+```
+
+In Group Policy, this is **Administrative Templates > Microsoft Edge > Extensions > Configure extension management settings**. The equivalent Windows policy location is `HKLM\SOFTWARE\Policies\Microsoft\Edge`, value `ExtensionSettings` (`REG_SZ`).
+
+### Push managed configuration
+
+Write the settings beneath the Edge extension's third-party policy key:
+
+```text
+HKLM\SOFTWARE\Policies\Microsoft\Edge\3rdparty\extensions\YOUR_EDGE_ADDONS_EXTENSION_ID\policy
+```
+
+Each top-level key maps to a registry value. Nested objects are JSON-encoded `REG_SZ` values, matching the Chrome GPO example later in this document. Use [`edge-intune-policy.json`](edge-intune-policy.json) as the combined installation and configuration template.
+
+After policy refresh, check `edge://policy`, confirm the extension version in `edge://extensions`, and verify locked settings show the **Admin** badge.
+
+### Microsoft Entra application registration
+
+Add this additional SPA redirect URI for the Edge listing:
+
+```text
+https://YOUR_EDGE_ADDONS_EXTENSION_ID.chromiumapp.org/
+```
+
+Do not remove the Chrome redirect URI until the Chrome deployment has been fully retired.
+
+---
+
+## Scenario 2: Google Chrome via Microsoft Intune
 
 ### Force-install the extension
 
@@ -152,7 +198,7 @@ See `intune-policy.json` for the full template.
 
 ---
 
-## Scenario 2: Google Workspace Admin Console
+## Scenario 3: Google Workspace Admin Console
 
 ### Force-install
 
@@ -171,7 +217,7 @@ The configuration is pushed to all managed Chrome browsers on next policy sync.
 
 ---
 
-## Scenario 3: Windows Group Policy (GPO)
+## Scenario 4: Google Chrome via Windows Group Policy (GPO)
 
 ### Force-install
 
@@ -200,7 +246,7 @@ Each top-level key becomes a registry value. Nested objects are JSON-encoded REG
 
 ---
 
-## Scenario 4: Small Business (No MDM)
+## Scenario 5: Small Business (No MDM)
 
 For organisations without GPO, Intune, or Google Workspace admin:
 

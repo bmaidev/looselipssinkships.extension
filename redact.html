@@ -34,7 +34,7 @@
     <!-- On-device Dictation -->
     <section class="card" id="dictation-card" hidden>
       <h2>Dictate (on-device)</h2>
-      <p class="drop-hint" style="margin-bottom:12px">Speech is transcribed locally by Chrome's built-in on-device AI and redacted here — your microphone audio never leaves this device.</p>
+      <p class="drop-hint" style="margin-bottom:12px">Speech is transcribed by a supported browser on-device engine and redacted here — your microphone audio never leaves this device.</p>
       <div class="dictation-controls">
         <button id="btn-dictate" class="btn btn-primary">Start dictation</button>
         <span id="dictation-status" class="dictation-status"></span>
@@ -67,6 +67,7 @@
     </section>
   </div>
 
+  <script src="lib/browser-ai.js"></script>
   <script src="lib/pii-types.js"></script>
   <script src="lib/voice-transcriber.js"></script>
   <script src="lib/documents/document-processor.js"></script>

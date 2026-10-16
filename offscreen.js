@@ -58,9 +58,9 @@
     });
   }
 
-  // ── Nano (LanguageModel) session — proxied from service worker ──────────
+  // ── Browser AI (LanguageModel) session — proxied from service worker ───
   // The service worker cannot access LanguageModel (it's a Worker context).
-  // This offscreen document CAN, so it hosts the Nano session on behalf of
+  // This offscreen document can, so it hosts the model session on behalf of
   // the background script.
 
   const nanoSession = (typeof LLSS_NanoSession !== 'undefined')
@@ -600,7 +600,7 @@
     return { success: true };
   }
 
-  // Transcribe a captured audio clip on-device with Gemini Nano. The clip is
+  // Transcribe a captured audio clip with the browser's on-device model. The clip is
   // sent from the content script as raw bytes (JSON-safe number array); no audio
   // is stored or uploaded. Returns the plain transcript for the caller to redact.
   async function handleTranscribeAudio(message) {

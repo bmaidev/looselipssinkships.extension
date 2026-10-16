@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Loose Lips Sink Ships",
-  "version": "4.2.0",
+  "version": "4.3.0",
   "description": "Enterprise last-mile PII Interception & redaction with local-first processing.",
   "permissions": [
     "storage",
@@ -37,7 +37,7 @@
     },
     {
       "matches": ["<all_urls>"],
-      "js": ["lib/debug.js", "lib/pii-types.js", "lib/settings.js", "lib/ai-entity-parser.js", "lib/nano-session.js", "lib/token-vault.js", "content.js"],
+      "js": ["lib/debug.js", "lib/browser-ai.js", "lib/pii-types.js", "lib/settings.js", "lib/ai-entity-parser.js", "lib/nano-session.js", "lib/token-vault.js", "content.js"],
       "css": ["content.css"]
     }
   ],

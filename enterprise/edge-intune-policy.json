@@ -1,0 +1,53 @@
+{
+  "description": "Loose Lips Sink Ships — Microsoft Edge Add-ons deployment and managed configuration template",
+  "extensionId": "YOUR_EDGE_ADDONS_EXTENSION_ID",
+  "updateUrl": "https://edge.microsoft.com/extensionwebstorebase/v1/crx",
+  "extensionSettings": {
+    "YOUR_EDGE_ADDONS_EXTENSION_ID": {
+      "installation_mode": "force_installed",
+      "update_url": "https://edge.microsoft.com/extensionwebstorebase/v1/crx",
+      "minimum_version_required": "4.3.0",
+      "toolbar_state": "force_shown"
+    }
+  },
+  "managedConfiguration": {
+    "_policyVersion": 2,
+    "_locked": {
+      "detectionMode": true,
+      "aiChatGuard.enabled": true,
+      "submitGuard.enabled": true,
+      "uploadGuard.enabled": true,
+      "providers.azure_pii": true
+    },
+    "detectionMode": "cloud_only",
+    "aiChatGuard": {
+      "enabled": true,
+      "autoRedactOnAiSites": true,
+      "blockSubmitUntilRedacted": true,
+      "interceptUploads": true,
+      "customAiDomains": []
+    },
+    "submitGuard": {
+      "enabled": true,
+      "onlyOnAiSites": true
+    },
+    "uploadGuard": {
+      "enabled": true,
+      "onlyOnAiSites": true
+    },
+    "providers": {
+      "azure_pii": {
+        "enabled": true,
+        "connectionMode": "enterprise",
+        "endpoint": "https://YOUR-INSTANCE.cognitiveservices.azure.com",
+        "tenantId": "YOUR_TENANT_ID",
+        "clientId": "YOUR_APP_REGISTRATION_CLIENT_ID",
+        "language": "en",
+        "nativeDocEnabled": true,
+        "sourceContainerUrl": "https://YOUR-STORAGE.blob.core.windows.net/llss-source",
+        "targetContainerUrl": "https://YOUR-STORAGE.blob.core.windows.net/llss-target",
+        "redactionPolicy": "entityMask"
+      }
+    }
+  }
+}

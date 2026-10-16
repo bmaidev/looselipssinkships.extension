@@ -1,74 +1,98 @@
 #!/usr/bin/env bash
-# build.sh — Package the extension for Chrome Web Store submission.
+# Package store-ready Chrome and Microsoft Edge Manifest V3 extensions.
 #
 # Usage:
-#   chmod +x build.sh && ./build.sh
-#
-# Output:
-#   dist/loose-lips-sink-ships-v{version}.zip
-#
-# Excludes: .git, tests, node_modules, .claude, server, enterprise templates,
-#           package.json, build scripts, and other dev-only files.
+#   ./build.sh              # both browser packages
+#   ./build.sh chrome       # Chrome Web Store package only
+#   ./build.sh edge         # Microsoft Edge Add-ons package only
 
 set -euo pipefail
 
-VERSION=$(python3 -c "import json; print(json.load(open('manifest.json'))['version'])")
-OUTDIR="dist"
-OUTFILE="${OUTDIR}/loose-lips-sink-ships-v${VERSION}.zip"
+ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd "${ROOT_DIR}"
 
-echo "=== Loose Lips Sink Ships — Build v${VERSION} ==="
-echo ""
+TARGET="${1:-all}"
+case "${TARGET}" in
+  all) TARGETS=(chrome edge) ;;
+  chrome|edge) TARGETS=("${TARGET}") ;;
+  *)
+    echo "Usage: ./build.sh [all|chrome|edge]" >&2
+    exit 2
+    ;;
+esac
 
-# Clean previous builds
-rm -rf "${OUTDIR}"
+VERSION="$(node -p "require('./manifest.json').version")"
+OUTDIR="${ROOT_DIR}/dist"
+BUILD_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/llss-build.XXXXXX")"
+trap 'rm -rf -- "${BUILD_ROOT}"' EXIT
+
+PACKAGE_SOURCES=(
+  manifest.json
+  managed_schema.json
+  background.js
+  content.js
+  content.css
+  offscreen.html
+  offscreen.js
+  popup.html
+  popup.js
+  redact.html
+  redact.js
+  redact.css
+  options.html
+  options.js
+  options.css
+  LICENSE.md
+  THIRD_PARTY_NOTICES.md
+  lib
+  vendor
+  icons
+)
+
+if [[ ! -f "vendor/tesseract/tesseract.min.js" ]]; then
+  echo "ERROR: Vendor files are missing. Run vendor/setup.sh before packaging." >&2
+  exit 1
+fi
+
 mkdir -p "${OUTDIR}"
+echo "Loose Lips Sink Ships — packaging v${VERSION}"
 
-# Check vendor files exist
-if [ ! -f "vendor/tesseract/tesseract.min.js" ]; then
-  echo "WARNING: Vendor files missing. Run vendor/setup.sh first for PDF/image support."
-  echo ""
-fi
+for browser in "${TARGETS[@]}"; do
+  stage="${BUILD_ROOT}/${browser}"
+  mkdir -p "${stage}"
 
-# Create the zip — include only extension files
-zip -r "${OUTFILE}" \
-  manifest.json \
-  managed_schema.json \
-  background.js \
-  content.js \
-  content.css \
-  offscreen.html \
-  offscreen.js \
-  popup.html \
-  popup.js \
-  redact.html \
-  redact.js \
-  redact.css \
-  options.html \
-  options.js \
-  options.css \
-  lib/ \
-  vendor/ \
-  icons/ \
-  -x "*.DS_Store" \
-  -x "__MACOSX/*" \
-  -x "vendor/setup.sh" \
-  2>/dev/null
+  for source in "${PACKAGE_SOURCES[@]}"; do
+    cp -Rp "${source}" "${stage}/"
+  done
+  # Remove known development-only files from the isolated staging directory.
+  find "${stage}" -name .DS_Store -type f -delete
+  rm -f -- "${stage}/vendor/setup.sh"
 
-# Show results
-echo ""
-echo "=== Build complete ==="
-FILESIZE=$(du -h "${OUTFILE}" | cut -f1)
-echo "  Output: ${OUTFILE}"
-echo "  Size:   ${FILESIZE}"
-echo "  Version: ${VERSION}"
+  if [[ "${browser}" == "edge" ]]; then
+    node scripts/build-manifest.js \
+      manifest.json manifests/edge.json "${stage}/manifest.json" edge
+    outfile="${OUTDIR}/loose-lips-sink-ships-edge-v${VERSION}.zip"
+  else
+    outfile="${OUTDIR}/loose-lips-sink-ships-v${VERSION}.zip"
+  fi
 
-# Warn if too large
-BYTES=$(wc -c < "${OUTFILE}" | tr -d ' ')
-if [ "${BYTES}" -gt 20000000 ]; then
-  echo ""
-  echo "WARNING: File exceeds 20MB Chrome Web Store limit!"
-fi
+  node scripts/validate-extension.js "${stage}" "${browser}" --package
+  # ZIP records DOS timestamps. Normalising staged files makes repeated builds
+  # from the same source byte-for-byte reproducible across Chrome and Edge.
+  find "${stage}" -type f -exec touch -t 198001010000 {} +
+  rm -f -- "${outfile}"
+  (
+    cd "${stage}"
+    find . -type f -print | LC_ALL=C sort | zip -q -X "${outfile}" -@
+  )
+  unzip -tq "${outfile}" >/dev/null
 
-echo ""
-echo "Upload this file to the Chrome Web Store Developer Dashboard:"
-echo "  https://chrome.google.com/webstore/devconsole"
+  bytes="$(wc -c < "${outfile}" | tr -d ' ')"
+  size="$(du -h "${outfile}" | cut -f1)"
+  if [[ "${bytes}" -gt 20000000 ]]; then
+    echo "WARNING: ${browser} package exceeds the conservative 20 MB review threshold." >&2
+  fi
+  echo "  ${browser}: ${outfile} (${size})"
+done
+
+echo "Package validation and ZIP integrity checks passed."

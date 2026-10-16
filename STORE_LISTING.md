@@ -40,7 +40,7 @@ All PII detection runs on your device by default — using Chrome's built-in Gem
 • Microphone is used only for on-device voice dictation — audio is transcribed locally by Chrome's built-in AI and is never recorded or uploaded
 • Cloud providers are opt-in and require explicit configuration
 • API credentials stored in memory-only session storage (Enterprise mode)
-• 360 automated tests
+• Comprehensive automated test suite
 
 Source available (Functional Source License): https://github.com/bmaidev/looselipssinkships.extension
 

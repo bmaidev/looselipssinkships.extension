@@ -1,8 +1,8 @@
 # Loose Lips Sink Ships
 
-**Enterprise-grade PII redaction for Chrome.** Local-first processing with progressive escalation to hosted and cloud providers. Designed for Australian government agencies and secure enterprise environments.
+**Enterprise-grade PII redaction for Google Chrome and Microsoft Edge.** Local-first processing with progressive escalation to hosted and cloud providers. Designed for Australian government agencies and secure enterprise environments.
 
-> **Zero PII leaves the browser** unless you explicitly configure a cloud provider. Every document, every text field, every file upload — scanned for personally identifiable information before it reaches the network.
+> **Zero PII leaves the browser by default.** External processing happens only when a user or administrator explicitly configures a hosted or cloud provider. Every document, text field, and file upload is scanned before it reaches the destination.
 
 ---
 
@@ -28,8 +28,8 @@
   ┌────▼────┐ ┌──▼─────┐ ┌─▼──────────┐
   │  LOCAL  │ │ HOSTED │ │   CLOUD    │
   │         │ │        │ │            │
-  │ Gemini  │ │ Your   │ │ Azure PII  │
-  │ Nano    │ │ LLMs   │ │ Detection  │
+  │ Browser │ │ Your   │ │ Azure PII  │
+  │ AI      │ │ LLMs   │ │ Detection  │
   │         │ │        │ │            │
   │ Regex   │ │ OCR    │ │ Azure      │
   │ Engine  │ │ Server │ │ Native Doc │
@@ -40,7 +40,7 @@
   └─────────┘ └────────┘ └────────────┘
 ```
 
-**Detection modes:** Auto (local-first) | AI Only | Regex Only | Cloud Only
+**Detection modes:** Auto (local-first) | AI Only | Regex Only | Hosted Only | Cloud Only
 
 ---
 
@@ -67,10 +67,10 @@
 ## Key Features
 
 ### Real-Time Text Protection
-- **Direct Nano redaction** in text fields via Chrome's Prompt API — zero IPC, instant
+- **Direct browser-AI redaction** in text fields through the cross-browser Prompt API when available — zero IPC, instant
 - **Auto-redact on type/paste** with smart debouncing (configurable 500ms–5s)
 - **Submit interception** — catches Enter key, form submit, and send button clicks
-- **Conversational response guard** — detects when Nano goes off-script and returns original text
+- **Conversational response guard** — detects when a local language model goes off-script and returns the original text
 
 ### Upload Interception ("Security Handshake")
 - **Shadow DOM overlay** with scanning animation while processing
@@ -86,9 +86,9 @@
 
 ### Voice Dictation
 - **Dictation leak detection (observe-only)** — on any site, detects when a page captures the microphone in a way that would upload it (`getUserMedia` feeding a `MediaRecorder`), i.e. server-side dictation where spoken PII leaves the browser as audio before any text guard sees it. Local, observe-only — no audio is recorded or sent. Optional warning toast on leak.
-- **Inline on-device dictation** — adds a green microphone button to AI chat composers. Speak, and audio is transcribed **on-device** (Gemini Nano via the Prompt API's audio input; on-device Web Speech where available), redacted through the normal pipeline, and the clean text is inserted. Audio **never leaves the device**; cloud transcription is never used. Also available in the Redact Files tool as a "Dictate (on-device)" panel.
+- **Inline on-device dictation** — adds a green microphone button to AI chat composers when the browser exposes a supported local Web Speech or multimodal Prompt API. Speech is redacted through the normal pipeline before insertion. Audio **never leaves the device**; cloud transcription is never used.
 - **Native dictation-button suppression** — hides the site's own dictation button (e.g. ChatGPT's "Start dictation", Claude's "Press and hold to record") so only the safe on-device button remains. Targets dictation buttons, not full realtime voice mode.
-- **Requires** Chrome 138+ with the on-device model (Gemini Nano) available; transcription runs in the offscreen document.
+- **Capability-gated** — the dictation control remains unavailable unless an on-device transcription engine is genuinely ready. Text, upload, and document protection are unaffected.
 
 ### Standalone Redaction Tool
 Click **"Redact Files"** in the popup to open a dedicated tab:
@@ -109,7 +109,7 @@ Click **"Redact Files"** in the popup to open a dedicated tab:
 
 | Engine | Tier | Description |
 |--------|------|-------------|
-| **Gemini Nano** | Local | Chrome's on-device AI via the Prompt API. Zero network calls. |
+| **Browser On-Device AI** | Local | Gemini Nano in Chrome or Microsoft Edge's local model through the Prompt API. Zero network calls. |
 | **Regex Engine** | Local | 17 built-in Australian PII patterns. Always available. |
 | **Vector Names** | Local | Heuristic name detection via trigram similarity. |
 | **Azure AI Language** | Cloud | Microsoft's PII API with Australian entity support. Direct (API key) or Enterprise (OAuth2 PKCE) auth. |
@@ -133,7 +133,9 @@ Custom patterns can be added via the Settings page.
 
 ## Installation
 
-**Live on the Chrome Web Store:** [Loose Lips Sink Ships](https://chromewebstore.google.com/detail/loose-lips-sink-ships/bkjmleaamcpimcnlgfcejocbfgbhgldp) — click **Add to Chrome**.
+**Chrome:** [Install from the Chrome Web Store](https://chromewebstore.google.com/detail/loose-lips-sink-ships/bkjmleaamcpimcnlgfcejocbfgbhgldp).
+
+**Microsoft Edge:** the Microsoft Edge Add-ons package and submission material are ready in this repository. See [EDGE_RELEASE.md](EDGE_RELEASE.md) for the Partner Center and 700+ user rollout runbook.
 
 To build from source or side-load a development copy:
 
@@ -145,29 +147,40 @@ git clone https://github.com/bmaidev/looselipssinkships.extension.git
 cd looselipssinkships.extension
 chmod +x vendor/setup.sh && ./vendor/setup.sh
 
-# 3. Load in Chrome
-#    → chrome://extensions → Enable Developer mode → Load unpacked
+# 3. Load unpacked
+#    Chrome → chrome://extensions
+#    Edge   → edge://extensions
+#    Enable Developer mode → Load unpacked → select the repository root
 ```
 
-**Requirements:**
-- Chrome 128+ (Chrome 136+ recommended)
-- `chrome://flags/#optimization-guide-on-device-model` — Enabled
-- `chrome://flags/#prompt-api-for-gemini-nano` — Enabled
+**Core requirements:**
+- A current desktop release of Google Chrome or Microsoft Edge
+- Vendor files in `vendor/` for local PDF/image OCR (already included in store packages)
 
-The extension works without Nano — it falls back to regex. Vendor dependencies are optional — without them, PDF/image processing routes to hosted/cloud.
+The extension works without a browser language model: deterministic regex and vector detection remain local and available. Chrome's Prompt API can use Gemini Nano. Microsoft Edge exposes its own Prompt API model in supported preview channels/devices; availability is detected at runtime and never assumed.
+
+### Store Packages
+
+```bash
+npm run build         # Chrome and Edge
+npm run build:chrome  # dist/loose-lips-sink-ships-v4.3.0.zip
+npm run build:edge    # dist/loose-lips-sink-ships-edge-v4.3.0.zip
+```
+
+Every build validates manifest references, package contents, local-only scripts, and browser API compatibility before creating the ZIP.
 
 ---
 
 ## Configuration
 
 ### Quick Start
-Works out of the box. Gemini Nano + regex with AI Chat Guard enabled by default. The green dot in the popup confirms Nano is available.
+Works out of the box with local regex and AI Chat Guard enabled. When the browser's on-device model is available, Auto mode can use it as an additional local provider; the popup reports its live status.
 
 ### Detection Modes
 
 | Mode | Behaviour |
 |------|-----------|
-| **Auto** (default) | Nano → Regex → Hosted → Cloud |
+| **Auto** (default) | Browser AI → Regex → Hosted → Cloud |
 | **AI Only** | AI providers across all tiers |
 | **Regex Only** | Pattern matching only |
 | **Cloud Only** | Azure PII / Purview first, regex fallback |
@@ -191,7 +204,7 @@ See [`enterprise/README.md`](enterprise/README.md) for full deployment guides (I
 
 ### Managed Configuration
 
-Admins can push settings via Chrome's managed storage API and lock specific settings:
+Admins can push settings through Chromium managed storage in Chrome or Edge and lock specific settings:
 
 ```json
 {
@@ -208,7 +221,7 @@ Locked settings appear as disabled with an **Admin** badge in the options page.
 
 ## Privacy & Security
 
-- **Local-first.** Nano and regex run entirely on-device. Text field redaction happens in the content script — text never leaves the page context.
+- **Local-first.** Browser AI, regex, vector detection, OCR, and pixel redaction run on-device. Text field redaction happens in the content script.
 - **No telemetry.** Zero analytics, zero phone-home.
 - **Enterprise providers are opt-in.** Cloud connections only activate when explicitly configured.
 - **Provably secure.** Image/PDF output has no hidden text layer. DOCX redaction removes PII from the XML. ZIP processing redacts every text file inside.
@@ -223,13 +236,14 @@ Locked settings appear as disabled with an **Admin** badge in the options page.
 ```
 ├── manifest.json                    # MV3 manifest with managed storage schema
 ├── background.js                    # Service worker — routing, providers, keep-alive
-├── content.js                       # Content script — guards, Nano, interception
-├── offscreen.html / offscreen.js    # Offscreen Document — Canvas, WASM, PDF, Nano proxy
+├── content.js                       # Content script — guards, local AI, interception
+├── offscreen.html / offscreen.js    # Offscreen Document — Canvas, WASM, PDF, AI proxy
 ├── popup.html / popup.js            # Toolbar popup — status, stats, "Redact Files"
 ├── redact.html / redact.js / .css   # Standalone batch redaction tool
 ├── options.html / options.js / .css # Full settings page with managed lock visuals
-├── managed_schema.json              # Chrome managed storage JSON Schema
+├── managed_schema.json              # Chromium managed storage JSON Schema
 ├── lib/
+│   ├── browser-ai.js                # Chrome/Edge Prompt API compatibility layer
 │   ├── debug.js                     # Debug logger ([LLSS:subsystem])
 │   ├── azure-auth.js                # OAuth2 PKCE for Azure AD
 │   ├── azure-native-doc.js          # Native document PII via Azure Blob Storage
@@ -243,7 +257,7 @@ Locked settings appear as disabled with an **Admin** badge in the options page.
 │   ├── providers/
 │   │   ├── base-provider.js         # Provider interface
 │   │   ├── provider-registry.js     # Lifecycle + routing
-│   │   ├── local-ai-provider.js     # Gemini Nano (direct or offscreen proxy)
+│   │   ├── local-ai-provider.js     # Browser AI (direct or offscreen proxy)
 │   │   ├── regex-provider.js        # Regex + vector
 │   │   ├── azure-pii-provider.js    # Azure PII (direct API key or OAuth2)
 │   │   ├── purview-provider.js      # Microsoft Purview DLP
@@ -260,12 +274,15 @@ Locked settings appear as disabled with an **Admin** badge in the options page.
 │   ├── README.md                    # Deployment guide (Intune/GPO/Workspace)
 │   ├── workspace-config.json        # Google Workspace template
 │   ├── intune-policy.json           # Intune template
+│   ├── edge-intune-policy.json      # Edge force-install + managed config
 │   └── small-business-config.json   # Remote config template
 ├── vendor/
 │   ├── setup.sh                     # Downloads pdf.js + Tesseract.js
 │   ├── pdf-bridge.js                # ES module bridge for pdf.js
 │   └── tesseract/                   # WASM core + trained data
-├── tests/                           # 285 tests (Jest)
+├── manifests/edge.json              # Edge store metadata override
+├── scripts/                         # Package creation and validation
+├── tests/                           # Jest test suite
 └── icons/
 ```
 
@@ -275,9 +292,10 @@ Locked settings appear as disabled with an **Admin** badge in the options page.
 
 ```bash
 npm install
-npm test              # 285 tests
+npm test              # Full test suite
 npm run test:watch    # Watch mode
 npm run test:coverage # Coverage report
+npm run build:edge    # Validated Microsoft Edge Add-ons ZIP
 ```
 
 ### Adding Custom PII Types

@@ -277,26 +277,10 @@ function appendAdminBadge(container) {
 
 /**
  * Check Nano availability directly from the options page (document context).
- * The options page is an extension page where LanguageModel IS available.
+ * The options page is a document context where LanguageModel may be exposed.
  */
 async function checkNanoDirectly() {
-  if (typeof LanguageModel === "undefined") return { available: false, status: "no", detail: "LanguageModel API not present" };
-  try {
-    const status = await LanguageModel.availability({
-      expectedInputs: [{ type: "text", languages: ["en"] }],
-      expectedOutputs: [{ type: "text", languages: ["en"] }],
-    });
-    const available = status === "available" || status === "downloadable"
-                   || status === "readily"   || status === "after-download";
-    const detailMap = {
-      available: "Model ready", readily: "Model ready",
-      downloadable: "Model available after download", "after-download": "Model available after download",
-      downloading: "Model is downloading",
-    };
-    return { available, status, detail: detailMap[status] || "Model not available" };
-  } catch (err) {
-    return { available: false, status: "no", detail: err.message };
-  }
+  return LLSS_BrowserAI.checkTextAvailability();
 }
 
 async function loadProviderStatus() {
@@ -1159,13 +1143,12 @@ function setupCategoryNav() {
 }
 setupCategoryNav();
 
-// Show a note when this browser doesn't provide Chrome's on-device AI
-// (e.g. Edge). Gemini Nano / the Prompt API back both local AI redaction and
-// on-device voice dictation; without it, redaction falls back to regex/cloud.
+// Show a note when this browser/device doesn't expose the on-device Prompt API.
+// Core protection remains active through regex and configured providers.
 function detectAiCapability() {
   const note = document.getElementById("ai-capability-note");
   if (!note) return;
-  const hasOnDeviceAi = typeof LanguageModel !== "undefined";
+  const hasOnDeviceAi = LLSS_BrowserAI.hasLanguageModel();
   note.classList.toggle("hidden", hasOnDeviceAi);
 }
 detectAiCapability();

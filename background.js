@@ -1,9 +1,10 @@
 // background.js — Core service worker for the Loose Lips Sink Ships extension.
 // Thin orchestrator: loads providers, initialises the pipeline, routes messages.
-// Architecture: LOCAL (Gemini Nano + Regex) → HOSTED (org models) → CLOUD (Azure/Purview)
+// Architecture: LOCAL (browser AI + Regex) → HOSTED (org models) → CLOUD (Azure/Purview)
 
 importScripts(
   "lib/debug.js",
+  "lib/browser-ai.js",
   "lib/pii-types.js",
   "lib/regex-engine.js",
   "lib/vector-engine.js",
@@ -45,7 +46,7 @@ async function initProviders() {
   if (settings.debugMode) LLSS_debug.setEnabled(true);
   LLSS_debug.log("init", "Initialising providers", { debugMode: settings.debugMode });
 
-  // Local AI (Gemini Nano) — always registered, enabled by default.
+  // Browser on-device AI — always registered, enabled by default.
   // Service workers cannot access LanguageModel, so install a proxy that
   // routes availability checks and redaction calls through the offscreen
   // document (which has a full document context).

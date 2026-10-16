@@ -1,5 +1,5 @@
 // popup.js — Queries provider status, checks Nano availability directly
-// (popup runs in a document context where LanguageModel is available),
+// (popup runs in a document context where LanguageModel may be available),
 // and shows redaction statistics.
 
 const dot = document.getElementById("status-dot");
@@ -15,12 +15,12 @@ const statDocs = document.getElementById("stat-docs");
 // (available, downloadable, downloading, unavailable).
 const STATUS_MAP = {
   // New Prompt API values
-  available:    { dotClass: "ready",       label: "AI Model Ready",         detail: "Local Gemini Nano model is loaded and ready." },
+  available:    { dotClass: "ready",       label: "AI Model Ready",         detail: "The browser's local model is loaded and ready." },
   downloadable: { dotClass: "downloading", label: "Downloading Model...",   detail: "The model is being downloaded. This is a one-time setup." },
   downloading:  { dotClass: "downloading", label: "Downloading Model...",   detail: "The model is being downloaded. This is a one-time setup." },
   unavailable:  { dotClass: "unavailable", label: "Local AI Unavailable",   detail: "Using regex fallback and configured providers." },
   // Legacy values (older Chrome builds)
-  readily:          { dotClass: "ready",       label: "AI Model Ready",       detail: "Local Gemini Nano model is loaded and ready." },
+  readily:          { dotClass: "ready",       label: "AI Model Ready",       detail: "The browser's local model is loaded and ready." },
   "after-download": { dotClass: "downloading", label: "Downloading Model...", detail: "The model is being downloaded. This is a one-time setup." },
   no:               { dotClass: "unavailable", label: "Local AI Unavailable", detail: "Using regex fallback and configured providers." },
 };
@@ -38,15 +38,8 @@ const TIER_LABELS = { local: "Local", hosted: "Hosted", cloud: "Cloud" };
 // ── Check Nano availability directly (popup is a document context) ────────
 
 async function checkNanoDirectly() {
-  if (typeof LanguageModel === "undefined") return "no";
-  try {
-    return await LanguageModel.availability({
-      expectedInputs: [{ type: "text", languages: ["en"] }],
-      expectedOutputs: [{ type: "text", languages: ["en"] }],
-    });
-  } catch {
-    return "no";
-  }
+  const result = await LLSS_BrowserAI.checkTextAvailability();
+  return result.status;
 }
 
 // ── Main status fetch ─────────────────────────────────────────────────────

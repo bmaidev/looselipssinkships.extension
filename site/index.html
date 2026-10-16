@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Loose Lips Sink Ships — Enterprise PII Redaction for Chrome</title>
-<meta name="description" content="Local-first PII redaction for Chrome. Protect sensitive information before it leaves the browser. Built for Australian government and enterprise environments.">
+<title>Loose Lips Sink Ships — Enterprise PII Redaction for Chrome and Edge</title>
+<meta name="description" content="Local-first PII redaction for Google Chrome and Microsoft Edge. Protect sensitive information before it leaves the browser.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
@@ -314,7 +314,7 @@ footer{
       <li><a href="#support">Support</a></li>
       <li><a href="/wiki/">Wiki</a></li>
     </ul>
-    <a href="https://chromewebstore.google.com/detail/loose-lips-sink-ships/bkjmleaamcpimcnlgfcejocbfgbhgldp" class="nav-cta" target="_blank" rel="noopener">Install Extension</a>
+    <a href="https://chromewebstore.google.com/detail/loose-lips-sink-ships/bkjmleaamcpimcnlgfcejocbfgbhgldp" class="nav-cta" target="_blank" rel="noopener">Install for Chrome</a>
   </div>
 </nav>
 
@@ -324,8 +324,8 @@ footer{
 <section class="hero" id="home">
   <div class="hero-inner">
     <div class="hero-eyebrow">Local-First PII Protection</div>
-    <h1>Zero PII leaves<br>the browser. <em>Ever.</em></h1>
-    <p class="hero-sub">Enterprise-grade redaction that runs entirely on-device. Every text field, every document, every upload &mdash; scanned for personally identifiable information before it reaches the network.</p>
+    <h1>Stop PII before<br>it leaves the browser.</h1>
+    <p class="hero-sub">Enterprise-grade, local-first redaction for Chrome and Edge. Every text field, document, and upload is scanned before it reaches the destination.</p>
     <div class="hero-actions">
       <a href="https://chromewebstore.google.com/detail/loose-lips-sink-ships/bkjmleaamcpimcnlgfcejocbfgbhgldp" class="btn-primary" target="_blank" rel="noopener">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0Zm3.5 8.5h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0v3h3a.5.5 0 0 1 0 1Z"/></svg>
@@ -337,7 +337,7 @@ footer{
       <div class="stat"><div class="stat-value">50+</div><div class="stat-label">File Types</div></div>
       <div class="stat"><div class="stat-value">17</div><div class="stat-label">AU PII Patterns</div></div>
       <div class="stat"><div class="stat-value">6</div><div class="stat-label">Detection Engines</div></div>
-      <div class="stat"><div class="stat-value">320</div><div class="stat-label">Tests Passing</div></div>
+      <div class="stat"><div class="stat-value">Chrome + Edge</div><div class="stat-label">Browser Targets</div></div>
     </div>
   </div>
 </section>
@@ -374,7 +374,7 @@ footer{
       <div class="feature-card">
         <div class="feature-icon">&#x1f3a4;</div>
         <h3>On-Device Voice Dictation</h3>
-        <p>A microphone button on AI-chat composers transcribes speech locally using Chrome&rsquo;s built-in on-device AI (Gemini Nano) and redacts PII before it reaches the chat box. Your audio never leaves the device &mdash; never uploaded. It also detects and hides a site&rsquo;s own dictation button that would upload your raw audio, closing that bypass.</p>
+        <p>When the browser exposes a supported local Web Speech or multimodal Prompt API, a microphone button transcribes and redacts speech before it reaches the chat box. Audio is never uploaded, and dictation stays disabled rather than falling back to a cloud engine.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">&#x1f512;</div>
@@ -482,14 +482,14 @@ footer{
   <div class="section-inner">
     <div class="section-label">Legal</div>
     <h2 class="section-title">Privacy Policy</h2>
-    <p class="section-subtitle">Last updated: April 2026</p>
+    <p class="section-subtitle">Last updated: August 2026</p>
 
     <div class="prose">
       <h3>Overview</h3>
-      <p>Loose Lips Sink Ships ("the Extension") is a Chrome browser extension that detects and redacts personally identifiable information (PII) in text, documents, and images. This privacy policy explains what data the Extension accesses, how it is processed, and where it is stored.</p>
+      <p>Loose Lips Sink Ships ("the Extension") is a browser extension for Google Chrome and Microsoft Edge that detects and redacts personally identifiable information (PII) in text, documents, and images. This privacy policy explains what data the Extension accesses, how it is processed, and where it is stored.</p>
 
       <h3>Data Processing</h3>
-      <p><strong>Local-first by default.</strong> The Extension processes all text and documents within the browser. When using the default configuration (Auto mode with Gemini Nano and regex), no data leaves the browser. All PII detection and redaction happens on-device.</p>
+      <p><strong>Local-first by default.</strong> The Extension processes text and documents within the browser. In the default configuration, local regex and vector engines are always available, and a browser-provided on-device language model is used when supported. No hosted or cloud provider is enabled by default.</p>
       <p><strong>No telemetry.</strong> The Extension does not collect analytics, usage metrics, crash reports, or any form of telemetry. It does not phone home to any server.</p>
       <p><strong>No user tracking.</strong> The Extension does not track browsing history, page visits, or user behaviour. It does not use cookies, fingerprinting, or any tracking mechanism.</p>
 
@@ -498,6 +498,7 @@ footer{
         <li><strong>Text field content</strong> — The Extension reads text from input fields, textareas, and contenteditable elements on web pages for PII detection. This data is processed locally and never transmitted unless a cloud provider is explicitly configured.</li>
         <li><strong>Uploaded files</strong> — When file upload interception is enabled, the Extension reads file content (DOCX, PDF, images, etc.) for PII scanning. Files are processed in the browser via an Offscreen Document.</li>
         <li><strong>Page URL</strong> — Used to determine if the current site is an AI chat service (for AI Chat Guard) and to apply site filtering rules. URLs are checked locally against a built-in list and user-configured patterns.</li>
+        <li><strong>Microphone audio</strong> — Accessed only after the user starts an available on-device dictation feature. Audio is held in memory, processed locally, and never stored or sent to a cloud transcription service.</li>
       </ul>
 
       <h3>Cloud Provider Usage (Optional)</h3>
@@ -512,7 +513,7 @@ footer{
 
       <h3>Data Storage</h3>
       <ul>
-        <li><strong>Settings</strong> — Extension settings are stored in <code>chrome.storage.local</code> (browser profile, not synced across devices).</li>
+        <li><strong>Settings</strong> — Extension settings are stored in the Chromium <code>chrome.storage.local</code> API (the local Chrome or Edge browser profile, not synced across devices).</li>
         <li><strong>API credentials</strong> — API keys (Direct mode) are stored in <code>chrome.storage.local</code>. OAuth2 tokens (Enterprise mode) are stored in <code>chrome.storage.session</code> (memory-only, cleared on browser close).</li>
         <li><strong>Managed settings</strong> — Enterprise administrators may push configuration via <code>chrome.storage.managed</code> (read-only to the Extension).</li>
         <li><strong>Statistics</strong> — Redaction counts (number of items redacted, by type) are stored locally. No PII content is stored in statistics.</li>
@@ -522,8 +523,6 @@ footer{
       <h3>Permissions</h3>
       <ul>
         <li><strong>storage</strong> — Save settings and statistics locally.</li>
-        <li><strong>activeTab</strong> — Access the current tab for content script injection.</li>
-        <li><strong>scripting</strong> — Inject content scripts for text field monitoring.</li>
         <li><strong>offscreen</strong> — Create an offscreen document for PDF rendering and OCR (Canvas/WASM access).</li>
         <li><strong>identity</strong> — Azure AD OAuth2 sign-in flow (Enterprise mode only).</li>
         <li><strong>alarms</strong> — Periodic remote config refresh and token renewal.</li>
@@ -558,15 +557,15 @@ footer{
     <div class="faq-list">
       <div class="faq-item">
         <div class="faq-q">Does the extension send my data to the cloud?</div>
-        <div class="faq-a">No, not by default. All processing uses Gemini Nano (Chrome's built-in AI) and regex patterns, which run entirely on your device. Cloud providers (Azure PII, Purview) are only activated if you explicitly configure them in Settings.</div>
+        <div class="faq-a">No, not by default. Regex, vector detection, OCR, and any available browser on-device model run locally. Cloud or organisation-hosted providers are activated only when a user or administrator explicitly configures them.</div>
       </div>
       <div class="faq-item">
-        <div class="faq-q">What Chrome version do I need?</div>
-        <div class="faq-a">Chrome 128 or later. Chrome 136+ is recommended for the best Gemini Nano stability. The extension works without Nano — it falls back to regex pattern matching. For PDF/image OCR, run <code>vendor/setup.sh</code> to install Tesseract.js.</div>
+        <div class="faq-q">Which browsers are supported?</div>
+        <div class="faq-a">Current desktop releases of Google Chrome and Microsoft Edge are supported. Browser on-device AI and dictation are optional, capability-detected features; local regex and document protection work when those preview APIs are unavailable.</div>
       </div>
       <div class="faq-item">
-        <div class="faq-q">How do I enable Gemini Nano?</div>
-        <div class="faq-a">Go to <code>chrome://flags</code> and enable: (1) <code>#optimization-guide-on-device-model</code> and (2) <code>#prompt-api-for-gemini-nano</code>. Restart Chrome. The green dot in the extension popup confirms Nano is available.</div>
+        <div class="faq-q">How do I check on-device AI?</div>
+        <div class="faq-a">Open the extension popup. It reports the browser model as ready, downloading, or unavailable. Chrome and Edge provide different local models and release-channel requirements; the extension uses the common Prompt API and falls back safely when it is absent.</div>
       </div>
       <div class="faq-item">
         <div class="faq-q">What PII types are detected?</div>
@@ -574,7 +573,7 @@ footer{
       </div>
       <div class="faq-item">
         <div class="faq-q">Can my organisation manage settings centrally?</div>
-        <div class="faq-a">Yes. The extension supports Chrome managed storage (chrome.storage.managed). Admins can push configuration and lock specific settings via GPO, Microsoft Intune, or Google Workspace Admin Console. See the Enterprise section for deployment guides.</div>
+        <div class="faq-a">Yes. The extension supports Chromium managed storage in Chrome and Edge. Administrators can force-install it, push configuration, and lock settings through GPO, Microsoft Intune, Microsoft Edge management, or Google Workspace.</div>
       </div>
       <div class="faq-item">
         <div class="faq-q">How does the classification gate work?</div>

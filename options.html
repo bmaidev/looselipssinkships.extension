@@ -50,7 +50,7 @@
       <span class="capability-note-icon">&#x2139;&#xfe0f;</span>
       <div>
         <strong>On-device AI isn't available in this browser</strong>
-        <p>Local AI redaction (Gemini Nano) and on-device voice dictation require Chrome with built-in AI. Redaction will use the regex engine and any cloud/hosted providers you configure — everything else works normally.</p>
+        <p>Browser on-device AI is not enabled or supported on this device. Redaction will use the local regex engine and any cloud/hosted providers you configure — everything else works normally.</p>
       </div>
     </div>
 
@@ -65,7 +65,7 @@
         </label>
         <label class="radio-label">
           <input type="radio" name="detectionMode" value="ai_only">
-          <span><strong>AI Only</strong> — requires Chrome 136+ with compatible hardware</span>
+          <span><strong>AI Only</strong> — requires a compatible browser Prompt API and supported hardware</span>
         </label>
         <label class="radio-label">
           <input type="radio" name="detectionMode" value="regex_only">
@@ -92,7 +92,7 @@
         <div class="provider-item">
           <label class="checkbox-label">
             <input type="checkbox" id="provider-local-ai">
-            <span><strong>Gemini Nano (Chrome AI)</strong> — on-device AI model, zero network calls</span>
+            <span><strong>Browser On-Device AI</strong> — Gemini Nano in Chrome or the Microsoft model in Edge; zero network calls</span>
           </label>
         </div>
         <div class="provider-item">
@@ -632,6 +632,7 @@
     </div>
   </div>
 
+  <script src="lib/browser-ai.js"></script>
   <script src="lib/pii-types.js"></script>
   <script src="options.js"></script>
 </body>

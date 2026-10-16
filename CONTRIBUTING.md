@@ -15,8 +15,9 @@ npm install
 chmod +x vendor/setup.sh && ./vendor/setup.sh
 ```
 
-Load the extension in Chrome: `chrome://extensions` → enable **Developer mode**
-→ **Load unpacked** → select the repo root.
+Load the extension in Chrome (`chrome://extensions`) or Microsoft Edge
+(`edge://extensions`): enable **Developer mode** → **Load unpacked** → select
+the repo root.
 
 ## Running Tests
 
@@ -24,11 +25,16 @@ Load the extension in Chrome: `chrome://extensions` → enable **Developer mode*
 npm test              # full suite
 npm run test:watch    # watch mode
 npm run test:coverage # coverage report
+npm run build         # validated Chrome and Edge store packages
 ```
 
 All tests must pass before a PR is merged. New detection logic, document
 handling, or provider code should come with tests — see `tests/` for the
 existing patterns (plain Jest, no build step).
+
+Changes to extension APIs, manifest resources, or packaging must also pass both
+browser package builds. The Edge validator intentionally fails if a newly used
+`chrome.*` namespace is not in Microsoft Edge's supported extension API set.
 
 ## Project Conventions
 

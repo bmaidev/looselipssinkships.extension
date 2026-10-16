@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wiki — Loose Lips Sink Ships</title>
-<meta name="description" content="Comprehensive support documentation for the Loose Lips Sink Ships Chrome extension. Installation, configuration, enterprise deployment, and troubleshooting.">
+<meta name="description" content="Support documentation for the Loose Lips Sink Ships extension for Google Chrome and Microsoft Edge.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
@@ -385,7 +385,7 @@ footer{
     <div class="sidebar-heading" data-section="providers">Providers</div>
     <ul class="sidebar-links">
       <li><a href="#providers">Overview</a></li>
-      <li><a href="#provider-gemini-nano">Gemini Nano</a></li>
+      <li><a href="#provider-gemini-nano">Browser On-Device AI</a></li>
       <li><a href="#provider-regex">Regex Engine</a></li>
       <li><a href="#provider-vector">Vector Names</a></li>
       <li><a href="#provider-azure-pii">Azure PII</a></li>
@@ -551,20 +551,20 @@ footer{
 <div class="content-inner">
 
 <h1>Support Wiki</h1>
-<p class="lead">Comprehensive documentation for the Loose Lips Sink Ships Chrome extension. Covers installation, configuration, enterprise deployment, and every setting available.</p>
+<p class="lead">Comprehensive documentation for the Loose Lips Sink Ships extension for Google Chrome and Microsoft Edge. Covers installation, configuration, enterprise deployment, and every setting available.</p>
 
 <!-- ══════════════════════════════════════════════════════════════════
      1. GETTING STARTED
      ══════════════════════════════════════════════════════════════════ -->
 <h2 id="getting-started">Getting Started</h2>
 
-<p>Loose Lips Sink Ships is a Chrome browser extension that detects and redacts personally identifiable information (PII) in text, documents, and images. It is designed for Australian government and enterprise environments where PII must never leave the browser unredacted.</p>
+<p>Loose Lips Sink Ships is a browser extension for Google Chrome and Microsoft Edge that detects and redacts personally identifiable information (PII) in text, documents, and images. It is designed for Australian government and enterprise environments where PII must not reach a destination unredacted.</p>
 
 <h3 id="requirements">Requirements</h3>
 <ul>
-  <li><strong>Google Chrome 128+</strong> (Chrome 136+ recommended for best Gemini Nano stability)</li>
-  <li><strong>Gemini Nano</strong> (optional) &mdash; enable in <code>chrome://flags</code> for on-device AI detection</li>
-  <li><strong>Chrome 138+ with on-device AI</strong> (optional) &mdash; required for on-device voice dictation via the Prompt API</li>
+  <li><strong>Current Google Chrome or Microsoft Edge desktop release</strong></li>
+  <li><strong>Browser Prompt API</strong> (optional) &mdash; Gemini Nano in Chrome or Microsoft Edge&rsquo;s local model in supported preview channels/devices</li>
+  <li><strong>On-device transcription API</strong> (optional) &mdash; required for local voice dictation; the control stays disabled instead of using cloud transcription when unavailable</li>
   <li><strong>Tesseract.js + pdf.js</strong> (optional) &mdash; run <code>vendor/setup.sh</code> for PDF rendering and image OCR</li>
   <li><strong>Azure subscription</strong> (optional) &mdash; only needed for Azure PII or Purview DLP integration</li>
 </ul>
@@ -578,13 +578,29 @@ footer{
   <li>The extension icon appears in your toolbar</li>
 </ol>
 
+<h4>From Microsoft Edge Add-ons</h4>
+<ol>
+  <li>Open the Loose Lips Sink Ships listing in Microsoft Edge Add-ons</li>
+  <li>Click <strong>Get</strong> and confirm the permissions dialog</li>
+  <li>For managed fleets, administrators can force-install the Edge listing by its Edge Add-ons extension ID</li>
+</ol>
+
 <h4>Developer / Side-load Install</h4>
 <ol class="steps">
   <li>Clone the repository: <code>git clone https://github.com/bmaidev/looselipssinkships.extension.git</code></li>
   <li>Run <code>vendor/setup.sh</code> to download Tesseract.js and pdf.js dependencies</li>
-  <li>Open <code>chrome://extensions</code> and enable <strong>Developer mode</strong></li>
+  <li>Open <code>chrome://extensions</code> in Chrome or <code>edge://extensions</code> in Edge and enable <strong>Developer mode</strong></li>
   <li>Click <strong>Load unpacked</strong> and select the repository root folder</li>
   <li>Verify the extension icon appears in your toolbar</li>
+</ol>
+
+<h4>Enable Microsoft Edge On-Device AI (Optional Preview)</h4>
+<ol class="steps">
+  <li>Use a current Microsoft Edge Dev or Canary release</li>
+  <li>Open <code>edge://flags</code> and enable <strong>Prompt API for on-device language model</strong></li>
+  <li>For Edge 150+ on lower-performance devices, optionally enable <strong>Enable prerelease on-device language model</strong> to test Aion-1.0-Instruct</li>
+  <li>Restart Edge and check <code>edge://on-device-internals</code></li>
+  <li>The extension popup reports whether the model is ready, downloading, or unavailable</li>
 </ol>
 
 <h4>Enable Gemini Nano (Optional)</h4>
@@ -617,19 +633,19 @@ footer{
 <p>Progressive escalation through all available tiers: <strong>Local &rarr; Hosted &rarr; Cloud</strong>.</p>
 <h4>Fallback chain</h4>
 <ol>
-  <li><strong>Gemini Nano</strong> (on-device AI) &mdash; tried first if enabled and available</li>
-  <li><strong>Regex + Vector</strong> &mdash; always-available local fallback; runs if Nano is unavailable or fails</li>
+  <li><strong>Browser on-device AI</strong> &mdash; tried when the Chrome or Edge Prompt API is enabled and available</li>
+  <li><strong>Regex + Vector</strong> &mdash; always-available local fallback; runs if browser AI is unavailable or fails</li>
   <li><strong>Hosted models</strong> &mdash; tried if configured and the above steps produced no result</li>
   <li><strong>Cloud providers</strong> (Azure PII, Purview) &mdash; tried only if no hosted provider could handle the request</li>
 </ol>
-<p>If <code>regexAfterAi</code> is enabled (belt-and-suspenders mode), regex also runs as a second pass after Nano to catch anything the AI missed.</p>
+<p>If <code>regexAfterAi</code> is enabled (belt-and-suspenders mode), regex also runs as a second pass after browser AI to catch anything the model missed.</p>
 <div class="callout callout-tip"><p><strong>Best for:</strong> Most deployments. Maximises privacy by preferring local processing, but can escalate when higher-quality detection is needed.</p></div>
 
 <h3 id="mode-ai-only">AI Only</h3>
 <p>Uses only AI-capable providers. Will not fall back to regex.</p>
 <h4>Fallback chain</h4>
 <ol>
-  <li><strong>Gemini Nano</strong> (local AI)</li>
+  <li><strong>Browser on-device model</strong> (local AI)</li>
   <li><strong>Hosted AI models</strong> (organisation-hosted LLMs with text capability)</li>
   <li><strong>Cloud AI</strong> (Azure PII, which uses NLP-based entity recognition)</li>
 </ol>
@@ -670,11 +686,11 @@ footer{
 
 <p>Providers are organised into three tiers: <strong>Local</strong>, <strong>Hosted</strong>, and <strong>Cloud</strong>. The pipeline always prefers the highest-privacy tier first.</p>
 
-<h3 id="provider-gemini-nano">Gemini Nano <span class="badge badge-green">Local</span></h3>
-<p>Chrome's built-in on-device language model. Runs entirely within the browser with no network requests.</p>
+<h3 id="provider-gemini-nano">Browser On-Device AI <span class="badge badge-green">Local</span></h3>
+<p>The browser-provided Prompt API: Gemini Nano in Chrome or Microsoft Edge&rsquo;s local model in supported preview channels. It runs entirely within the browser with no prompt network requests.</p>
 <ul>
   <li><strong>Tier:</strong> Local</li>
-  <li><strong>Requires:</strong> Chrome 128+, flags enabled (see <a href="#installation">Installation</a>)</li>
+  <li><strong>Requires:</strong> A browser/channel, operating system, and device that expose an available <code>LanguageModel</code> API (see <a href="#installation">Installation</a>)</li>
   <li><strong>Capabilities:</strong> Text PII detection via prompt-based entity extraction</li>
   <li><strong>Session timeout:</strong> Configurable via <code>sessionTimeoutMinutes</code> (default 5 min)</li>
   <li><strong>Limitations:</strong> Smaller context window than cloud models; may miss complex or ambiguous PII</li>
@@ -976,7 +992,7 @@ footer{
 
 <p>Voice is a blind spot for text-based PII guards: when you dictate, spoken PII can leave the browser as an audio blob <strong>before any text guard ever sees it</strong>. The Voice Dictation family closes that gap with three cooperating features &mdash; a local leak detector, an on-device dictation button, and native-button suppression.</p>
 
-<div class="callout callout-tip"><p>The safe path is fully on-device: microphone audio is transcribed locally with Chrome's built-in AI, redacted through the normal PII pipeline, and only the clean text is inserted. The audio never leaves the device, and cloud transcription is never used.</p></div>
+<div class="callout callout-tip"><p>The safe path is fully on-device: a supported browser-local engine transcribes the microphone audio, the normal PII pipeline redacts it, and only clean text is inserted. Cloud transcription is never used.</p></div>
 
 <h3 id="voice-leak-detection">Voice Dictation Leak Detection <span class="badge badge-green">Observe-only</span></h3>
 <p>On <strong>any</strong> site (no domain allowlist required), the extension watches for pages that capture microphone audio in a way that would upload it &mdash; specifically <code>getUserMedia</code> feeding a <code>MediaRecorder</code>. This is the signature of server-side dictation, where your spoken words are sent off as an audio file before any text redaction can apply.</p>
@@ -997,7 +1013,7 @@ footer{
 <p>On AI chat sites (ChatGPT, Claude, Gemini, and others), the extension adds a <strong>green microphone button</strong> to the composer. Click it, speak, and click again to stop:</p>
 <ol>
   <li>Microphone audio is captured <strong>locally</strong> in the browser</li>
-  <li>It is transcribed <strong>on-device</strong> using Chrome's built-in AI (Gemini Nano, via the Prompt API's audio input; on-device Web Speech is also used where genuinely available)</li>
+  <li>It is transcribed <strong>on-device</strong> using a supported local Web Speech or multimodal Prompt API</li>
   <li>The transcript is redacted through the normal PII pipeline</li>
   <li>The clean, redacted text is inserted into the composer</li>
 </ol>
@@ -1006,8 +1022,8 @@ footer{
 
 <h4>Requirements</h4>
 <ul>
-  <li><strong>Chrome 138+</strong> &mdash; required for the Prompt API in extensions</li>
-  <li><strong>On-device model available</strong> &mdash; Gemini Nano must be downloaded and available (see <a href="#installation">Installation</a>)</li>
+  <li><strong>On-device transcription API</strong> &mdash; the browser must expose local Web Speech or audio input through the Prompt API</li>
+  <li><strong>On-device model available</strong> &mdash; the required browser model or language pack must be downloaded and ready (see <a href="#installation">Installation</a>)</li>
   <li>Transcription runs in the extension's <strong>offscreen document</strong></li>
 </ul>
 <div class="callout callout-info"><p>First use may pause a few seconds while the on-device model warms up. Subsequent dictation is faster within the session.</p></div>
@@ -1183,7 +1199,7 @@ footer{
   <li><strong>Batch processing</strong> &mdash; queue multiple files; they are processed sequentially</li>
   <li><strong>Download results</strong> &mdash; redacted files are available for download individually</li>
   <li><strong>Text input</strong> &mdash; paste text directly for instant redaction</li>
-  <li><strong>Dictate (on-device)</strong> &mdash; a panel that transcribes your speech locally with Chrome's built-in AI and redacts the transcript before it appears (see <a href="#voice-inline-dictation">Inline On-Device Dictation</a>)</li>
+  <li><strong>Dictate (on-device)</strong> &mdash; a panel that transcribes your speech locally with the browser's built-in AI and redacts the transcript before it appears (see <a href="#voice-inline-dictation">Inline On-Device Dictation</a>)</li>
   <li>Supports all document types the extension handles (DOCX, PDF, images, text files, ZIP)</li>
 </ul>
 
@@ -1250,9 +1266,14 @@ MSIP_Label_{GUID}_ContentBits = 8</code></pre>
      ══════════════════════════════════════════════════════════════════ -->
 <h2 id="enterprise-deployment">Enterprise Deployment</h2>
 
-<p>The extension supports four deployment methods for organisations of all sizes. Each pushes configuration to <code>chrome.storage.managed</code> (or equivalent), which the extension reads at startup.</p>
+<p>The extension supports managed deployment in Google Chrome and Microsoft Edge. Each browser uses the Chromium <code>chrome.storage.managed</code> API, while the store extension ID and administrative policy locations differ.</p>
 
-<h3 id="deploy-intune">Microsoft Intune</h3>
+<h3 id="deploy-edge">Microsoft Edge at Enterprise Scale</h3>
+<p>Publish the Edge-specific ZIP through Microsoft Edge Add-ons, then record its Edge extension ID. Configure the Microsoft Edge <code>ExtensionSettings</code> policy with <code>installation_mode</code> set to <code>force_installed</code> and update URL <code>https://edge.microsoft.com/extensionwebstorebase/v1/crx</code>. Deliver managed configuration on Windows beneath:</p>
+<pre><code>HKLM\SOFTWARE\Policies\Microsoft\Edge\3rdparty\extensions\&lt;edge-extension-id&gt;\policy</code></pre>
+<p>Add <code>https://&lt;edge-extension-id&gt;.chromiumapp.org/</code> as an SPA redirect URI in Microsoft Entra when enterprise sign-in is enabled. See the repository&rsquo;s <code>EDGE_RELEASE.md</code> and <code>enterprise/edge-intune-policy.json</code> for the phased rollout and policy templates.</p>
+
+<h3 id="deploy-intune">Google Chrome via Microsoft Intune</h3>
 <p>For organisations using Microsoft Endpoint Manager / Intune to manage Chrome on Windows, macOS, or ChromeOS devices.</p>
 <ol class="steps">
   <li>In the <strong>Microsoft Intune admin center</strong>, navigate to <strong>Devices &rarr; Configuration profiles</strong></li>
@@ -1476,7 +1497,7 @@ await LLSS_AzureAuth.signOut();</code></pre>
     <tr><td><code>regexAfterAi</code></td><td class="type">boolean</td><td><code>false</code></td><td>Belt-and-suspenders: also run regex after AI to catch anything missed.</td></tr>
     <tr><td><code>customPiiTypes</code></td><td class="type">array</td><td><code>[]</code></td><td>Custom PII type definitions (merged with built-in defaults).</td></tr>
     <tr><td><code>piiTypeOverrides</code></td><td class="type">object</td><td><code>{}</code></td><td>Override properties on built-in PII types (e.g., <code>{ "email": { "enabled": false } }</code>).</td></tr>
-    <tr><td><code>sessionTimeoutMinutes</code></td><td class="type">number</td><td><code>5</code></td><td>Idle timeout in minutes before destroying the Gemini Nano AI session.</td></tr>
+    <tr><td><code>sessionTimeoutMinutes</code></td><td class="type">number</td><td><code>5</code></td><td>Idle timeout in minutes before destroying the browser on-device AI session.</td></tr>
   </tbody>
 </table>
 
@@ -1559,11 +1580,11 @@ await LLSS_AzureAuth.signOut();</code></pre>
 
 <h3 id="settings-providers">Providers</h3>
 
-<h4>Local AI (Gemini Nano)</h4>
+<h4>Browser On-Device AI</h4>
 <table class="settings-table">
   <thead><tr><th>Setting</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
   <tbody>
-    <tr><td><code>providers.local_ai.enabled</code></td><td class="type">boolean</td><td><code>true</code></td><td>Use Gemini Nano when available.</td></tr>
+    <tr><td><code>providers.local_ai.enabled</code></td><td class="type">boolean</td><td><code>true</code></td><td>Use the browser-provided local model when available.</td></tr>
   </tbody>
 </table>
 
@@ -1654,7 +1675,7 @@ await LLSS_AzureAuth.signOut();</code></pre>
 <div class="callout callout-info"><p>Error-level messages (<code>LLSS_debug.error()</code>) are <strong>always</strong> output regardless of debug mode, so critical failures are always visible.</p></div>
 
 <h3 id="console-locations">Console Locations</h3>
-<p>Chrome extensions have three separate console contexts. You need to check the right one:</p>
+<p>Chromium extensions have three separate console contexts. You need to check the right one:</p>
 
 <table class="wiki-table">
   <thead><tr><th>Console</th><th>How to Open</th><th>What It Shows</th></tr></thead>
@@ -1666,12 +1687,12 @@ await LLSS_AzureAuth.signOut();</code></pre>
     </tr>
     <tr>
       <td><strong>Service Worker Console</strong></td>
-      <td><code>chrome://extensions</code> &rarr; find extension &rarr; click "service worker" link</td>
+      <td><code>chrome://extensions</code> or <code>edge://extensions</code> &rarr; find extension &rarr; click "service worker" link</td>
       <td>Background script logs, pipeline execution, provider availability, Azure auth, token refresh, alarm events, managed config loading</td>
     </tr>
     <tr>
       <td><strong>Offscreen Console</strong></td>
-      <td><code>chrome://extensions</code> &rarr; find extension &rarr; click "offscreen.html" link (when active)</td>
+      <td><code>chrome://extensions</code> or <code>edge://extensions</code> &rarr; find extension &rarr; click "offscreen.html" link (when active)</td>
       <td>PDF rendering, Tesseract.js OCR, pixel redaction, canvas operations, worker pool status</td>
     </tr>
   </tbody>
@@ -1685,12 +1706,12 @@ await LLSS_AzureAuth.signOut();</code></pre>
     <tr>
       <td><code>No redaction providers available</code></td>
       <td>All configured providers are disabled or unavailable</td>
-      <td>Ensure at least <code>providers.regex.enabled</code> is true. Check that Gemini Nano flags are enabled if using AI mode.</td>
+      <td>Ensure at least <code>providers.regex.enabled</code> is true. If using AI mode, confirm the current browser/channel exposes an available Prompt API model.</td>
     </tr>
     <tr>
       <td><code>Provider 'local_ai' is not available</code></td>
-      <td>Gemini Nano is not enabled or the model is not downloaded</td>
-      <td>Enable Chrome flags (<code>#optimization-guide-on-device-model</code> and <code>#prompt-api-for-gemini-nano</code>), restart Chrome, and wait for the model to download.</td>
+      <td>The browser Prompt API is disabled, unsupported, or its model is not downloaded</td>
+      <td>Follow the Chrome or Microsoft Edge on-device AI instructions under <a href="#installation">Installation</a>, restart the browser, and wait for the model to become ready. Regex mode remains available.</td>
     </tr>
     <tr>
       <td><code>Token exchange failed: HTTP 400</code></td>
@@ -1725,12 +1746,12 @@ await LLSS_AzureAuth.signOut();</code></pre>
     <tr>
       <td><code>ZIP processing not available</code></td>
       <td>ZIP parser module not loaded</td>
-      <td>Ensure all extension files are intact. Reload the extension from <code>chrome://extensions</code>.</td>
+      <td>Ensure all extension files are intact. Reload it from <code>chrome://extensions</code> or <code>edge://extensions</code>.</td>
     </tr>
     <tr>
       <td><code>Offscreen document not available</code></td>
-      <td>Chrome did not create the offscreen document</td>
-      <td>Reload the extension. Check <code>chrome://extensions</code> for error badges. Ensure the <code>offscreen</code> permission is in manifest.json.</td>
+      <td>The browser did not create the offscreen document</td>
+      <td>Reload the extension. Check <code>chrome://extensions</code> or <code>edge://extensions</code> for error badges. Ensure the <code>offscreen</code> permission is in manifest.json.</td>
     </tr>
     <tr>
       <td><code>Graph API evaluation failed: 403</code></td>
@@ -1739,13 +1760,13 @@ await LLSS_AzureAuth.signOut();</code></pre>
     </tr>
     <tr>
       <td>The on-device mic button doesn't appear</td>
-      <td>Not an AI chat site, or Chrome lacks on-device AI</td>
-      <td>The inline dictation button only appears on detected AI chat sites in Chrome with on-device AI. Confirm you are on a supported AI site, that <code>voiceDictation.enabled</code> is on, and that Chrome (138+) has Gemini Nano available.</td>
+      <td>Not an AI chat site, or the browser lacks an on-device transcription engine</td>
+      <td>The inline dictation button only appears on detected AI chat sites when a local Web Speech or audio-capable Prompt API is ready. Confirm the site is supported, <code>voiceDictation.enabled</code> is on, and the popup reports a local capability.</td>
     </tr>
     <tr>
       <td><code>On-device dictation model unavailable</code></td>
-      <td>Gemini Nano / Chrome's on-device AI is not enabled or downloaded</td>
-      <td>Enable Chrome's on-device AI flags (<code>#optimization-guide-on-device-model</code> and <code>#prompt-api-for-gemini-nano</code>), restart Chrome, and wait for the model to download. Dictation transcribes on-device only &mdash; it never falls back to the cloud.</td>
+      <td>No supported local Web Speech or audio-capable Prompt API is ready</td>
+      <td>Follow the browser-specific on-device AI instructions under <a href="#installation">Installation</a> and wait for the local model or language pack to become ready. Dictation never falls back to cloud transcription.</td>
     </tr>
   </tbody>
 </table>
@@ -1753,10 +1774,10 @@ await LLSS_AzureAuth.signOut();</code></pre>
 <h3 id="performance">Performance Issues</h3>
 <ul>
   <li><strong>Slow OCR:</strong> Tesseract.js OCR can take 5-15 seconds per page. This is normal for on-device processing. Consider Azure native documents for faster processing of large PDFs.</li>
-  <li><strong>High memory on large PDFs:</strong> Each page is rendered as a full canvas. Close other tabs if Chrome runs low on memory. The worker pool limits concurrent operations.</li>
+  <li><strong>High memory on large PDFs:</strong> Each page is rendered as a full canvas. Close other tabs if the browser runs low on memory. The worker pool limits concurrent operations.</li>
   <li><strong>Debounce too aggressive:</strong> If auto-redact interferes with typing, increase <code>autoRedact.debounceMs</code> (default 2500ms).</li>
   <li><strong>Extension slows page load:</strong> Ensure <code>siteFilter</code> is configured to limit activation to relevant sites rather than running on all pages.</li>
-  <li><strong>Gemini Nano slow on first use:</strong> The model is loaded on demand. First inference may take a few seconds; subsequent calls are faster within the session timeout window.</li>
+  <li><strong>Browser AI slow on first use:</strong> The local model is loaded on demand. First inference may take a few seconds; subsequent calls are faster within the session timeout window.</li>
 </ul>
 
 

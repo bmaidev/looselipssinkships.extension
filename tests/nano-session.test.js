@@ -12,7 +12,10 @@ describe("NanoSession", () => {
     });
 
     test("returns true when LanguageModel is defined", () => {
-      globalThis.LanguageModel = {};
+      globalThis.LanguageModel = {
+        availability: jest.fn(),
+        create: jest.fn(),
+      };
       try {
         expect(NanoSession.isAvailable()).toBe(true);
       } finally {

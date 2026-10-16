@@ -313,7 +313,7 @@
   // Transcribes microphone input locally, then redacts the transcript through
   // the normal pipeline. Audio stays on the device. Uses whichever on-device
   // engine is genuinely ready: Web Speech (streaming) when available, else
-  // Gemini Nano audio (record-then-transcribe). Never the cloud.
+  // Prompt API audio (record-then-transcribe). Never the cloud.
 
   const dictationCard = document.getElementById('dictation-card');
   const btnDictate = document.getElementById('btn-dictate');
@@ -331,7 +331,7 @@
   }
 
   // Show the card if any local engine is present: Web Speech (streaming) or
-  // Gemini Nano audio (record-then-transcribe).
+  // Prompt API audio (record-then-transcribe).
   const canDictate = transcriber &&
     (transcriber.isSupported() || transcriber.nanoAudioSupported());
 

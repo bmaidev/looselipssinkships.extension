@@ -21,9 +21,9 @@
   let isAiSite = false;
   let pendingRedactions = new Set(); // Track in-flight redactions
 
-  // ── Direct Nano (LanguageModel) support ──────────────────────────────
+  // ── Direct browser Prompt API (LanguageModel) support ────────────────
   // Content scripts run in the page's top-level window context where the
-  // LanguageModel global IS available.  Using it directly avoids the
+  // LanguageModel global can be available. Using it directly avoids the
   // round-trip through the service worker (which can't access it anyway).
 
   const nanoSession = (typeof LLSS_NanoSession !== "undefined")
@@ -32,7 +32,7 @@
   let nanoAvailable = null; // null = unchecked, true/false after first probe
 
   /**
-   * Try to redact text directly via Nano.  Returns null if Nano is
+   * Try to redact text directly through the browser model. Returns null if it is
    * unavailable so the caller can fall back to background messaging.
    */
   async function tryNanoRedact(text) {
@@ -46,10 +46,10 @@
       try {
         const avail = await nanoSession.checkAvailability();
         nanoAvailable = avail.available;
-        if (dbg) dbg.log("nano", "Content script Nano probe:", avail.status, avail.detail);
+        if (dbg) dbg.log("nano", "Content script browser-AI probe:", avail.status, avail.detail);
         if (!nanoAvailable) return null;
       } catch (err) {
-        if (dbg) dbg.warn("nano", "Content script Nano probe failed:", err);
+        if (dbg) dbg.warn("nano", "Content script browser-AI probe failed:", err);
         nanoAvailable = false;
         return null;
       }
@@ -75,7 +75,7 @@
         matches: result.matches || [],
       };
     } catch (err) {
-      if (dbg) dbg.warn("nano", "Direct Nano redact failed, falling back:", err);
+      if (dbg) dbg.warn("nano", "Direct browser-AI redact failed, falling back:", err);
       return null;
     }
   }

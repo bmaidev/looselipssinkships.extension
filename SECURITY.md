@@ -15,7 +15,7 @@ Include where possible:
 - A description of the issue and its impact (e.g. PII leakage, redaction bypass,
   credential exposure)
 - Steps to reproduce, or a proof of concept
-- The extension version and Chrome version
+- The extension version, browser name/channel, and browser version
 
 You can expect an acknowledgement within a few business days.
 

@@ -1,0 +1,11 @@
+{
+  "name": "llss-pii-browser-bench",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@huggingface/transformers": "4.3.1",
+    "onnxruntime-node": "1.30.0",
+    "onnxruntime-web": "1.30.0"
+  }
+}

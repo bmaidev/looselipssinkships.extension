@@ -16,6 +16,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  pii-benchmark-harness:
+    name: PII benchmark harness integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.13"
+
+      - name: Set up Node.js for production-detector adapter
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22
+
+      - name: Validate catalog and manifest JSON
+        run: |
+          python -m json.tool benchmarks/pii-models/candidates.json >/dev/null
+          python -m json.tool benchmarks/pii-models/data/manifests/llss-au-pii-psi-v1.json >/dev/null
+
+      - name: Compile and test dependency-free harness core
+        run: |
+          python -m compileall -q benchmarks/pii-models/src
+          npm run test:pii-benchmark
+
+      - name: Audit locked browser-benchmark dependencies
+        run: npm audit --prefix benchmarks/pii-models --audit-level=low
+
   extension:
     name: Extension tests, audit, and packages
     runs-on: ubuntu-latest

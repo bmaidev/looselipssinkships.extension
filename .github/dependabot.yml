@@ -12,6 +12,18 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
 
+  - package-ecosystem: npm
+    directory: /benchmarks/pii-models
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: pip
+    directory: /benchmarks/pii-models
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
   - package-ecosystem: docker
     directory: /server
     schedule:

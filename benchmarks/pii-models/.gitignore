@@ -1,0 +1,9 @@
+.venv/
+*.egg-info/
+node_modules/
+.cache/
+generated/
+results/
+*.tmp
+*.ses
+__pycache__/

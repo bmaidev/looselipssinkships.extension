@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llss-pii-bench"
+version = "0.1.0"
+description = "Reproducible local-model benchmark for Australian PII and sensitive information"
+requires-python = ">=3.10"
+license = { text = "FSL-1.1-MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+specialist = [
+  "torch>=2.6,<3",
+  "transformers>=4.51,<6",
+  "tokenizers>=0.21,<1",
+  "safetensors>=0.5,<1",
+  "pyarrow>=20,<27",
+  "onnx>=1.17,<2",
+  "onnxruntime>=1.18,<2",
+  "numpy>=2,<3",
+]
+hf = [
+  "torch>=2.6,<3",
+  "transformers>=4.51,<6",
+  "safetensors>=0.5,<1",
+]
+gliner = [
+  "gliner>=0.2.22,<1",
+  "torch>=2.6,<3",
+]
+presidio = [
+  "presidio-analyzer>=2.2.360,<3",
+  "spacy>=3.8,<4",
+]
+monitoring = ["psutil>=6,<8"]
+onnx = [
+  "huggingface-hub>=0.30,<2",
+  "numpy>=2,<3",
+  "onnxruntime>=1.18,<2",
+  "tokenizers>=0.21,<1",
+  "transformers>=4.51,<6",
+]
+all = [
+  "torch>=2.6,<3",
+  "transformers>=4.51,<6",
+  "safetensors>=0.5,<1",
+  "gliner>=0.2.22,<1",
+  "presidio-analyzer>=2.2.360,<3",
+  "spacy>=3.8,<4",
+  "psutil>=6,<8",
+  "huggingface-hub>=0.30,<2",
+  "numpy>=2,<3",
+  "onnxruntime>=1.18,<2",
+  "tokenizers>=0.21,<1",
+]
+
+[project.scripts]
+pii-bench = "pii_bench.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

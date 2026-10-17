@@ -1,0 +1,147 @@
+# Local PII/PSI model benchmark
+
+This is an isolated, reproducible harness for selecting local detection models for Loose Lips Sink Ships. It evaluates the actual production rules alongside browser-sized models, accuracy controls, and cached ensembles. It does not change extension runtime code or download a model for end users.
+
+The benchmark is leak-focused. Aggregate F1 is reported, but selection prioritises risk-weighted recall, whole-document protection, hard-negative cleanliness, over-redaction, latency, memory, artifact size, licence, and offline deployability.
+
+The [specialist training study](evidence/specialist-study-2026-10-17.md) records the trained models, independent external confirmation, corrected full-corpus results, runtime findings, and release blockers. [Machine-readable evidence](evidence/specialist-results-2026-10-17.json) retains aggregate metrics, hashes, calibration selections, and paired comparisons.
+
+## Quick start
+
+Core dataset, metric, production-adapter, and ensemble tests require only Python 3.10+ and Node:
+
+```bash
+cd benchmarks/pii-models
+PYTHONPATH=src python -m unittest discover -s tests -v
+PYTHONPATH=src python -m pii_bench generate \
+  --records 20000 \
+  --seed 20261017 \
+  --output /tmp/llss-au-pii-psi-v1.jsonl \
+  --manifest /tmp/llss-au-pii-psi-v1.manifest.json
+PYTHONPATH=src python -m pii_bench validate \
+  --dataset /tmp/llss-au-pii-psi-v1.jsonl \
+  --sha256 58d9d81c9c9a0b42c322426bb77638af61b51a023cfb81101588951d0fbbabe6
+```
+
+Create an isolated environment only for model runs:
+
+```bash
+python -m venv .venv
+.venv/bin/pip install -e '.[onnx,gliner,hf,monitoring]'
+npm ci --ignore-scripts
+```
+
+List the governed 20-candidate matrix and run a pinned candidate:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m pii_bench catalog
+PYTHONPATH=src .venv/bin/python -m pii_bench run \
+  --candidate masker-mini \
+  --dataset /tmp/llss-au-pii-psi-v1.jsonl \
+  --output /tmp/masker.predictions.jsonl \
+  --cache-dir .cache/huggingface
+```
+
+Tune on the stable 20% calibration partition, then evaluate once on the 80% held-out partition:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m pii_bench calibrate \
+  --dataset /tmp/llss-au-pii-psi-v1.jsonl \
+  --predictions /tmp/masker.predictions.jsonl \
+  --threshold 0.25 --threshold 0.30 --threshold 0.35 \
+  --max-over-redaction 0.02 \
+  --output /tmp/masker.calibration.json
+
+PYTHONPATH=src .venv/bin/python -m pii_bench score \
+  --dataset /tmp/llss-au-pii-psi-v1.jsonl \
+  --predictions /tmp/masker.predictions.jsonl \
+  --partition test --minimum-score 0.30 \
+  --bootstrap-rounds 1000 \
+  --output /tmp/masker.test.json
+```
+
+Cached predictions can be combined without rerunning inference. Member thresholds are applied before union or precedence composition. `calibrate-ensemble` performs a bounded grid search using calibration records only.
+
+## Corpus
+
+The deterministic corpus contains 20,000 records, 55,706 exact-span entities, 44 labels, 28 domains, 3,200 hard-negative records, 7,956 sensitive-information records, and clean plus six corruption/noise modes. It includes plain text, logs, JSON, CSV, Markdown, long-window cases, multilingual names, and code-switching. There are 16,075 unique normalized texts; repeated examples and shared templates limit statistical independence. The default split groups identical normalized texts and confidence intervals resample document/text clusters. Historical smoke results remain exploratory.
+
+```bash
+PYTHONPATH=src python -m pii_bench audit-dataset --dataset /tmp/llss-au-pii-psi-v1.jsonl
+```
+
+All values are synthetic. Phone numbers use ACMA fictional ranges; domains use `example.com`; IP addresses use documentation ranges; Australian identifiers use deliberately invalid or reserved-looking forms. Do not replace them with scraped or real personal data.
+
+The checked manifest is in [`data/manifests/llss-au-pii-psi-v1.json`](data/manifests/llss-au-pii-psi-v1.json). Generated corpora, model weights, and raw predictions are intentionally gitignored.
+
+## Specialist training experiments
+
+`specialist.py` implements a 90,839-parameter byte-CNN with a contextual token head for 15 sensitive-information categories. It can train from scratch, fine-tune a safetensors parent checkpoint, export a dynamic-shape ONNX graph, verify export parity, and run inference without importing PyTorch. The initial authored-only experiment failed to generalize; keep that negative result when comparing later experiments.
+
+```bash
+.venv/bin/pip install -e '.[specialist]'
+PYTHONPATH=src .venv/bin/python -m pii_bench.specialist generate \
+  --output-dir generated/psi-curriculum-v1
+PYTHONPATH=src .venv/bin/python -m pii_bench.specialist train \
+  --data-dir generated/psi-curriculum-v1 \
+  --output-dir generated/psi-head-v1 --epochs 8
+PYTHONPATH=src .venv/bin/python -m pii_bench.specialist export-onnx \
+  --model-dir generated/psi-head-v1
+```
+
+The authored curriculum separates exact phrases, sentence templates, and names across training, calibration, and test. `specialist_external.py` supplements it using explicitly labelled race/ethnicity, religion, political views, and sexuality spans from the pinned NVIDIA Nemotron-PII training shard. It groups variants by source document ID, checks offsets, removes duplicate texts/windows, and excludes any test document ID also present in training. It does not infer missing health, legal, or safeguarding labels from unannotated source text.
+
+```bash
+PYTHONPATH=src .venv/bin/python -m pii_bench.specialist_external \
+  --train-parquet /path/to/pinned/train.parquet \
+  --test-parquet /path/to/pinned/test.parquet \
+  --curriculum generated/psi-curriculum-v1 \
+  --output generated/psi-external-v2 --train-limit 4000 --eval-limit 1500
+PYTHONPATH=src .venv/bin/python -m pii_bench.specialist train \
+  --data-dir generated/psi-external-v2 --initial-model generated/psi-head-v1 \
+  --output-dir generated/psi-head-v2 --epochs 6
+PYTHONPATH=src .venv/bin/python -m pii_bench.specialist export-onnx \
+  --model-dir generated/psi-head-v2
+PYTHONPATH=src .venv/bin/python -m pii_bench.specialist predict \
+  --model-dir generated/psi-head-v2 --runtime onnx \
+  --dataset generated/psi-external-v2/calibration.jsonl \
+  --output generated/head-v2.calibration.predictions.jsonl
+```
+
+Choose the confidence threshold from that calibration-only file with `calibrate --calibration-partition all`, then apply it unchanged to the external test file and the authored phrase-disjoint test. The calibration file may control checkpoint/threshold selection; test files must never influence training. Artifacts remain research-only until external, human, and browser gates pass. The training source is [NVIDIA Nemotron-PII](https://huggingface.co/datasets/nvidia/Nemotron-PII), CC-BY-4.0, revision `b70ffaf5ff39e079776134c5bf4381f00a9fd1ed`; preserve attribution in derived artifacts.
+
+The pretrained comparison uses `tiny_finetune.py`: a pinned Google BERT Miniature receives a new 31-tag classification head, is fine-tuned on the same training/calibration data, and is exported to ONNX. INT8 quantization produces a 4.48 MB graph. `specialist_baseline.py` learns a 763-entry literal-span dictionary from training annotations as a simpler control.
+
+```bash
+PYTHONPATH=src .venv/bin/python -m pii_bench.tiny_finetune train \
+  --data-dir generated/psi-external-v2 --output-dir generated/psi-bert-tiny --epochs 4
+PYTHONPATH=src .venv/bin/python -m pii_bench.tiny_finetune export \
+  --model-dir generated/psi-bert-tiny
+PYTHONPATH=src .venv/bin/python -m pii_bench.tiny_finetune quantize \
+  --model-dir generated/psi-bert-tiny --output-dir generated/psi-bert-tiny-int8
+```
+
+Use `specialist_external --exclude-evaluation /path/to/discovery-test.jsonl` to reserve a new external sample with no source IDs from the discovery sample. `compare` computes paired document-cluster bootstrap differences. `verify_tiny_wasm.mjs` checks strict native/WASM logit parity; `wasm_token_benchmark.mjs` measures actual backend transfer on prepared tokenizer windows. Float ONNX passes strict parity; INT8 has small backend differences and must be evaluated with actual spans. Current stable WASM tests reveal roughly 534 MB process RSS, so browser integration and memory reduction remain release blockers despite the small weights.
+
+The augmented training set contains two values also present in the authored test (`biromantic` and `Seventh-day Adventist`). That test remains template/name-disjoint, but must not be described as entirely phrase-disjoint for augmented models. The authored-only first experiment has strict phrase separation.
+
+## Layout
+
+- `candidates.json` — pinned models, licences, deployment gates, and rationale.
+- `src/pii_bench/dataset.py` — deterministic synthetic corpus and validation.
+- `src/pii_bench/adapters.py` — production, ONNX, Transformers.js, GLiNER, Hugging Face, and Presidio adapters.
+- `src/pii_bench/metrics.py` — leak, utility, slice, confidence-interval, calibration, and Pareto metrics.
+- `extension_adapter.cjs` — bridge to the actual shipped regex/vector implementation.
+- `transformers_js_adapter.mjs` — browser-runtime inference bridge.
+- `PROTOCOL.md` — preregistered staged evaluation and release gates.
+- `SOURCES.md` — scope, dataset, candidate, and licence provenance.
+- `evidence/` — compact reviewed scorecards; never raw private inputs.
+
+## Security rules
+
+- Repositories and model revisions must be immutable commit hashes.
+- No PyTorch pickle/state-dict artifact may ship. Hugging Face token adapters require safetensors; deployable ONNX is loaded as data. Pinned GLiNER research controls run only when the installed loader visibly enforces `torch.load(..., weights_only=True)`, and still require safe-format conversion plus re-evaluation before release.
+- Remote model code is disabled by default and is not release-eligible.
+- Runtime inference must work offline. Presidio is forced to its bundled public-suffix snapshot.
+- Model licences and distribution rights are hard gates, not scoring tie-breakers.
+- Synthetic results are comparative evidence, not a guarantee that arbitrary real-world PII will be detected.

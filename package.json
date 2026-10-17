@@ -13,6 +13,7 @@
     "build:chrome": "./build.sh chrome",
     "build:edge": "./build.sh edge",
     "test": "jest --verbose",
+    "test:pii-benchmark": "PYTHONPATH=benchmarks/pii-models/src python3 -m unittest discover -s benchmarks/pii-models/tests -v",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
   },

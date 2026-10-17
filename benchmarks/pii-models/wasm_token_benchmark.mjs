@@ -2,18 +2,18 @@
 // Backend transfer check using precomputed tokenizer windows. No remote fetching.
 import fs from "node:fs";
 import path from "node:path";
-import crypto from "node:crypto";
+import { loadModel, configureRuntime, hashFile } from './wasm_artifacts.mjs';
 import readline from "node:readline";
 import { once } from "node:events";
 import * as ort from "onnxruntime-web/wasm";
 
-const [directory, framesPath, outputPath, memoryPolicy = "default"] = process.argv.slice(2);
+const [directory, framesPath, outputPath, memoryPolicy = "default", runtimeDirectory] = process.argv.slice(2);
 if (!directory || !framesPath || !outputPath) throw new Error("Provide model directory, frames JSONL, and predictions output");
 if (!["default", "bounded"].includes(memoryPolicy)) throw new Error("Memory policy must be default or bounded");
-const metadata = JSON.parse(fs.readFileSync(path.join(directory, "training.json"), "utf8"));
-const verification = JSON.parse(fs.readFileSync(path.join(directory, "onnx-verification.json"), "utf8"));
-const graph = fs.readFileSync(path.join(directory, "model.onnx"));
-if (crypto.createHash("sha256").update(graph).digest("hex") !== verification.sha256) throw new Error("ONNX checksum mismatch");
+const { metadata, verification, graph, filename } = loadModel(directory);
+const runtimeArtifact = configureRuntime(ort, runtimeDirectory);
+const framesSha256 = hashFile(framesPath);
+const tokenizerSha256 = hashFile(path.join(directory, 'tokenizer.json'));
 ort.env.wasm.numThreads = 1;
 const began = performance.now();
 const session = await ort.InferenceSession.create(graph, { executionProviders: ["wasm"],
@@ -22,6 +22,7 @@ const coldStart = performance.now() - began;
 const output = fs.createWriteStream(outputPath, { encoding: "utf8" });
 const input = readline.createInterface({ input: fs.createReadStream(framesPath), crlfDelay: Infinity });
 let count = 0;
+let headerSeen = false;
 let peakRss = 0;
 const started = performance.now();
 async function write(record) {
@@ -30,15 +31,23 @@ async function write(record) {
 for await (const line of input) {
   const record = JSON.parse(line);
   if (record._meta) {
+    if (headerSeen || count) throw new Error('Expected exactly one leading frame manifest');
+    if (!/^[a-f0-9]{64}$/.test(record._meta.dataset_sha256 || '')) throw new Error('Frames have no dataset binding');
+    if (record._meta.tokenizer_sha256 !== tokenizerSha256) throw new Error('Tokenizer windows are not bound to the model tokenizer');
+    headerSeen = true;
     await write({ _meta: { ...record._meta,
-      candidate_id: `llss-psi-${metadata.weights_sha256.slice(0, 8)}-${metadata.artifact_variant || "float"}-wasm-${memoryPolicy}`,
+      frames_sha256: framesSha256,
+      candidate_id: `llss-psi-${metadata.weights_sha256.slice(0, 8)}-${metadata.artifact_variant || "float"}-wasm-${filename}-${runtimeArtifact.kind}-${memoryPolicy}`,
       artifact_mb: graph.length / 1000000, artifact_sha256: verification.sha256,
+      source_onnx_sha256: verification.source_onnx_sha256 || verification.sha256,
       weights_sha256: metadata.weights_sha256, adapter: "wasm-research", release_eligible: false,
       cold_start_ms: coldStart, runtime: ort.env.versions,
+      model_format: filename, runtime_artifact: runtimeArtifact,
       memory_policy: memoryPolicy,
       measurement_scope: "browser WASM backend under Node; tokenizer windows prepared in Python" } });
     continue;
   }
+  if (!headerSeen) throw new Error('Frames must begin with a verified manifest');
   const begin = performance.now();
   const unique = new Map();
   for (const window of record.windows) {

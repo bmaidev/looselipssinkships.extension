@@ -156,7 +156,7 @@ PYTHONPATH=src .venv/bin/python -m pii_bench.tiny_finetune quantize \
   --model-dir generated/psi-bert-tiny --output-dir generated/psi-bert-tiny-int8
 ```
 
-Use `specialist_external --exclude-evaluation /path/to/discovery-test.jsonl` to reserve a new external sample with no source IDs from the discovery sample. `compare` computes paired document-cluster bootstrap differences. `verify_tiny_wasm.mjs` checks strict native/WASM logit parity; `wasm_token_benchmark.mjs` measures actual backend transfer on prepared tokenizer windows. Float ONNX passes strict parity; INT8 has small backend differences and must be evaluated with actual spans. Current stable WASM tests reveal roughly 534 MB process RSS, so browser integration and memory reduction remain release blockers despite the small weights.
+Use `specialist_external --exclude-evaluation /path/to/discovery-test.jsonl` to reserve a new external sample with no source IDs from the discovery sample. `compare` computes paired document-cluster bootstrap differences. `verify_tiny_wasm.mjs` checks strict native/WASM logit parity; `wasm_token_benchmark.mjs` measures actual backend transfer on prepared tokenizer windows. Float ONNX passes strict parity; INT8 has small backend differences and must be evaluated with actual spans. The default runtime's roughly 534 MiB Node process RSS is the historical baseline. The [minimal runtime study](evidence/minimal-runtime-study-2026-10-17.md) reduces this to roughly 97 MiB in repeated synthetic diagnostics, and 100 MiB on 1,500 documents, with slower inference. This is not browser memory evidence or release approval; model quality remains insufficient.
 
 `profile_wasm_memory.mjs MODEL_DIRECTORY [default|bounded] [OUTPUT_JSON]`
 isolates runtime import, session creation, fixed-shape inference and release.
@@ -164,6 +164,14 @@ Compare normal Node with `node --liftoff-only` only as a V8 compiler diagnostic,
 not a deployment setting. Snapshots are process RSS samples, not measured browser
 extension memory or a continuous peak. See the
 [next-stage evidence](evidence/local-release-next-stage-2026-10-17.md).
+
+The profiler also reports OS process peak RSS separately. An optional final
+runtime-directory argument verifies a research bundle before loading local WASM.
+`profile_runtime_matrix.mjs` rotates three variants across three sequential runs;
+`compare_wasm_logits.mjs` checks five padded shape cases in separate processes.
+`pii_bench.runtime_pair` compares real span boundaries, confidence drift, seven
+fixed thresholds and paired bootstrap metrics without conflating those checks.
+Reproduction instructions and known build hygiene issues are in the study above.
 
 The augmented training set contains two values also present in the authored test (`biromantic` and `Seventh-day Adventist`). That test remains template/name-disjoint, but must not be described as entirely phrase-disjoint for augmented models. The authored-only first experiment has strict phrase separation.
 

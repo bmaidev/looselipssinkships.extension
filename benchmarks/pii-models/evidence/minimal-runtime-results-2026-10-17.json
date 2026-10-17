@@ -1,0 +1,3381 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-17",
+  "release_eligible": false,
+  "scope": "Node/WASM diagnostic; not packaged Chrome/Edge validation",
+  "host": {
+    "os": "macOS 26.2 / Darwin 25.2.0",
+    "cpu": "Apple M4",
+    "cpu_count": 10,
+    "memory_bytes": 25769803776,
+    "node": "25.2.1",
+    "node_options": null
+  },
+  "known_release_blockers": [
+    "Model safety and clean-negative gates fail; only four PSI categories in this confirmation corpus",
+    "No exact-package Chrome/Edge worker, tokenizer, lifecycle or whole-extension measurements",
+    "Development WASM includes absolute source/build paths; path-sanitized rebuild outstanding",
+    "Third-party C++ SBOM/licence review and reproducible build verification outstanding"
+  ],
+  "matrix": {
+    "scope": "Sequential Node/WASM synthetic diagnostic, not packaged-browser evidence",
+    "release_eligible": false,
+    "repetitions": 3,
+    "source_code_sha256": "52083d17a60b81f2180d9d189e96549a7ff2a1cc9941df3e8facd414de421692",
+    "profiler_sha256": "ccbf9ef9e06f0e51f0a7209acfdd85f14211b1e66a8b5361fb1dab24eb4fa514",
+    "results": [
+      {
+        "variant": "full-onnx",
+        "repetition": 1,
+        "result_sha256": "4bb4fd781dd3d7fc1efdd5716dec5cb4d9a6283dadc37de8eccdd8a2e6753785",
+        "report": {
+          "scope": "Node WASM synthetic memory diagnosis, not browser release evidence",
+          "artifact_sha256": "9fb9a8357bc0ce4634f5f4f30165019fb859595baece0ef0d04c90e1561f4718",
+          "model_format": "model.onnx",
+          "runtime_artifact": {
+            "kind": "npm-default",
+            "runtime_version": "1.30.0",
+            "files": {
+              "ort-wasm-simd-threaded.mjs": {
+                "sha256": "e13f7f94fc51b4ca72b12faeb1ee95f4ace6dfbc8939bc718aabdc0a27c4299b",
+                "bytes": 24381
+              },
+              "ort-wasm-simd-threaded.wasm": {
+                "sha256": "3398c10d07d229bd91b364548e130e0e51a8e5704b88c7c083ebbeb78842dee2",
+                "bytes": 14239897
+              },
+              "wrapper": {
+                "sha256": "11e64bd8ffe11bd1a2a2f0d6275fdfbbba7262f0b76b99b53d228a8a22ef3d90",
+                "bytes": 73054
+              }
+            },
+            "total_bytes": 14337332,
+            "release_eligible": false
+          },
+          "runtime": {
+            "common": "1.30.0",
+            "web": "1.30.0"
+          },
+          "node": "v25.2.1",
+          "policy": "default",
+          "v8_flags": [],
+          "cold_start_ms": 156.77308299999999,
+          "os_peak_rss_mib": 532.734375,
+          "measurements": [
+            {
+              "tokens": 16,
+              "repetitions": 100,
+              "p95_ms": 1.006875000000008
+            },
+            {
+              "tokens": 64,
+              "repetitions": 100,
+              "p95_ms": 1.7823750000000018
+            },
+            {
+              "tokens": 128,
+              "repetitions": 100,
+              "p95_ms": 3.509625000000028
+            },
+            {
+              "tokens": 256,
+              "repetitions": 100,
+              "p95_ms": 7.0066249999999854
+            },
+            {
+              "tokens": 16,
+              "repetitions": 100,
+              "p95_ms": 0.43724999999994907
+            }
+          ],
+          "snapshots": [
+            {
+              "phase": "baseline",
+              "rss_mib": 43.640625,
+              "heapTotal_mib": 6.140625,
+              "heapUsed_mib": 4.580085754394531,
+              "external_mib": 1.8690166473388672,
+              "arrayBuffers_mib": 0.01588726043701172
+            },
+            {
+              "phase": "runtime_imported",
+              "rss_mib": 45.046875,
+              "heapTotal_mib": 6.140625,
+              "heapUsed_mib": 4.881591796875,
+              "external_mib": 1.9387283325195312,
+              "arrayBuffers_mib": 0.0855569839477539
+            },
+            {
+              "phase": "session_created",
+              "rss_mib": 174.703125,
+              "heapTotal_mib": 10.953125,
+              "heapUsed_mib": 8.202499389648438,
+              "external_mib": 19.84811496734619,
+              "arrayBuffers_mib": 17.869001388549805
+            },
+            {
+              "phase": "tokens_16_first_0",
+              "rss_mib": 189.71875,
+              "heapTotal_mib": 11.203125,
+              "heapUsed_mib": 9.12713623046875,
+              "external_mib": 19.85025119781494,
+              "arrayBuffers_mib": 17.871137619018555
+            },
+            {
+              "phase": "tokens_16_after_100_0",
+              "rss_mib": 297.609375,
+              "heapTotal_mib": 12.953125,
+              "heapUsed_mib": 8.253768920898438,
+              "external_mib": 6.312751770019531,
+              "arrayBuffers_mib": 4.3336381912231445
+            },
+            {
+              "phase": "tokens_64_first_1",
+              "rss_mib": 297.65625,
+              "heapTotal_mib": 12.953125,
+              "heapUsed_mib": 8.285018920898438,
+              "external_mib": 6.321296691894531,
+              "arrayBuffers_mib": 4.3421831130981445
+            },
+            {
+              "phase": "tokens_64_after_100_1",
+              "rss_mib": 499.34375,
+              "heapTotal_mib": 13.203125,
+              "heapUsed_mib": 9.701866149902344,
+              "external_mib": 7.167243957519531,
+              "arrayBuffers_mib": 5.1881303787231445
+            },
+            {
+              "phase": "tokens_128_first_2",
+              "rss_mib": 500.140625,
+              "heapTotal_mib": 13.203125,
+              "heapUsed_mib": 9.731620788574219,
+              "external_mib": 7.184333801269531,
+              "arrayBuffers_mib": 5.2052202224731445
+            },
+            {
+              "phase": "tokens_128_after_100_2",
+              "rss_mib": 529.078125,
+              "heapTotal_mib": 14.953125,
+              "heapUsed_mib": 11.208724975585938,
+              "external_mib": 8.876228332519531,
+              "arrayBuffers_mib": 6.8971147537231445
+            },
+            {
+              "phase": "tokens_256_first_3",
+              "rss_mib": 529.140625,
+              "heapTotal_mib": 14.953125,
+              "heapUsed_mib": 11.237319946289062,
+              "external_mib": 8.910408020019531,
+              "arrayBuffers_mib": 6.9312944412231445
+            },
+            {
+              "phase": "tokens_256_after_100_3",
+              "rss_mib": 532.53125,
+              "heapTotal_mib": 14.703125,
+              "heapUsed_mib": 8.060012817382812,
+              "external_mib": 7.498325347900391,
+              "arrayBuffers_mib": 5.519211769104004
+            },
+            {
+              "phase": "tokens_16_first_4",
+              "rss_mib": 532.53125,
+              "heapTotal_mib": 14.703125,
+              "heapUsed_mib": 8.0933837890625,
+              "external_mib": 7.500461578369141,
+              "arrayBuffers_mib": 5.521347999572754
+            },
+            {
+              "phase": "tokens_16_after_100_4",
+              "rss_mib": 532.640625,
+              "heapTotal_mib": 14.703125,
+              "heapUsed_mib": 9.463386535644531,
+              "external_mib": 7.711948394775391,
+              "arrayBuffers_mib": 5.732834815979004
+            },
+            {
+              "phase": "session_released",
+              "rss_mib": 532.734375,
+              "heapTotal_mib": 14.703125,
+              "heapUsed_mib": 9.492546081542969,
+              "external_mib": 7.711948394775391,
+              "arrayBuffers_mib": 5.732834815979004
+            }
+          ]
+        }
+      },
+      {
+        "variant": "full-ort",
+        "repetition": 1,
+        "result_sha256": "fea8b7e6c8ff1c0e213e1e89252ab4f75bed05962b5c60e74915714d54c7e53c",
+        "report": {
+          "scope": "Node WASM synthetic memory diagnosis, not browser release evidence",
+          "artifact_sha256": "fb652b52829c0d2149b6c64065a242118d865a24cb3448c405b6ed03dd71ecc2",
+          "model_format": "model.basic.ort",
+          "runtime_artifact": {
+            "kind": "npm-default",
+            "runtime_version": "1.30.0",
+            "files": {
+              "ort-wasm-simd-threaded.mjs": {
+                "sha256": "e13f7f94fc51b4ca72b12faeb1ee95f4ace6dfbc8939bc718aabdc0a27c4299b",
+                "bytes": 24381
+              },
+              "ort-wasm-simd-threaded.wasm": {
+                "sha256": "3398c10d07d229bd91b364548e130e0e51a8e5704b88c7c083ebbeb78842dee2",
+                "bytes": 14239897
+              },
+              "wrapper": {
+                "sha256": "11e64bd8ffe11bd1a2a2f0d6275fdfbbba7262f0b76b99b53d228a8a22ef3d90",
+                "bytes": 73054
+              }
+            },
+            "total_bytes": 14337332,
+            "release_eligible": false
+          },
+          "runtime": {
+            "common": "1.30.0",
+            "web": "1.30.0"
+          },
+          "node": "v25.2.1",
+          "policy": "default",
+          "v8_flags": [],
+          "cold_start_ms": 124.30120799999999,
+          "os_peak_rss_mib": 530.015625,
+          "measurements": [
+            {
+              "tokens": 16,
+              "repetitions": 100,
+              "p95_ms": 1.1982500000000016
+            },
+            {
+              "tokens": 64,
+              "repetitions": 100,
+              "p95_ms": 1.7995000000000232
+            },
+            {
+              "tokens": 128,
+              "repetitions": 100,
+              "p95_ms": 3.5472090000000094
+            },
+            {
+              "tokens": 256,
+              "repetitions": 100,
+              "p95_ms": 7.3409580000000005
+            },
+            {
+              "tokens": 16,
+              "repetitions": 100,
+              "p95_ms": 0.49300000000016553
+            }
+          ],
+          "snapshots": [
+            {
+              "phase": "baseline",
+              "rss_mib": 43.5625,
+              "heapTotal_mib": 6.140625,
+              "heapUsed_mib": 4.58001708984375,
+              "external_mib": 1.8690166473388672,
+              "arrayBuffers_mib": 0.01588726043701172
+            },
+            {
+              "phase": "runtime_imported",
+              "rss_mib": 44.984375,
+              "heapTotal_mib": 6.140625,
+              "heapUsed_mib": 4.881523132324219,
+              "external_mib": 1.9387283325195312,
+              "arrayBuffers_mib": 0.0855569839477539
+            },
+            {
+              "phase": "session_created",
+              "rss_mib": 170.15625,
+              "heapTotal_mib": 10.953125,
+              "heapUsed_mib": 8.002113342285156,
+              "external_mib": 19.88275146484375,
+              "arrayBuffers_mib": 17.903637886047363
+            },
+            {
+              "phase": "tokens_16_first_0",
+              "rss_mib": 187.375,
+              "heapTotal_mib": 11.203125,
+              "heapUsed_mib": 8.813735961914062,
+              "external_mib": 19.8848876953125,
+              "arrayBuffers_mib": 17.905774116516113
+            },
+            {
+              "phase": "tokens_16_after_100_0",
+              "rss_mib": 453.625,
+              "heapTotal_mib": 12.453125,
+              "heapUsed_mib": 8.869216918945312,
+              "external_mib": 6.45847225189209,
+              "arrayBuffers_mib": 4.479358673095703
+            },
+            {
+              "phase": "tokens_64_first_1",
+              "rss_mib": 454.71875,
+              "heapTotal_mib": 13.203125,
+              "heapUsed_mib": 7.836204528808594,
+              "external_mib": 6.31107234954834,
+              "arrayBuffers_mib": 4.331958770751953
+            },
+            {
+              "phase": "tokens_64_after_100_1",
+              "rss_mib": 506.625,
+              "heapTotal_mib": 13.203125,
+              "heapUsed_mib": 9.250457763671875,
+              "external_mib": 7.15701961517334,
+              "arrayBuffers_mib": 5.177906036376953
+            },
+            {
+              "phase": "tokens_128_first_2",
+              "rss_mib": 506.671875,
+              "heapTotal_mib": 13.203125,
+              "heapUsed_mib": 9.280288696289062,
+              "external_mib": 7.17410945892334,
+              "arrayBuffers_mib": 5.194995880126953
+            },
+            {
+              "phase": "tokens_128_after_100_2",
+              "rss_mib": 525.3125,
+              "heapTotal_mib": 14.453125,
+              "heapUsed_mib": 10.757247924804688,
+              "external_mib": 8.86600399017334,
+              "arrayBuffers_mib": 6.886890411376953
+            },
+            {
+              "phase": "tokens_256_first_3",
+              "rss_mib": 525.421875,
+              "heapTotal_mib": 14.453125,
+              "heapUsed_mib": 10.785812377929688,
+              "external_mib": 8.90018367767334,
+              "arrayBuffers_mib": 6.921070098876953
+            },
+            {
+              "phase": "tokens_256_after_100_3",
+              "rss_mib": 529.859375,
+              "heapTotal_mib": 14.953125,
+              "heapUsed_mib": 7.648063659667969,
+              "external_mib": 6.815188407897949,
+              "arrayBuffers_mib": 4.8360748291015625
+            },
+            {
+              "phase": "tokens_16_first_4",
+              "rss_mib": 529.875,
+              "heapTotal_mib": 14.953125,
+              "heapUsed_mib": 7.6812286376953125,
+              "external_mib": 6.817324638366699,
+              "arrayBuffers_mib": 4.8382110595703125
+            },
+            {
+              "phase": "tokens_16_after_100_4",
+              "rss_mib": 529.9375,
+              "heapTotal_mib": 14.953125,
+              "heapUsed_mib": 9.051361083984375,
+              "external_mib": 7.028811454772949,
+              "arrayBuffers_mib": 5.0496978759765625
+            },
+            {
+              "phase": "session_released",
+              "rss_mib": 530.015625,
+              "heapTotal_mib": 14.953125,
+              "heapUsed_mib": 9.079734802246094,
+              "external_mib": 7.028811454772949,
+              "arrayBuffers_mib": 5.0496978759765625
+            }
+          ]
+        }
+      },
+      {
+        "variant": "minimal-ort",
+        "repetition": 1,
+        "result_sha256": "c8c96d254f099d25072c66ca732f3b876b17d125a7977f83bfd385436bf14904",
+        "report": {
+          "scope": "Node WASM synthetic memory diagnosis, not browser release evidence",
+          "artifact_sha256": "fb652b52829c0d2149b6c64065a242118d865a24cb3448c405b6ed03dd71ecc2",
+          "model_format": "model.basic.ort",
+          "runtime_artifact": {
+            "kind": "custom-minimal",
+            "runtime_version": "1.30.0",
+            "files": {
+              "ort-wasm-simd-threaded.mjs": {
+                "sha256": "dca17c592301105e30bda770ae47e26333b685193bc20e552f16457125a0cf1f",
+                "bytes": 27544
+              },
+              "ort-wasm-simd-threaded.wasm": {
+                "sha256": "2ac981b2080cbb54c3b18e180608ad647372c6fea647f65c4f5e143fdaf606cb",
+                "bytes": 1855932
+              },
+              "wrapper": {
+                "sha256": "11e64bd8ffe11bd1a2a2f0d6275fdfbbba7262f0b76b99b53d228a8a22ef3d90",
+                "bytes": 73054
+              }
+            },
+            "total_bytes": 1956530,
+            "source_revision": "f2c39fe2f838cf35ce7da92824f5a5e3ee6e88a7",
+            "build": {
+              "build_type": "MinSizeRel",
+              "cmake_cache_sha256": "fd0b5885d6f589f5b37104d9d23d38a36539b9b511b15e9e1bae3f866c9b372d",
+              "compiler_flags": {
+                "CMAKE_CXX_FLAGS_MINSIZEREL": "-Os -DNDEBUG",
+                "CMAKE_C_FLAGS_MINSIZEREL": "-Os -DNDEBUG"
+              },
+              "files": {
+                "ort-wasm-simd-threaded.mjs": {
+                  "bytes": 27544,
+                  "sha256": "dca17c592301105e30bda770ae47e26333b685193bc20e552f16457125a0cf1f"
+                },
+                "ort-wasm-simd-threaded.wasm": {
+                  "bytes": 1855932,
+                  "sha256": "2ac981b2080cbb54c3b18e180608ad647372c6fea647f65c4f5e143fdaf606cb"
+                }
+              },
+              "generated_registration_sha256": {
+                "onnxruntime/contrib_ops/cpu/cpu_contrib_kernels.cc": "d5b5c40867c77f53fa6ba3502a5bbe06da770ddf2ca1dfa7ec94493c87f4f2a7",
+                "onnxruntime/core/providers/cpu/cpu_execution_provider.cc": "338f49679d43a683d26b94027f88b8d75a0c8a51db995e06434ff10388f3f138",
+                "onnxruntime/core/providers/op_kernel_type_control_overrides.inc": "24d32d70ba869622a894409ca7be78569174591800cb1b5f09d468f81a0d8dc4",
+                "orttraining/orttraining/training_ops/cpu/cpu_training_kernels.cc": "15df63198e2be5c5661b1626fb255adfec25dab7f6032844643bd5b2ccbc6c79"
+              },
+              "limitations": "Research-only compiled artifacts; settings are not privacy certification. Same-version WASM parity and exact-package browser tests still required.",
+              "minimal_build": true,
+              "node_package_scope_override_sha256": "a51bff776fdd53226e2e67d8f654d17dadfe3decc8bf8bf869cba3aff9813826",
+              "release_eligible": false,
+              "runtime_version": "1.30.0",
+              "schema_version": 1,
+              "sdk_revision": "c0bb220cb6e6f4e0fabb6f6db9efd53390ef5e56",
+              "source_revision": "f2c39fe2f838cf35ce7da92824f5a5e3ee6e88a7",
+              "supplied_operator_config_sha256": "b02a50214bbf57a9cb2a44a4478d2c297ce883e464cfb0e6c557b3066d20af7e",
+              "telemetry_disabled": true,
+              "upstream_dependency_manifest_sha256": "880edacbd7954c32b8bff34959e6fc5bbae0dc402f8f99861c1c3f057b976c0d",
+              "verified_cmake_flags": {
+                "onnxruntime_ENABLE_WEBASSEMBLY_PROFILING": "OFF",
+                "onnxruntime_ENABLE_WEBASSEMBLY_SIMD": "ON",
+                "onnxruntime_ENABLE_WEBASSEMBLY_THREADS": "ON",
+                "onnxruntime_MINIMAL_BUILD": "ON",
+                "onnxruntime_MINIMAL_BUILD_CUSTOM_OPS": "OFF",
+                "onnxruntime_REDUCED_OPS_BUILD": "ON",
+                "onnxruntime_USE_TELEMETRY": "OFF"
+              }
+            },
+            "release_eligible": false
+          },
+          "runtime": {
+            "common": "1.30.0",
+            "web": "1.30.0"
+          },
+          "node": "v25.2.1",
+          "policy": "default",
+          "v8_flags": [],
+          "cold_start_ms": 38.023917,
+          "os_peak_rss_mib": 96.34375,
+          "measurements": [
+            {
+              "tokens": 16,
+              "repetitions": 100,
+              "p95_ms": 1.5448749999999905
+            },
+            {
+              "tokens": 64,
+              "repetitions": 100,
+              "p95_ms": 3.1337500000000205
+            },
+            {
+              "tokens": 128,
+              "repetitions": 100,
+              "p95_ms": 5.803666000000021
+            },
+            {
+              "tokens": 256,
+              "repetitions": 100,
+              "p95_ms": 11.82049999999981
+            },
+            {
+              "tokens": 16,
+              "repetitions": 100,
+              "p95_ms": 1.0788330000000315
+            }
+          ],
+          "snapshots": [
+            {
+              "phase": "baseline",
+              "rss_mib": 43.671875,
+              "heapTotal_mib": 6.140625,
+              "heapUsed_mib": 4.580024719238281,
+              "external_mib": 1.8690166473388672,
+              "arrayBuffers_mib": 0.01588726043701172
+            },
+            {
+              "phase": "runtime_imported",
+              "rss_mib": 45.078125,
+              "heapTotal_mib": 6.140625,
+              "heapUsed_mib": 4.881599426269531,
+              "external_mib": 1.9387283325195312,
+              "arrayBuffers_mib": 0.0855569839477539
+            },
+            {
+              "phase": "session_created",
+              "rss_mib": 81.703125,
+              "heapTotal_mib": 8.640625,
+              "heapUsed_mib": 6.495246887207031,
+              "external_mib": 8.072482109069824,
+              "arrayBuffers_mib": 6.0933685302734375
+            },
+            {
+              "phase": "tokens_16_first_0",
+              "rss_mib": 86.390625,
+              "heapTotal_mib": 9.140625,
+              "heapUsed_mib": 7.479316711425781,
+              "external_mib": 8.074618339538574,
+              "arrayBuffers_mib": 6.0955047607421875
+            },
+            {
+              "phase": "tokens_16_after_100_0",
+              "rss_mib": 93.484375,
+              "heapTotal_mib": 11.390625,
+              "heapUsed_mib": 6.474830627441406,
+              "external_mib": 6.31534481048584,
+              "arrayBuffers_mib": 4.336231231689453
+            },
+            {
+              "phase": "tokens_64_first_1",
+              "rss_mib": 93.515625,
+              "heapTotal_mib": 11.390625,
+              "heapUsed_mib": 6.5402984619140625,
+              "external_mib": 6.32388973236084,
+              "arrayBuffers_mib": 4.344776153564453
+            },
+            {
+              "phase": "tokens_64_after_100_1",
+              "rss_mib": 93.890625,
+              "heapTotal_mib": 11.640625,
+              "heapUsed_mib": 7.4769439697265625,
+              "external_mib": 6.50760555267334,
+              "arrayBuffers_mib": 4.528491973876953
+            },
+            {
+              "phase": "tokens_128_first_2",
+              "rss_mib": 93.90625,
+              "heapTotal_mib": 11.640625,
+              "heapUsed_mib": 7.546966552734375,
+              "external_mib": 6.52469539642334,
+              "arrayBuffers_mib": 4.545581817626953
+            },
+            {
+              "phase": "tokens_128_after_100_2",
+              "rss_mib": 95.03125,
+              "heapTotal_mib": 11.640625,
+              "heapUsed_mib": 7.1801300048828125,
+              "external_mib": 6.54178524017334,
+              "arrayBuffers_mib": 4.562671661376953
+            },
+            {
+              "phase": "tokens_256_first_3",
+              "rss_mib": 95.078125,
+              "heapTotal_mib": 11.640625,
+              "heapUsed_mib": 7.2636566162109375,
+              "external_mib": 6.57596492767334,
+              "arrayBuffers_mib": 4.596851348876953
+            },
+            {
+              "phase": "tokens_256_after_100_3",
+              "rss_mib": 96.125,
+              "heapTotal_mib": 11.640625,
+              "heapUsed_mib": 8.1968994140625,
+              "external_mib": 7.19119930267334,
+              "arrayBuffers_mib": 5.212085723876953
+            },
+            {
+              "phase": "tokens_16_first_4",
+              "rss_mib": 96.125,
+              "heapTotal_mib": 11.640625,
+              "heapUsed_mib": 8.25238037109375,
+              "external_mib": 7.19333553314209,
+              "arrayBuffers_mib": 5.214221954345703
+            },
+            {
+              "phase": "tokens_16_after_100_4",
+              "rss_mib": 96.25,
+              "heapTotal_mib": 11.640625,
+              "heapUsed_mib": 8.417961120605469,
+              "external_mib": 6.40506649017334,
+              "arrayBuffers_mib": 4.425952911376953
+            },
+            {
+              "phase": "session_released",
+              "rss_mib": 96.34375,
+              "heapTotal_mib": 11.640625,
+              "heapUsed_mib": 8.447052001953125,
+              "external_mib": 6.40506649017334,
+              "arrayBuffers_mib": 4.425952911376953
+            }
+          ]
+        }
+      },
+      {
+        "variant": "full-ort",
+        "repetition": 2,
+        "result_sha256": "665dd399a1631ed54caf1ab09951cd68cbfb43eba5c65d1a79cf251314371526",
+        "report": {
+          "scope": "Node WASM synthetic memory diagnosis, not browser release evidence",
+          "artifact_sha256": "fb652b52829c0d2149b6c64065a242118d865a24cb3448c405b6ed03dd71ecc2",
+          "model_format": "model.basic.ort",
+          "runtime_artifact": {
+            "kind": "npm-default",
+            "runtime_version": "1.30.0",
+            "files": {
+              "ort-wasm-simd-threaded.mjs": {
+                "sha256": "e13f7f94fc51b4ca72b12faeb1ee95f4ace6dfbc8939bc718aabdc0a27c4299b",
+                "bytes": 24381
+              },
+              "ort-wasm-simd-threaded.wasm": {
+                "sha256": "3398c10d07d229bd91b364548e130e0e51a8e5704b88c7c083ebbeb78842dee2",
+                "bytes": 14239897
+              },
+              "wrapper": {
+                "sha256": "11e64bd8ffe11bd1a2a2f0d6275fdfbbba7262f0b76b99b53d228a8a22ef3d90",
+                "bytes": 73054
+              }
+            },
+            "total_bytes": 14337332,
+            "release_eligible": false
+          },
+          "runtime": {
+            "common": "1.30.0",
+            "web": "1.30.0"
+          },
+          "node": "v25.2.1",
+          "policy": "default",
+          "v8_flags": [],
+          "cold_start_ms": 122.1685,
+          "os_peak_rss_mib": 532.5625,
+          "measurements": [
+            {
+              "tokens": 16,
+              "repetitions": 100,
+              "p95_ms": 1.2548749999999984
+            },
+            {
+              "tokens": 64,
+              "repetitions": 100,
+              "p95_ms": 1.8435839999999928
+            },
+            {
+              "tokens": 128,
+              "repetitions": 100,
+              "p95_ms": 3.512040999999954
+            },
+            {
+              "tokens": 256,
+              "repetitions": 100,
+              "p95_ms": 7.4009170000000495
+            },
+            {
+              "tokens": 16,
+              "repetitions": 100,
+              "p95_ms": 0.533333999999968
+            }
+          ],
+          "snapshots": [
+            {
+              "phase": "baseline",
+              "rss_mib": 43.75,
+              "heapTotal_mib": 6.140625,
+              "heapUsed_mib": 4.58001708984375,
+              "external_mib": 1.8690166473388672,
+              "arrayBuffers_mib": 0.01588726043701172
+            },
+            {
+              "phase": "runtime_imported",
+              "rss_mib": 45.140625,
+              "heapTotal_mib": 6.140625,
+              "heapUsed_mib": 4.881523132324219,
+              "external_mib": 1.9387283325195312,
+              "arrayBuffers_mib": 0.0855569839477539
+            },
+            {
+              "phase": "session_created",
+              "rss_mib": 168.625,
+              "heapTotal_mib": 10.953125,
+              "heapUsed_mib": 7.998664855957031,
+              "external_mib": 19.88275146484375,
+              "arrayBuffers_mib": 17.903637886047363
+            },
+            {
+              "phase": "tokens_16_first_0",
+              "rss_mib": 181.890625,
+              "heapTotal_mib": 11.203125,
+              "heapUsed_mib": 8.561416625976562,
+              "external_mib": 19.8848876953125,
+              "arrayBuffers_mib": 17.905774116516113
+            },
+            {
+              "phase": "tokens_16_after_100_0",
+              "rss_mib": 409.828125,
+              "heapTotal_mib": 12.453125,
+              "heapUsed_mib": 8.868812561035156,
+              "external_mib": 6.45847225189209,
+              "arrayBuffers_mib": 4.479358673095703
+            },
+            {
+              "phase": "tokens_64_first_1",
+              "rss_mib": 436.171875,
+              "heapTotal_mib": 13.203125,
+              "heapUsed_mib": 7.835357666015625,
+              "external_mib": 6.46701717376709,
+              "arrayBuffers_mib": 4.331958770751953
+            },
+            {
+              "phase": "tokens_64_after_100_1",
+              "rss_mib": 507.875,
+              "heapTotal_mib": 13.203125,
+              "heapUsed_mib": 9.249366760253906,
+              "external_mib": 7.15701961517334,
+              "arrayBuffers_mib": 5.177906036376953
+            },
+            {
+              "phase": "tokens_128_first_2",
+              "rss_mib": 508.140625,
+              "heapTotal_mib": 13.203125,
+              "heapUsed_mib": 9.279388427734375,
+              "external_mib": 7.17410945892334,
+              "arrayBuffers_mib": 5.194995880126953
+            },
+            {
+              "phase": "tokens_128_after_100_2",
+              "rss_mib": 527.90625,
+              "heapTotal_mib": 14.203125,
+              "heapUsed_mib": 10.756546020507812,
+              "external_mib": 8.86600399017334,
+              "arrayBuffers_mib": 6.886890411376953
+            },
+            {
+              "phase": "tokens_256_first_3",
+              "rss_mib": 527.96875,
+              "heapTotal_mib": 14.203125,
+              "heapUsed_mib": 10.785202026367188,
+              "external_mib": 8.90018367767334,
+              "arrayBuffers_mib": 6.921070098876953
+            },
+            {
+              "phase": "tokens_256_after_100_3",
+              "rss_mib": 532.390625,
+              "heapTotal_mib": 15.203125,
+              "heapUsed_mib": 7.6428070068359375,
+              "external_mib": 6.811282157897949,
+              "arrayBuffers_mib": 4.8321685791015625
+            },
+            {
+              "phase": "tokens_16_first_4",
+              "rss_mib": 532.390625,
+              "heapTotal_mib": 15.203125,
+              "heapUsed_mib": 7.676055908203125,
+              "external_mib": 6.813418388366699,
+              "arrayBuffers_mib": 4.8343048095703125
+            },
+            {
+              "phase": "tokens_16_after_100_4",
+              "rss_mib": 532.46875,
+              "heapTotal_mib": 15.203125,
+              "heapUsed_mib": 9.046562194824219,
+              "external_mib": 7.024905204772949,
+              "arrayBuffers_mib": 5.0457916259765625
+            },
+            {
+              "phase": "session_released",
+              "rss_mib": 532.5625,
+              "heapTotal_mib": 15.203125,
+              "heapUsed_mib": 9.075141906738281,
+              "external_mib": 7.024905204772949,
+              "arrayBuffers_mib": 5.0457916259765625
+            }
+          ]
+        }
+      },
+      {
+        "variant": "minimal-ort",
+        "repetition": 2,
+        "result_sha256": "fea70bfbc14f1c2a0d51ed7b603225ab5a123772ea6f28506a79a6e033adbd4f",
+        "report": {
+          "scope": "Node WASM synthetic memory diagnosis, not browser release evidence",
+          "artifact_sha256": "fb652b52829c0d2149b6c64065a242118d865a24cb3448c405b6ed03dd71ecc2",
+          "model_format": "model.basic.ort",
+          "runtime_artifact": {
+            "kind": "custom-minimal",
+            "runtime_version": "1.30.0",
+            "files": {
+              "ort-wasm-simd-threaded.mjs": {
+                "sha256": "dca17c592301105e30bda770ae47e26333b685193bc20e552f16457125a0cf1f",
+                "bytes": 27544
+              },
+              "ort-wasm-simd-threaded.wasm": {
+                "sha256": "2ac981b2080cbb54c3b18e180608ad647372c6fea647f65c4f5e143fdaf606cb",
+                "bytes": 1855932
+              },
+              "wrapper": {
+                "sha256": "11e64bd8ffe11bd1a2a2f0d6275fdfbbba7262f0b76b99b53d228a8a22ef3d90",
+                "bytes": 73054
+              }
+            },
+            "total_bytes": 1956530,
+            "source_revision": "f2c39fe2f838cf35ce7da92824f5a5e3ee6e88a7",
+            "build": {
+              "build_type": "MinSizeRel",
+              "cmake_cache_sha256": "fd0b5885d6f589f5b37104d9d23d38a36539b9b511b15e9e1bae3f866c9b372d",
+              "compiler_flags": {
+                "CMAKE_CXX_FLAGS_MINSIZEREL": "-Os -DNDEBUG",
+                "CMAKE_C_FLAGS_MINSIZEREL": "-Os -DNDEBUG"
+              },
+              "files": {
+                "ort-wasm-simd-threaded.mjs": {
+                  "bytes": 27544,
+                  "sha256": "dca17c592301105e30bda770ae47e26333b685193bc20e552f16457125a0cf1f"
+                },
+                "ort-wasm-simd-threaded.wasm": {
+                  "bytes": 1855932,
+                  "sha256": "2ac981b2080cbb54c3b18e180608ad647372c6fea647f65c4f5e143fdaf606cb"
+                }
+              },
+              "generated_registration_sha256": {
+                "onnxruntime/contrib_ops/cpu/cpu_contrib_kernels.cc": "d5b5c40867c77f53fa6ba3502a5bbe06da770ddf2ca1dfa7ec94493c87f4f2a7",
+                "onnxruntime/core/providers/cpu/cpu_execution_provider.cc": "338f49679d43a683d26b94027f88b8d75a0c8a51db995e06434ff10388f3f138",
+                "onnxruntime/core/providers/op_kernel_type_control_overrides.inc": "24d32d70ba869622a894409ca7be78569174591800cb1b5f09d468f81a0d8dc4",
+                "orttraining/orttraining/training_ops/cpu/cpu_training_kernels.cc": "15df63198e2be5c5661b1626fb255adfec25dab7f6032844643bd5b2ccbc6c79"
+              },
+              "limitations": "Research-only compiled artifacts; settings are not privacy certification. Same-version WASM parity and exact-package browser tests still required.",
+              "minimal_build": true,
+              "node_package_scope_override_sha256": "a51bff776fdd53226e2e67d8f654d17dadfe3decc8bf8bf869cba3aff9813826",
+              "release_eligible": false,
+              "runtime_version": "1.30.0",
+              "schema_version": 1,
+              "sdk_revision": "c0bb220cb6e6f4e0fabb6f6db9efd53390ef5e56",
+              "source_revision": "f2c39fe2f838cf35ce7da92824f5a5e3ee6e88a7",
+              "supplied_operator_config_sha256": "b02a50214bbf57a9cb2a44a4478d2c297ce883e464cfb0e6c557b3066d20af7e",
+              "telemetry_disabled": true,
+              "upstream_dependency_manifest_sha256": "880edacbd7954c32b8bff34959e6fc5bbae0dc402f8f99861c1c3f057b976c0d",
+              "verified_cmake_flags": {
+                "onnxruntime_ENABLE_WEBASSEMBLY_PROFILING": "OFF",
+                "onnxruntime_ENABLE_WEBASSEMBLY_SIMD": "ON",
+                "onnxruntime_ENABLE_WEBASSEMBLY_THREADS": "ON",
+                "onnxruntime_MINIMAL_BUILD": "ON",
+                "onnxruntime_MINIMAL_BUILD_CUSTOM_OPS": "OFF",
+                "onnxruntime_REDUCED_OPS_BUILD": "ON",
+                "onnxruntime_USE_TELEMETRY": "OFF"
+              }
+            },
+            "release_eligible": false
+          },
+          "runtime": {
+            "common": "1.30.0",
+            "web": "1.30.0"
+          },
+          "node": "v25.2.1",
+          "policy": "default",
+          "v8_flags": [],
+          "cold_start_ms": 38.326249999999995,
+          "os_peak_rss_mib": 97.078125,
+          "measurements": [
+            {
+              "tokens": 16,
+              "repetitions": 100,
+              "p95_ms": 1.6004170000000073
+            },
+            {
+              "tokens": 64,
+              "repetitions": 100,
+              "p95_ms": 3.072249999999997
+            },
+            {
+              "tokens": 128,
+              "repetitions": 100,
+              "p95_ms": 5.8555410000000165
+            },
+            {
+              "tokens": 256,
+              "repetitions": 100,
+              "p95_ms": 11.913291000000072
+            },
+            {
+              "tokens": 16,
+              "repetitions": 100,
+              "p95_ms": 1.2526659999998628
+            }
+          ],
+          "snapshots": [
+            {
+              "phase": "baseline",
+              "rss_mib": 43.71875,
+              "heapTotal_mib": 6.140625,
+              "heapUsed_mib": 4.580024719238281,
+              "external_mib": 1.8690166473388672,
+              "arrayBuffers_mib": 0.01588726043701172
+            },
+            {
+              "phase": "runtime_imported",
+              "rss_mib": 45.125,
+              "heapTotal_mib": 6.140625,
+              "heapUsed_mib": 4.88153076171875,
+              "external_mib": 1.9387283325195312,
+              "arrayBuffers_mib": 0.0855569839477539
+            },
+            {
+              "phase": "session_created",
+              "rss_mib": 81.8125,
+              "heapTotal_mib": 8.640625,
+              "heapUsed_mib": 6.49517822265625,
+              "external_mib": 8.072482109069824,
+              "arrayBuffers_mib": 6.0933685302734375
+            },
+            {
+              "phase": "tokens_16_first_0",
+              "rss_mib": 86.15625,
+              "heapTotal_mib": 9.140625,
+              "heapUsed_mib": 7.468162536621094,
+              "external_mib": 8.074618339538574,
+              "arrayBuffers_mib": 6.0955047607421875
+            },
+            {
+              "phase": "tokens_16_after_100_0",
+              "rss_mib": 94.125,
+              "heapTotal_mib": 11.140625,
+              "heapUsed_mib": 6.5101318359375,
+              "external_mib": 6.31534481048584,
+              "arrayBuffers_mib": 4.336231231689453
+            },
+            {
+              "phase": "tokens_64_first_1",
+              "rss_mib": 94.15625,
+              "heapTotal_mib": 11.140625,
+              "heapUsed_mib": 6.5754852294921875,
+              "external_mib": 6.32388973236084,
+              "arrayBuffers_mib": 4.344776153564453
+            },
+            {
+              "phase": "tokens_64_after_100_1",
+              "rss_mib": 94.578125,
+              "heapTotal_mib": 11.390625,
+              "heapUsed_mib": 7.513618469238281,
+              "external_mib": 6.51615047454834,
+              "arrayBuffers_mib": 4.537036895751953
+            },
+            {
+              "phase": "tokens_128_first_2",
+              "rss_mib": 94.609375,
+              "heapTotal_mib": 11.390625,
+              "heapUsed_mib": 7.5836181640625,
+              "external_mib": 6.53324031829834,
+              "arrayBuffers_mib": 4.554126739501953
+            },
+            {
+              "phase": "tokens_128_after_100_2",
+              "rss_mib": 95.71875,
+              "heapTotal_mib": 11.390625,
+              "heapUsed_mib": 7.209861755371094,
+              "external_mib": 6.54178524017334,
+              "arrayBuffers_mib": 4.562671661376953
+            },
+            {
+              "phase": "tokens_256_first_3",
+              "rss_mib": 95.8125,
+              "heapTotal_mib": 11.390625,
+              "heapUsed_mib": 7.2932891845703125,
+              "external_mib": 6.57596492767334,
+              "arrayBuffers_mib": 4.596851348876953
+            },
+            {
+              "phase": "tokens_256_after_100_3",
+              "rss_mib": 96.890625,
+              "heapTotal_mib": 11.390625,
+              "heapUsed_mib": 8.163764953613281,
+              "external_mib": 7.19119930267334,
+              "arrayBuffers_mib": 5.212085723876953
+            },
+            {
+              "phase": "tokens_16_first_4",
+              "rss_mib": 96.890625,
+              "heapTotal_mib": 11.390625,
+              "heapUsed_mib": 8.219146728515625,
+              "external_mib": 7.19333553314209,
+              "arrayBuffers_mib": 5.214221954345703
+            },
+            {
+              "phase": "tokens_16_after_100_4",
+              "rss_mib": 97,
+              "heapTotal_mib": 11.390625,
+              "heapUsed_mib": 8.415756225585938,
+              "external_mib": 6.40293025970459,
+              "arrayBuffers_mib": 4.423816680908203
+            },
+            {
+              "phase": "session_released",
+              "rss_mib": 97.078125,
+              "heapTotal_mib": 11.390625,
+              "heapUsed_mib": 8.444847106933594,
+              "external_mib": 6.40293025970459,
+              "arrayBuffers_mib": 4.423816680908203
+            }
+          ]
+        }
+      },
+      {
+        "variant": "full-onnx",
+        "repetition": 2,
+        "result_sha256": "dd7963551907ba0a15720a72349f670ecf2a65907ae2a3ae15e3d94b0f46f194",
+        "report": {
+          "scope": "Node WASM synthetic memory diagnosis, not browser release evidence",
+          "artifact_sha256": "9fb9a8357bc0ce4634f5f4f30165019fb859595baece0ef0d04c90e1561f4718",
+          "model_format": "model.onnx",
+          "runtime_artifact": {
+            "kind": "npm-default",
+            "runtime_version": "1.30.0",
+            "files": {
+              "ort-wasm-simd-threaded.mjs": {
+                "sha256": "e13f7f94fc51b4ca72b12faeb1ee95f4ace6dfbc8939bc718aabdc0a27c4299b",
+                "bytes": 24381
+              },
+              "ort-wasm-simd-threaded.wasm": {
+                "sha256": "3398c10d07d229bd91b364548e130e0e51a8e5704b88c7c083ebbeb78842dee2",
+                "bytes": 14239897
+              },
+              "wrapper": {
+                "sha256": "11e64bd8ffe11bd1a2a2f0d6275fdfbbba7262f0b76b99b53d228a8a22ef3d90",
+                "bytes": 73054
+              }
+            },
+            "total_bytes": 14337332,
+            "release_eligible": false
+          },
+          "runtime": {
+            "common": "1.30.0",
+            "web": "1.30.0"
+          },
+          "node": "v25.2.1",
+          "policy": "default",
+          "v8_flags": [],
+          "cold_start_ms": 153.696833,
+          "os_peak_rss_mib": 535.765625,
+          "measurements": [
+            {
+              "tokens": 16,
+              "repetitions": 100,
+              "p95_ms": 1.193916999999999
+            },
+            {
+              "tokens": 64,
+              "repetitions": 100,
+              "p95_ms": 1.752917000000025
+            },
+            {
+              "tokens": 128,
+              "repetitions": 100,
+              "p95_ms": 3.4105409999999665
+            },
+            {
+              "tokens": 256,
+              "repetitions": 100,
+              "p95_ms": 7.4621250000000146
+            },
+            {
+              "tokens": 16,
+              "repetitions": 100,
+              "p95_ms": 0.45345799999995506
+            }
+          ],
+          "snapshots": [
+            {
+              "phase": "baseline",
+              "rss_mib": 43.75,
+              "heapTotal_mib": 6.140625,
+              "heapUsed_mib": 4.5801544189453125,
+              "external_mib": 1.8690166473388672,
+              "arrayBuffers_mib": 0.01588726043701172
+            },
+            {
+              "phase": "runtime_imported",
+              "rss_mib": 45.125,
+              "heapTotal_mib": 6.140625,
+              "heapUsed_mib": 4.881660461425781,
+              "external_mib": 1.9387283325195312,
+              "arrayBuffers_mib": 0.0855569839477539
+            },
+            {
+              "phase": "session_created",
+              "rss_mib": 175.375,
+              "heapTotal_mib": 11.203125,
+              "heapUsed_mib": 8.20263671875,
+              "external_mib": 19.84811496734619,
+              "arrayBuffers_mib": 17.869001388549805
+            },
+            {
+              "phase": "tokens_16_first_0",
+              "rss_mib": 189.53125,
+              "heapTotal_mib": 11.453125,
+              "heapUsed_mib": 9.046546936035156,
+              "external_mib": 19.85025119781494,
+              "arrayBuffers_mib": 17.871137619018555
+            },
+            {
+              "phase": "tokens_16_after_100_0",
+              "rss_mib": 302.15625,
+              "heapTotal_mib": 13.203125,
+              "heapUsed_mib": 8.268035888671875,
+              "external_mib": 6.314888000488281,
+              "arrayBuffers_mib": 4.3357744216918945
+            },
+            {
+              "phase": "tokens_64_first_1",
+              "rss_mib": 304.578125,
+              "heapTotal_mib": 13.203125,
+              "heapUsed_mib": 8.299209594726562,
+              "external_mib": 6.323432922363281,
+              "arrayBuffers_mib": 4.3443193435668945
+            },
+            {
+              "phase": "tokens_64_after_100_1",
+              "rss_mib": 502.40625,
+              "heapTotal_mib": 13.203125,
+              "heapUsed_mib": 9.715950012207031,
+              "external_mib": 7.169380187988281,
+              "arrayBuffers_mib": 5.1902666091918945
+            },
+            {
+              "phase": "tokens_128_first_2",
+              "rss_mib": 503.296875,
+              "heapTotal_mib": 13.203125,
+              "heapUsed_mib": 9.74578857421875,
+              "external_mib": 7.186470031738281,
+              "arrayBuffers_mib": 5.2073564529418945
+            },
+            {
+              "phase": "tokens_128_after_100_2",
+              "rss_mib": 532.28125,
+              "heapTotal_mib": 14.953125,
+              "heapUsed_mib": 11.222946166992188,
+              "external_mib": 8.878364562988281,
+              "arrayBuffers_mib": 6.8992509841918945
+            },
+            {
+              "phase": "tokens_256_first_3",
+              "rss_mib": 532.328125,
+              "heapTotal_mib": 14.953125,
+              "heapUsed_mib": 11.251502990722656,
+              "external_mib": 8.912544250488281,
+              "arrayBuffers_mib": 6.9334306716918945
+            },
+            {
+              "phase": "tokens_256_after_100_3",
+              "rss_mib": 535.578125,
+              "heapTotal_mib": 14.703125,
+              "heapUsed_mib": 8.073585510253906,
+              "external_mib": 7.532505035400391,
+              "arrayBuffers_mib": 5.553391456604004
+            },
+            {
+              "phase": "tokens_16_first_4",
+              "rss_mib": 535.578125,
+              "heapTotal_mib": 14.703125,
+              "heapUsed_mib": 8.106803894042969,
+              "external_mib": 7.534641265869141,
+              "arrayBuffers_mib": 5.555527687072754
+            },
+            {
+              "phase": "tokens_16_after_100_4",
+              "rss_mib": 535.6875,
+              "heapTotal_mib": 14.703125,
+              "heapUsed_mib": 9.4775390625,
+              "external_mib": 7.746128082275391,
+              "arrayBuffers_mib": 5.767014503479004
+            },
+            {
+              "phase": "session_released",
+              "rss_mib": 535.765625,
+              "heapTotal_mib": 14.703125,
+              "heapUsed_mib": 9.506629943847656,
+              "external_mib": 7.746128082275391,
+              "arrayBuffers_mib": 5.767014503479004
+            }
+          ]
+        }
+      },
+      {
+        "variant": "minimal-ort",
+        "repetition": 3,
+        "result_sha256": "6492438eb4c14aefa789bc098f3132c7fa48595601bc395fee7f0367690130e0",
+        "report": {
+          "scope": "Node WASM synthetic memory diagnosis, not browser release evidence",
+          "artifact_sha256": "fb652b52829c0d2149b6c64065a242118d865a24cb3448c405b6ed03dd71ecc2",
+          "model_format": "model.basic.ort",
+          "runtime_artifact": {
+            "kind": "custom-minimal",
+            "runtime_version": "1.30.0",
+            "files": {
+              "ort-wasm-simd-threaded.mjs": {
+                "sha256": "dca17c592301105e30bda770ae47e26333b685193bc20e552f16457125a0cf1f",
+                "bytes": 27544
+              },
+              "ort-wasm-simd-threaded.wasm": {
+                "sha256": "2ac981b2080cbb54c3b18e180608ad647372c6fea647f65c4f5e143fdaf606cb",
+                "bytes": 1855932
+              },
+              "wrapper": {
+                "sha256": "11e64bd8ffe11bd1a2a2f0d6275fdfbbba7262f0b76b99b53d228a8a22ef3d90",
+                "bytes": 73054
+              }
+            },
+            "total_bytes": 1956530,
+            "source_revision": "f2c39fe2f838cf35ce7da92824f5a5e3ee6e88a7",
+            "build": {
+              "build_type": "MinSizeRel",
+              "cmake_cache_sha256": "fd0b5885d6f589f5b37104d9d23d38a36539b9b511b15e9e1bae3f866c9b372d",
+              "compiler_flags": {
+                "CMAKE_CXX_FLAGS_MINSIZEREL": "-Os -DNDEBUG",
+                "CMAKE_C_FLAGS_MINSIZEREL": "-Os -DNDEBUG"
+              },
+              "files": {
+                "ort-wasm-simd-threaded.mjs": {
+                  "bytes": 27544,
+                  "sha256": "dca17c592301105e30bda770ae47e26333b685193bc20e552f16457125a0cf1f"
+                },
+                "ort-wasm-simd-threaded.wasm": {
+                  "bytes": 1855932,
+                  "sha256": "2ac981b2080cbb54c3b18e180608ad647372c6fea647f65c4f5e143fdaf606cb"
+                }
+              },
+              "generated_registration_sha256": {
+                "onnxruntime/contrib_ops/cpu/cpu_contrib_kernels.cc": "d5b5c40867c77f53fa6ba3502a5bbe06da770ddf2ca1dfa7ec94493c87f4f2a7",
+                "onnxruntime/core/providers/cpu/cpu_execution_provider.cc": "338f49679d43a683d26b94027f88b8d75a0c8a51db995e06434ff10388f3f138",
+                "onnxruntime/core/providers/op_kernel_type_control_overrides.inc": "24d32d70ba869622a894409ca7be78569174591800cb1b5f09d468f81a0d8dc4",
+                "orttraining/orttraining/training_ops/cpu/cpu_training_kernels.cc": "15df63198e2be5c5661b1626fb255adfec25dab7f6032844643bd5b2ccbc6c79"
+              },
+              "limitations": "Research-only compiled artifacts; settings are not privacy certification. Same-version WASM parity and exact-package browser tests still required.",
+              "minimal_build": true,
+              "node_package_scope_override_sha256": "a51bff776fdd53226e2e67d8f654d17dadfe3decc8bf8bf869cba3aff9813826",
+              "release_eligible": false,
+              "runtime_version": "1.30.0",
+              "schema_version": 1,
+              "sdk_revision": "c0bb220cb6e6f4e0fabb6f6db9efd53390ef5e56",
+              "source_revision": "f2c39fe2f838cf35ce7da92824f5a5e3ee6e88a7",
+              "supplied_operator_config_sha256": "b02a50214bbf57a9cb2a44a4478d2c297ce883e464cfb0e6c557b3066d20af7e",
+              "telemetry_disabled": true,
+              "upstream_dependency_manifest_sha256": "880edacbd7954c32b8bff34959e6fc5bbae0dc402f8f99861c1c3f057b976c0d",
+              "verified_cmake_flags": {
+                "onnxruntime_ENABLE_WEBASSEMBLY_PROFILING": "OFF",
+                "onnxruntime_ENABLE_WEBASSEMBLY_SIMD": "ON",
+                "onnxruntime_ENABLE_WEBASSEMBLY_THREADS": "ON",
+                "onnxruntime_MINIMAL_BUILD": "ON",
+                "onnxruntime_MINIMAL_BUILD_CUSTOM_OPS": "OFF",
+                "onnxruntime_REDUCED_OPS_BUILD": "ON",
+                "onnxruntime_USE_TELEMETRY": "OFF"
+              }
+            },
+            "release_eligible": false
+          },
+          "runtime": {
+            "common": "1.30.0",
+            "web": "1.30.0"
+          },
+          "node": "v25.2.1",
+          "policy": "default",
+          "v8_flags": [],
+          "cold_start_ms": 38.162125,
+          "os_peak_rss_mib": 96.828125,
+          "measurements": [
+            {
+              "tokens": 16,
+              "repetitions": 100,
+              "p95_ms": 1.7242499999999978
+            },
+            {
+              "tokens": 64,
+              "repetitions": 100,
+              "p95_ms": 3.095957999999996
+            },
+            {
+              "tokens": 128,
+              "repetitions": 100,
+              "p95_ms": 6.155916999999931
+            },
+            {
+              "tokens": 256,
+              "repetitions": 100,
+              "p95_ms": 11.83158299999991
+            },
+            {
+              "tokens": 16,
+              "repetitions": 100,
+              "p95_ms": 1.1624579999997877
+            }
+          ],
+          "snapshots": [
+            {
+              "phase": "baseline",
+              "rss_mib": 43.65625,
+              "heapTotal_mib": 5.890625,
+              "heapUsed_mib": 4.580024719238281,
+              "external_mib": 1.8690166473388672,
+              "arrayBuffers_mib": 0.01588726043701172
+            },
+            {
+              "phase": "runtime_imported",
+              "rss_mib": 45.03125,
+              "heapTotal_mib": 5.890625,
+              "heapUsed_mib": 4.88153076171875,
+              "external_mib": 1.9387283325195312,
+              "arrayBuffers_mib": 0.0855569839477539
+            },
+            {
+              "phase": "session_created",
+              "rss_mib": 81.75,
+              "heapTotal_mib": 8.640625,
+              "heapUsed_mib": 6.4836273193359375,
+              "external_mib": 8.072482109069824,
+              "arrayBuffers_mib": 6.0933685302734375
+            },
+            {
+              "phase": "tokens_16_first_0",
+              "rss_mib": 86.1875,
+              "heapTotal_mib": 8.890625,
+              "heapUsed_mib": 7.217689514160156,
+              "external_mib": 8.074618339538574,
+              "arrayBuffers_mib": 6.0955047607421875
+            },
+            {
+              "phase": "tokens_16_after_100_0",
+              "rss_mib": 93.78125,
+              "heapTotal_mib": 11.390625,
+              "heapUsed_mib": 6.500053405761719,
+              "external_mib": 6.31748104095459,
+              "arrayBuffers_mib": 4.338367462158203
+            },
+            {
+              "phase": "tokens_64_first_1",
+              "rss_mib": 93.8125,
+              "heapTotal_mib": 11.390625,
+              "heapUsed_mib": 6.565345764160156,
+              "external_mib": 6.32602596282959,
+              "arrayBuffers_mib": 4.346912384033203
+            },
+            {
+              "phase": "tokens_64_after_100_1",
+              "rss_mib": 94.3125,
+              "heapTotal_mib": 11.640625,
+              "heapUsed_mib": 7.495933532714844,
+              "external_mib": 6.51615047454834,
+              "arrayBuffers_mib": 4.537036895751953
+            },
+            {
+              "phase": "tokens_128_first_2",
+              "rss_mib": 94.328125,
+              "heapTotal_mib": 11.640625,
+              "heapUsed_mib": 7.56597900390625,
+              "external_mib": 6.53324031829834,
+              "arrayBuffers_mib": 4.554126739501953
+            },
+            {
+              "phase": "tokens_128_after_100_2",
+              "rss_mib": 95.484375,
+              "heapTotal_mib": 11.640625,
+              "heapUsed_mib": 7.224601745605469,
+              "external_mib": 6.55887508392334,
+              "arrayBuffers_mib": 4.579761505126953
+            },
+            {
+              "phase": "tokens_256_first_3",
+              "rss_mib": 95.5625,
+              "heapTotal_mib": 11.640625,
+              "heapUsed_mib": 7.308143615722656,
+              "external_mib": 6.59305477142334,
+              "arrayBuffers_mib": 4.613941192626953
+            },
+            {
+              "phase": "tokens_256_after_100_3",
+              "rss_mib": 96.609375,
+              "heapTotal_mib": 11.640625,
+              "heapUsed_mib": 8.209587097167969,
+              "external_mib": 7.19119930267334,
+              "arrayBuffers_mib": 5.212085723876953
+            },
+            {
+              "phase": "tokens_16_first_4",
+              "rss_mib": 96.609375,
+              "heapTotal_mib": 11.640625,
+              "heapUsed_mib": 8.265007019042969,
+              "external_mib": 7.19333553314209,
+              "arrayBuffers_mib": 5.214221954345703
+            },
+            {
+              "phase": "tokens_16_after_100_4",
+              "rss_mib": 96.765625,
+              "heapTotal_mib": 11.640625,
+              "heapUsed_mib": 8.429054260253906,
+              "external_mib": 6.40506649017334,
+              "arrayBuffers_mib": 4.425952911376953
+            },
+            {
+              "phase": "session_released",
+              "rss_mib": 96.828125,
+              "heapTotal_mib": 11.640625,
+              "heapUsed_mib": 6.4920806884765625,
+              "external_mib": 6.40506649017334,
+              "arrayBuffers_mib": 4.323413848876953
+            }
+          ]
+        }
+      },
+      {
+        "variant": "full-onnx",
+        "repetition": 3,
+        "result_sha256": "85e80984ec1b0f101ad5a981f143a5dafffed1e0c881f8baa3fd148418b6f2ac",
+        "report": {
+          "scope": "Node WASM synthetic memory diagnosis, not browser release evidence",
+          "artifact_sha256": "9fb9a8357bc0ce4634f5f4f30165019fb859595baece0ef0d04c90e1561f4718",
+          "model_format": "model.onnx",
+          "runtime_artifact": {
+            "kind": "npm-default",
+            "runtime_version": "1.30.0",
+            "files": {
+              "ort-wasm-simd-threaded.mjs": {
+                "sha256": "e13f7f94fc51b4ca72b12faeb1ee95f4ace6dfbc8939bc718aabdc0a27c4299b",
+                "bytes": 24381
+              },
+              "ort-wasm-simd-threaded.wasm": {
+                "sha256": "3398c10d07d229bd91b364548e130e0e51a8e5704b88c7c083ebbeb78842dee2",
+                "bytes": 14239897
+              },
+              "wrapper": {
+                "sha256": "11e64bd8ffe11bd1a2a2f0d6275fdfbbba7262f0b76b99b53d228a8a22ef3d90",
+                "bytes": 73054
+              }
+            },
+            "total_bytes": 14337332,
+            "release_eligible": false
+          },
+          "runtime": {
+            "common": "1.30.0",
+            "web": "1.30.0"
+          },
+          "node": "v25.2.1",
+          "policy": "default",
+          "v8_flags": [],
+          "cold_start_ms": 154.313125,
+          "os_peak_rss_mib": 535.78125,
+          "measurements": [
+            {
+              "tokens": 16,
+              "repetitions": 100,
+              "p95_ms": 1.0917500000000189
+            },
+            {
+              "tokens": 64,
+              "repetitions": 100,
+              "p95_ms": 2.101083000000017
+            },
+            {
+              "tokens": 128,
+              "repetitions": 100,
+              "p95_ms": 3.740583000000015
+            },
+            {
+              "tokens": 256,
+              "repetitions": 100,
+              "p95_ms": 7.605249999999955
+            },
+            {
+              "tokens": 16,
+              "repetitions": 100,
+              "p95_ms": 0.45900000000006
+            }
+          ],
+          "snapshots": [
+            {
+              "phase": "baseline",
+              "rss_mib": 43.75,
+              "heapTotal_mib": 6.140625,
+              "heapUsed_mib": 4.58001708984375,
+              "external_mib": 1.8690166473388672,
+              "arrayBuffers_mib": 0.01588726043701172
+            },
+            {
+              "phase": "runtime_imported",
+              "rss_mib": 45.109375,
+              "heapTotal_mib": 6.140625,
+              "heapUsed_mib": 4.881523132324219,
+              "external_mib": 1.9387283325195312,
+              "arrayBuffers_mib": 0.0855569839477539
+            },
+            {
+              "phase": "session_created",
+              "rss_mib": 175.15625,
+              "heapTotal_mib": 11.203125,
+              "heapUsed_mib": 8.202430725097656,
+              "external_mib": 19.84811496734619,
+              "arrayBuffers_mib": 17.869001388549805
+            },
+            {
+              "phase": "tokens_16_first_0",
+              "rss_mib": 185.390625,
+              "heapTotal_mib": 11.453125,
+              "heapUsed_mib": 9.125389099121094,
+              "external_mib": 19.85025119781494,
+              "arrayBuffers_mib": 17.871137619018555
+            },
+            {
+              "phase": "tokens_16_after_100_0",
+              "rss_mib": 296.796875,
+              "heapTotal_mib": 13.203125,
+              "heapUsed_mib": 8.253700256347656,
+              "external_mib": 6.312751770019531,
+              "arrayBuffers_mib": 4.3336381912231445
+            },
+            {
+              "phase": "tokens_64_first_1",
+              "rss_mib": 306.453125,
+              "heapTotal_mib": 13.203125,
+              "heapUsed_mib": 8.284980773925781,
+              "external_mib": 6.321296691894531,
+              "arrayBuffers_mib": 4.3421831130981445
+            },
+            {
+              "phase": "tokens_64_after_100_1",
+              "rss_mib": 500.46875,
+              "heapTotal_mib": 13.203125,
+              "heapUsed_mib": 9.701797485351562,
+              "external_mib": 7.167243957519531,
+              "arrayBuffers_mib": 5.1881303787231445
+            },
+            {
+              "phase": "tokens_128_first_2",
+              "rss_mib": 501.453125,
+              "heapTotal_mib": 13.203125,
+              "heapUsed_mib": 9.7315673828125,
+              "external_mib": 7.184333801269531,
+              "arrayBuffers_mib": 5.2052202224731445
+            },
+            {
+              "phase": "tokens_128_after_100_2",
+              "rss_mib": 532.015625,
+              "heapTotal_mib": 14.953125,
+              "heapUsed_mib": 11.208702087402344,
+              "external_mib": 8.876228332519531,
+              "arrayBuffers_mib": 6.8971147537231445
+            },
+            {
+              "phase": "tokens_256_first_3",
+              "rss_mib": 532.078125,
+              "heapTotal_mib": 14.953125,
+              "heapUsed_mib": 11.236946105957031,
+              "external_mib": 8.910408020019531,
+              "arrayBuffers_mib": 6.9312944412231445
+            },
+            {
+              "phase": "tokens_256_after_100_3",
+              "rss_mib": 535.578125,
+              "heapTotal_mib": 14.703125,
+              "heapUsed_mib": 8.059989929199219,
+              "external_mib": 7.498325347900391,
+              "arrayBuffers_mib": 5.519211769104004
+            },
+            {
+              "phase": "tokens_16_first_4",
+              "rss_mib": 535.578125,
+              "heapTotal_mib": 14.703125,
+              "heapUsed_mib": 8.093276977539062,
+              "external_mib": 7.500461578369141,
+              "arrayBuffers_mib": 5.521347999572754
+            },
+            {
+              "phase": "tokens_16_after_100_4",
+              "rss_mib": 535.6875,
+              "heapTotal_mib": 14.703125,
+              "heapUsed_mib": 9.463180541992188,
+              "external_mib": 7.711948394775391,
+              "arrayBuffers_mib": 5.732834815979004
+            },
+            {
+              "phase": "session_released",
+              "rss_mib": 535.78125,
+              "heapTotal_mib": 14.703125,
+              "heapUsed_mib": 9.4923095703125,
+              "external_mib": 7.711948394775391,
+              "arrayBuffers_mib": 5.732834815979004
+            }
+          ]
+        }
+      },
+      {
+        "variant": "full-ort",
+        "repetition": 3,
+        "result_sha256": "3c6c92daadcbd0e32011156c9f63d7f7a5d29ced1e628e00f50296cdf9fbc554",
+        "report": {
+          "scope": "Node WASM synthetic memory diagnosis, not browser release evidence",
+          "artifact_sha256": "fb652b52829c0d2149b6c64065a242118d865a24cb3448c405b6ed03dd71ecc2",
+          "model_format": "model.basic.ort",
+          "runtime_artifact": {
+            "kind": "npm-default",
+            "runtime_version": "1.30.0",
+            "files": {
+              "ort-wasm-simd-threaded.mjs": {
+                "sha256": "e13f7f94fc51b4ca72b12faeb1ee95f4ace6dfbc8939bc718aabdc0a27c4299b",
+                "bytes": 24381
+              },
+              "ort-wasm-simd-threaded.wasm": {
+                "sha256": "3398c10d07d229bd91b364548e130e0e51a8e5704b88c7c083ebbeb78842dee2",
+                "bytes": 14239897
+              },
+              "wrapper": {
+                "sha256": "11e64bd8ffe11bd1a2a2f0d6275fdfbbba7262f0b76b99b53d228a8a22ef3d90",
+                "bytes": 73054
+              }
+            },
+            "total_bytes": 14337332,
+            "release_eligible": false
+          },
+          "runtime": {
+            "common": "1.30.0",
+            "web": "1.30.0"
+          },
+          "node": "v25.2.1",
+          "policy": "default",
+          "v8_flags": [],
+          "cold_start_ms": 122.307459,
+          "os_peak_rss_mib": 531.078125,
+          "measurements": [
+            {
+              "tokens": 16,
+              "repetitions": 100,
+              "p95_ms": 1.2200830000000167
+            },
+            {
+              "tokens": 64,
+              "repetitions": 100,
+              "p95_ms": 1.9091250000000173
+            },
+            {
+              "tokens": 128,
+              "repetitions": 100,
+              "p95_ms": 3.497916000000032
+            },
+            {
+              "tokens": 256,
+              "repetitions": 100,
+              "p95_ms": 7.269457999999986
+            },
+            {
+              "tokens": 16,
+              "repetitions": 100,
+              "p95_ms": 0.515625
+            }
+          ],
+          "snapshots": [
+            {
+              "phase": "baseline",
+              "rss_mib": 43.703125,
+              "heapTotal_mib": 6.140625,
+              "heapUsed_mib": 4.580085754394531,
+              "external_mib": 1.8690166473388672,
+              "arrayBuffers_mib": 0.01588726043701172
+            },
+            {
+              "phase": "runtime_imported",
+              "rss_mib": 45.09375,
+              "heapTotal_mib": 6.140625,
+              "heapUsed_mib": 4.881591796875,
+              "external_mib": 1.9387283325195312,
+              "arrayBuffers_mib": 0.0855569839477539
+            },
+            {
+              "phase": "session_created",
+              "rss_mib": 169.421875,
+              "heapTotal_mib": 10.953125,
+              "heapUsed_mib": 8.002182006835938,
+              "external_mib": 19.88275146484375,
+              "arrayBuffers_mib": 17.903637886047363
+            },
+            {
+              "phase": "tokens_16_first_0",
+              "rss_mib": 182.203125,
+              "heapTotal_mib": 11.203125,
+              "heapUsed_mib": 8.202301025390625,
+              "external_mib": 19.8848876953125,
+              "arrayBuffers_mib": 17.905774116516113
+            },
+            {
+              "phase": "tokens_16_after_100_0",
+              "rss_mib": 453.578125,
+              "heapTotal_mib": 12.453125,
+              "heapUsed_mib": 8.869285583496094,
+              "external_mib": 6.45847225189209,
+              "arrayBuffers_mib": 4.479358673095703
+            },
+            {
+              "phase": "tokens_64_first_1",
+              "rss_mib": 454.875,
+              "heapTotal_mib": 13.203125,
+              "heapUsed_mib": 7.8676605224609375,
+              "external_mib": 6.46701717376709,
+              "arrayBuffers_mib": 4.331958770751953
+            },
+            {
+              "phase": "tokens_64_after_100_1",
+              "rss_mib": 508,
+              "heapTotal_mib": 13.203125,
+              "heapUsed_mib": 9.281768798828125,
+              "external_mib": 7.15701961517334,
+              "arrayBuffers_mib": 5.177906036376953
+            },
+            {
+              "phase": "tokens_128_first_2",
+              "rss_mib": 508.0625,
+              "heapTotal_mib": 13.203125,
+              "heapUsed_mib": 9.311653137207031,
+              "external_mib": 7.17410945892334,
+              "arrayBuffers_mib": 5.194995880126953
+            },
+            {
+              "phase": "tokens_128_after_100_2",
+              "rss_mib": 526.671875,
+              "heapTotal_mib": 14.453125,
+              "heapUsed_mib": 10.789321899414062,
+              "external_mib": 8.86600399017334,
+              "arrayBuffers_mib": 6.886890411376953
+            },
+            {
+              "phase": "tokens_256_first_3",
+              "rss_mib": 526.75,
+              "heapTotal_mib": 14.453125,
+              "heapUsed_mib": 10.818130493164062,
+              "external_mib": 8.90018367767334,
+              "arrayBuffers_mib": 6.921070098876953
+            },
+            {
+              "phase": "tokens_256_after_100_3",
+              "rss_mib": 530.90625,
+              "heapTotal_mib": 14.953125,
+              "heapUsed_mib": 7.641761779785156,
+              "external_mib": 6.883547782897949,
+              "arrayBuffers_mib": 4.9044342041015625
+            },
+            {
+              "phase": "tokens_16_first_4",
+              "rss_mib": 530.90625,
+              "heapTotal_mib": 14.953125,
+              "heapUsed_mib": 7.675041198730469,
+              "external_mib": 6.885684013366699,
+              "arrayBuffers_mib": 4.9065704345703125
+            },
+            {
+              "phase": "tokens_16_after_100_4",
+              "rss_mib": 530.984375,
+              "heapTotal_mib": 14.953125,
+              "heapUsed_mib": 9.045341491699219,
+              "external_mib": 7.097170829772949,
+              "arrayBuffers_mib": 5.1180572509765625
+            },
+            {
+              "phase": "session_released",
+              "rss_mib": 531.078125,
+              "heapTotal_mib": 14.953125,
+              "heapUsed_mib": 9.073776245117188,
+              "external_mib": 7.097170829772949,
+              "arrayBuffers_mib": 5.1180572509765625
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "logit_parity": {
+    "scope": "Synthetic padded shape parity, not accuracy or packaged-browser approval",
+    "release_eligible": false,
+    "source_code_sha256": "08448caf9457e7e0f4112c87b268dc69e28a24822dc5b2b6633d2081fedca17c",
+    "comparisons": [
+      {
+        "first": "full-onnx",
+        "second": "full-ort",
+        "maximum_absolute_error": 0,
+        "tolerance": 0.0001,
+        "passed": true
+      },
+      {
+        "first": "full-ort",
+        "second": "minimal-ort",
+        "maximum_absolute_error": 0,
+        "tolerance": 0.0001,
+        "passed": true
+      },
+      {
+        "first": "full-onnx",
+        "second": "minimal-ort",
+        "maximum_absolute_error": 0,
+        "tolerance": 0.0001,
+        "passed": true
+      }
+    ],
+    "variants": {
+      "full-onnx": {
+        "artifact_sha256": "9fb9a8357bc0ce4634f5f4f30165019fb859595baece0ef0d04c90e1561f4718",
+        "raw_logits_sha256": "8640a3603b0fe3881d7cb8cf38dd8313de9cdabe6c550b77caa1f148a262c347",
+        "cases": [
+          {
+            "batch": 1,
+            "tokens": 1,
+            "dims": [
+              1,
+              1,
+              31
+            ]
+          },
+          {
+            "batch": 1,
+            "tokens": 16,
+            "dims": [
+              1,
+              16,
+              31
+            ]
+          },
+          {
+            "batch": 2,
+            "tokens": 37,
+            "dims": [
+              2,
+              37,
+              31
+            ]
+          },
+          {
+            "batch": 1,
+            "tokens": 128,
+            "dims": [
+              1,
+              128,
+              31
+            ]
+          },
+          {
+            "batch": 1,
+            "tokens": 256,
+            "dims": [
+              1,
+              256,
+              31
+            ]
+          }
+        ]
+      },
+      "full-ort": {
+        "artifact_sha256": "fb652b52829c0d2149b6c64065a242118d865a24cb3448c405b6ed03dd71ecc2",
+        "raw_logits_sha256": "9627ccf5d75af248b3eae3dfd02a0ba29ed6b17bc9c9356f0f644357e7965e01",
+        "cases": [
+          {
+            "batch": 1,
+            "tokens": 1,
+            "dims": [
+              1,
+              1,
+              31
+            ]
+          },
+          {
+            "batch": 1,
+            "tokens": 16,
+            "dims": [
+              1,
+              16,
+              31
+            ]
+          },
+          {
+            "batch": 2,
+            "tokens": 37,
+            "dims": [
+              2,
+              37,
+              31
+            ]
+          },
+          {
+            "batch": 1,
+            "tokens": 128,
+            "dims": [
+              1,
+              128,
+              31
+            ]
+          },
+          {
+            "batch": 1,
+            "tokens": 256,
+            "dims": [
+              1,
+              256,
+              31
+            ]
+          }
+        ]
+      },
+      "minimal-ort": {
+        "artifact_sha256": "fb652b52829c0d2149b6c64065a242118d865a24cb3448c405b6ed03dd71ecc2",
+        "raw_logits_sha256": "f062caabd4c86b8d67e8488e145047fe8fe86136a58c3288b51a17eabd5b10c5",
+        "cases": [
+          {
+            "batch": 1,
+            "tokens": 1,
+            "dims": [
+              1,
+              1,
+              31
+            ]
+          },
+          {
+            "batch": 1,
+            "tokens": 16,
+            "dims": [
+              1,
+              16,
+              31
+            ]
+          },
+          {
+            "batch": 2,
+            "tokens": 37,
+            "dims": [
+              2,
+              37,
+              31
+            ]
+          },
+          {
+            "batch": 1,
+            "tokens": 128,
+            "dims": [
+              1,
+              128,
+              31
+            ]
+          },
+          {
+            "batch": 1,
+            "tokens": 256,
+            "dims": [
+              1,
+              256,
+              31
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "pair": {
+    "inputs_sha256": {
+      "dataset": "0d120dca04050752ac3475472f9156f8f7067ee1bfa55f582c2f84ef2a2410db",
+      "first": "0c68c16e7672c72074f36d0d9eed4186ca6bcff43f35840e7bc9ab404216954f",
+      "second": "4f259af19e21698001aca92d9499d44621510c775c3fda46b99144674aac77b4"
+    },
+    "paired": {
+      "bootstrap_clusters": 1482,
+      "direction": "second-minus-first",
+      "evaluation": {
+        "bootstrap_sampling_unit": "source-document-or-normalized-text-cluster",
+        "independent_bootstrap_clusters": 1482,
+        "minimum_score": 0.1,
+        "partition": "all",
+        "partition_scheme": "sha256-normalized-text-v2",
+        "records": 1500
+      },
+      "first": "llss-psi-1f1c4755-int8-wasm-model.onnx-npm-default-default",
+      "paired_differences": {
+        "document_full_protection_rate": {
+          "difference": 0,
+          "high_95": 0,
+          "low_95": 0
+        },
+        "over_redaction_rate": {
+          "difference": 0,
+          "high_95": 0,
+          "low_95": 0
+        },
+        "weighted_recall": {
+          "difference": 0,
+          "high_95": 0,
+          "low_95": 0
+        }
+      },
+      "rounds": 1000,
+      "second": "llss-psi-1f1c4755-int8-wasm-model.basic.ort-custom-minimal-default"
+    },
+    "release_eligible": false,
+    "scope": "Paired Node/WASM research; not browser release evidence",
+    "scores": {
+      "first": {
+        "by_family": {
+          "sensitive_belief": {
+            "character_recall": 0.9300474103229269,
+            "confidence_interval": {
+              "high_95": 0.9451789554464783,
+              "low_95": 0.9139435595732669,
+              "rounds": 1000
+            },
+            "entities": 1076,
+            "full_cluster_protection_interval": {
+              "high_95": 0.852944987128997,
+              "low_95": 0.8032813012077048,
+              "method": "wilson-independent-cluster",
+              "successes": 730,
+              "trials": 880
+            },
+            "gold_chars": 11179,
+            "independent_clusters": 880
+          },
+          "sensitive_personal": {
+            "character_recall": 0.9911646586345382,
+            "confidence_interval": {
+              "high_95": 0.9975050298995795,
+              "low_95": 0.9837156481506721,
+              "rounds": 1000
+            },
+            "entities": 155,
+            "full_cluster_protection_interval": {
+              "high_95": 0.9802124588924483,
+              "low_95": 0.9096561579126599,
+              "method": "wilson-independent-cluster",
+              "successes": 134,
+              "trials": 140
+            },
+            "gold_chars": 1245,
+            "independent_clusters": 140
+          }
+        },
+        "by_label": {
+          "FINANCIAL_HARDSHIP": {
+            "character_recall": null,
+            "family": "sensitive_financial",
+            "full_entity_protection_rate": null,
+            "gold_entities": 0,
+            "independent_clusters": 0,
+            "predicted_entities": 5
+          },
+          "INCOME": {
+            "character_recall": null,
+            "family": "sensitive_financial",
+            "full_entity_protection_rate": null,
+            "gold_entities": 0,
+            "independent_clusters": 0,
+            "predicted_entities": 3
+          },
+          "POLITICAL_AFFILIATION": {
+            "character_recall": 0.9286533608625832,
+            "family": "sensitive_belief",
+            "full_entity_protection_rate": 0.8436482084690554,
+            "gold_entities": 307,
+            "independent_clusters": 282,
+            "predicted_entities": 507
+          },
+          "RACE_ETHNICITY": {
+            "character_recall": 0.9338235294117647,
+            "family": "sensitive_belief",
+            "full_entity_protection_rate": 0.8920086393088553,
+            "gold_entities": 463,
+            "independent_clusters": 428,
+            "predicted_entities": 718
+          },
+          "RELIGION": {
+            "character_recall": 0.9284940411700975,
+            "family": "sensitive_belief",
+            "full_entity_protection_rate": 0.7745098039215687,
+            "gold_entities": 306,
+            "independent_clusters": 282,
+            "predicted_entities": 403
+          },
+          "SEXUAL_ORIENTATION": {
+            "character_recall": 0.9911646586345382,
+            "family": "sensitive_personal",
+            "full_entity_protection_rate": 0.9612903225806452,
+            "gold_entities": 155,
+            "independent_clusters": 140,
+            "predicted_entities": 181
+          },
+          "TRADE_UNION": {
+            "character_recall": null,
+            "family": "sensitive_belief",
+            "full_entity_protection_rate": null,
+            "gold_entities": 0,
+            "independent_clusters": 0,
+            "predicted_entities": 1
+          }
+        },
+        "by_slice": {
+          "domain:Access Control Systems": {
+            "character_recall": 0.9166666666666666,
+            "full_protection_rate": 0.8888888888888888,
+            "gold_entities": 21,
+            "over_redaction_rate": 0.0006187267977450845,
+            "records": 39
+          },
+          "domain:Advertising": {
+            "character_recall": 0.9316770186335404,
+            "full_protection_rate": 0.8461538461538461,
+            "gold_entities": 62,
+            "over_redaction_rate": 0.002220207010850871,
+            "records": 73
+          },
+          "domain:Automobile": {
+            "character_recall": 0.9916666666666667,
+            "full_protection_rate": 0.9,
+            "gold_entities": 10,
+            "over_redaction_rate": 0.0038065698576060904,
+            "records": 21
+          },
+          "domain:Banking": {
+            "character_recall": 0.9904761904761905,
+            "full_protection_rate": 0.875,
+            "gold_entities": 18,
+            "over_redaction_rate": 0.005045009397566525,
+            "records": 27
+          },
+          "domain:Brokerage": {
+            "character_recall": 0.8761329305135952,
+            "full_protection_rate": 0.8076923076923077,
+            "gold_entities": 29,
+            "over_redaction_rate": 0.0038692538692538694,
+            "records": 42
+          },
+          "domain:Casualty": {
+            "character_recall": 0.9910979228486647,
+            "full_protection_rate": 0.90625,
+            "gold_entities": 37,
+            "over_redaction_rate": 0.006164567140176896,
+            "records": 59
+          },
+          "domain:Consulting": {
+            "character_recall": 0.8363095238095238,
+            "full_protection_rate": 0.75,
+            "gold_entities": 39,
+            "over_redaction_rate": 0.0010744985673352436,
+            "records": 56
+          },
+          "domain:Credit": {
+            "character_recall": 0.8732394366197183,
+            "full_protection_rate": 0.8888888888888888,
+            "gold_entities": 9,
+            "over_redaction_rate": 0.0013277428371767995,
+            "records": 37
+          },
+          "domain:Disability": {
+            "character_recall": 0.9517684887459807,
+            "full_protection_rate": 0.875,
+            "gold_entities": 32,
+            "over_redaction_rate": 0.0053470640657490845,
+            "records": 53
+          },
+          "domain:Elections": {
+            "character_recall": 0.9491228070175438,
+            "full_protection_rate": 0.8717948717948718,
+            "gold_entities": 97,
+            "over_redaction_rate": 0.023264147302847378,
+            "records": 93
+          },
+          "domain:Environmental": {
+            "character_recall": 0.9173553719008265,
+            "full_protection_rate": 0.78125,
+            "gold_entities": 35,
+            "over_redaction_rate": 0.0020698686267055294,
+            "records": 47
+          },
+          "domain:Fitness": {
+            "character_recall": 0.9352331606217616,
+            "full_protection_rate": 0.7333333333333333,
+            "gold_entities": 35,
+            "over_redaction_rate": 0.005216756220981793,
+            "records": 50
+          },
+          "domain:Health": {
+            "character_recall": 0.9285714285714286,
+            "full_protection_rate": 0.8367346938775511,
+            "gold_entities": 54,
+            "over_redaction_rate": 0.0032026465826705147,
+            "records": 63
+          },
+          "domain:Healthcare Providers": {
+            "character_recall": 0.9915611814345991,
+            "full_protection_rate": 0.9130434782608695,
+            "gold_entities": 25,
+            "over_redaction_rate": 0.006633825944170771,
+            "records": 44
+          },
+          "domain:Human Resources": {
+            "character_recall": 0.9880668257756563,
+            "full_protection_rate": 0.8947368421052632,
+            "gold_entities": 42,
+            "over_redaction_rate": 0.003936460890103274,
+            "records": 52
+          },
+          "domain:Information Technology": {
+            "character_recall": 0.9896907216494846,
+            "full_protection_rate": 0.875,
+            "gold_entities": 8,
+            "over_redaction_rate": 0.0005174835514156871,
+            "records": 34
+          },
+          "domain:Insurance": {
+            "character_recall": 0.9953051643192489,
+            "full_protection_rate": 0.9523809523809523,
+            "gold_entities": 22,
+            "over_redaction_rate": 0.0057293962097840455,
+            "records": 35
+          },
+          "domain:Investment": {
+            "character_recall": 0.9703389830508474,
+            "full_protection_rate": 0.8857142857142857,
+            "gold_entities": 42,
+            "over_redaction_rate": 0.00437368789363191,
+            "records": 59
+          },
+          "domain:Life": {
+            "character_recall": 0.9441176470588235,
+            "full_protection_rate": 0.8125,
+            "gold_entities": 37,
+            "over_redaction_rate": 0.0050222504767959315,
+            "records": 46
+          },
+          "domain:Marketing": {
+            "character_recall": 0.8877805486284289,
+            "full_protection_rate": 0.7647058823529411,
+            "gold_entities": 38,
+            "over_redaction_rate": 0.002339446079541167,
+            "records": 59
+          },
+          "domain:Mortgage": {
+            "character_recall": 0.9433962264150944,
+            "full_protection_rate": 0.8947368421052632,
+            "gold_entities": 21,
+            "over_redaction_rate": 0.005915992900808519,
+            "records": 44
+          },
+          "domain:Product": {
+            "character_recall": 0.967741935483871,
+            "full_protection_rate": 0.92,
+            "gold_entities": 27,
+            "over_redaction_rate": 0.004414199006805224,
+            "records": 40
+          },
+          "domain:Property": {
+            "character_recall": 0.9951690821256038,
+            "full_protection_rate": 0.9545454545454546,
+            "gold_entities": 25,
+            "over_redaction_rate": 0.002662856400597519,
+            "records": 40
+          },
+          "domain:Public Safety": {
+            "character_recall": 0.8559782608695652,
+            "full_protection_rate": 0.75,
+            "gold_entities": 32,
+            "over_redaction_rate": 0.005362374923986953,
+            "records": 49
+          },
+          "domain:Services": {
+            "character_recall": 0.8977777777777778,
+            "full_protection_rate": 0.8846153846153846,
+            "gold_entities": 26,
+            "over_redaction_rate": 0.0007276255154014067,
+            "records": 43
+          },
+          "domain:Social Science": {
+            "character_recall": 0.9311348205625606,
+            "full_protection_rate": 0.8072289156626506,
+            "gold_entities": 321,
+            "over_redaction_rate": 0.009336024799942326,
+            "records": 173
+          },
+          "domain:Sports": {
+            "character_recall": 0.9130434782608695,
+            "full_protection_rate": 0.75,
+            "gold_entities": 42,
+            "over_redaction_rate": 0.003629095881765108,
+            "records": 48
+          },
+          "domain:Travel": {
+            "character_recall": 0.9889196675900277,
+            "full_protection_rate": 0.9375,
+            "gold_entities": 33,
+            "over_redaction_rate": 0.004785792538776452,
+            "records": 46
+          },
+          "domain:User Account and Transaction Services": {
+            "character_recall": 0.860655737704918,
+            "full_protection_rate": 0.75,
+            "gold_entities": 12,
+            "over_redaction_rate": 0.004075067024128686,
+            "records": 28
+          },
+          "external": {
+            "character_recall": 0.9361719253058596,
+            "full_protection_rate": 0.8413510747185261,
+            "gold_entities": 1231,
+            "over_redaction_rate": 0.0055490597291240375,
+            "records": 1500
+          },
+          "negative": {
+            "character_recall": 1,
+            "full_protection_rate": 1,
+            "gold_entities": 0,
+            "over_redaction_rate": 0.0015371182216724574,
+            "records": 523
+          },
+          "psi": {
+            "character_recall": 0.9361719253058596,
+            "full_protection_rate": 0.8413510747185261,
+            "gold_entities": 1231,
+            "over_redaction_rate": 0.007777452208705493,
+            "records": 977
+          },
+          "source:test": {
+            "character_recall": 0.9361719253058596,
+            "full_protection_rate": 0.8413510747185261,
+            "gold_entities": 1231,
+            "over_redaction_rate": 0.0055490597291240375,
+            "records": 1500
+          }
+        },
+        "cluster_guardrails": {
+          "clean_negative": {
+            "high_95": 0.9282667898001244,
+            "low_95": 0.8780598945790528,
+            "method": "wilson-independent-cluster",
+            "successes": 473,
+            "trials": 522
+          },
+          "full_protection": {
+            "high_95": 0.8607544917326767,
+            "low_95": 0.8143045400012695,
+            "method": "wilson-independent-cluster",
+            "successes": 807,
+            "trials": 962
+          }
+        },
+        "confidence_intervals": {
+          "character_recall": {
+            "high_95": 0.9498712514651853,
+            "low_95": 0.9213104542812902,
+            "rounds": 1000
+          },
+          "clean_negative_document_rate": {
+            "high_95": 0.9302810999714873,
+            "low_95": 0.8810481997241876,
+            "rounds": 1000
+          },
+          "document_full_protection_rate": {
+            "high_95": 0.8636974476730271,
+            "low_95": 0.8176096023356165,
+            "rounds": 1000
+          },
+          "over_redaction_rate": {
+            "high_95": 0.006349546677362214,
+            "low_95": 0.004809245163359438,
+            "rounds": 1000
+          },
+          "weighted_recall": {
+            "high_95": 0.9498712514651853,
+            "low_95": 0.9213104542812902,
+            "rounds": 1000
+          }
+        },
+        "counts": {
+          "captured_weight": 58155,
+          "clean_negative_docs": 474,
+          "exact_matches": 990,
+          "fn_chars": 793,
+          "fp_chars": 3417,
+          "fully_protected_docs": 822,
+          "gold_chars": 12424,
+          "gold_entities": 1231,
+          "gold_weight": 62120,
+          "negative_docs": 523,
+          "non_pii_chars": 615780,
+          "overlap_matches": 1185,
+          "positive_docs": 977,
+          "pred_chars": 15048,
+          "predicted_entities": 1818,
+          "tp_chars": 11631,
+          "typed_exact_matches": 982,
+          "typed_overlap_matches": 1170
+        },
+        "entities": {
+          "exact": {
+            "f1": 0.6493932436864547,
+            "precision": 0.5445544554455446,
+            "recall": 0.8042242079610074
+          },
+          "overlap": {
+            "f1": 0.777304034109544,
+            "precision": 0.6518151815181518,
+            "recall": 0.9626320064987814
+          },
+          "typed_exact": {
+            "f1": 0.6441456215152509,
+            "precision": 0.5401540154015402,
+            "recall": 0.7977254264825345
+          },
+          "typed_overlap": {
+            "f1": 0.7674647425385371,
+            "precision": 0.6435643564356436,
+            "recall": 0.950446791226645
+          }
+        },
+        "evaluation": {
+          "bootstrap_sampling_unit": "source-document-or-normalized-text-cluster",
+          "independent_bootstrap_clusters": 1482,
+          "minimum_score": 0.1,
+          "partition": "all",
+          "partition_scheme": "sha256-normalized-text-v2",
+          "records": 1500
+        },
+        "performance": {
+          "characters_per_second": 160748.01790390184,
+          "latency_by_character_length": {
+            "1-256": {
+              "p50_ms": 1.2823750000000018,
+              "p95_ms": 2.4587998000000426,
+              "p99_ms": 7.818043079999989,
+              "records": 225
+            },
+            "257-1000": {
+              "p50_ms": 2.640542000000096,
+              "p95_ms": 3.8361295999999805,
+              "p99_ms": 5.908546080000064,
+              "records": 1275
+            }
+          },
+          "latency_ms_max": 33.70004200000005,
+          "latency_ms_mean": 2.6053364273333353,
+          "latency_ms_p50": 2.569270999999844,
+          "latency_ms_p95": 3.7556848000000174,
+          "latency_ms_p99": 5.985739160000296,
+          "latency_ms_per_1000_characters_p95": 10.115967529679688,
+          "records": 1500
+        },
+        "run": {
+          "adapter": "wasm-research",
+          "artifact_mb": 4.480401,
+          "artifact_sha256": "9fb9a8357bc0ce4634f5f4f30165019fb859595baece0ef0d04c90e1561f4718",
+          "candidate_id": "llss-psi-1f1c4755-int8-wasm-model.onnx-npm-default-default",
+          "cold_start_ms": 162.751666,
+          "dataset_sha256": "0d120dca04050752ac3475472f9156f8f7067ee1bfa55f582c2f84ef2a2410db",
+          "final_memory_mb": {
+            "arrayBuffers": 5.881272315979004,
+            "external": 7.8801116943359375,
+            "heapTotal": 17.453125,
+            "heapUsed": 10.628501892089844,
+            "rss": 493.4375
+          },
+          "frame_generator_sha256": "13d597aa4ad8f15a1ebf27fd18a534be0efdc787c5af983326a649b121a474a0",
+          "frames_sha256": "0bb19bb1bded8efa600b00530a5d1b364bec799fa73247398bbed81825db4a4c",
+          "measurement_scope": "browser WASM backend under Node; tokenizer windows prepared in Python",
+          "memory_policy": "default",
+          "model_format": "model.onnx",
+          "peak_rss_mb": 529.625,
+          "prediction_elapsed_ms": 3941.6084579999997,
+          "prediction_records": 1500,
+          "release_eligible": false,
+          "runtime": {
+            "common": "1.30.0",
+            "web": "1.30.0"
+          },
+          "runtime_artifact": {
+            "files": {
+              "ort-wasm-simd-threaded.mjs": {
+                "bytes": 24381,
+                "sha256": "e13f7f94fc51b4ca72b12faeb1ee95f4ace6dfbc8939bc718aabdc0a27c4299b"
+              },
+              "ort-wasm-simd-threaded.wasm": {
+                "bytes": 14239897,
+                "sha256": "3398c10d07d229bd91b364548e130e0e51a8e5704b88c7c083ebbeb78842dee2"
+              },
+              "wrapper": {
+                "bytes": 73054,
+                "sha256": "11e64bd8ffe11bd1a2a2f0d6275fdfbbba7262f0b76b99b53d228a8a22ef3d90"
+              }
+            },
+            "kind": "npm-default",
+            "release_eligible": false,
+            "runtime_version": "1.30.0",
+            "total_bytes": 14337332
+          },
+          "source_onnx_sha256": "9fb9a8357bc0ce4634f5f4f30165019fb859595baece0ef0d04c90e1561f4718",
+          "tokenizer": "pinned Python/Rust tokenizer; JavaScript tokenizer parity remains separate",
+          "tokenizer_sha256": "4f19d8d450d3a71601776a7d109773edda099a25bed57b51e65e27f7ef0fead6",
+          "weights_sha256": "1f1c47553b0a6edbb14aaa41159a9ad6bf5a3952c4e90ea0e4270d02d72ced40"
+        },
+        "safety": {
+          "character": {
+            "f1": 0.846753057658707,
+            "precision": 0.77292663476874,
+            "recall": 0.9361719253058596
+          },
+          "document_escape_rate": 0.1586489252814739,
+          "document_full_protection_rate": 0.8413510747185261,
+          "weighted_leak_rate": 0.06382807469414042,
+          "weighted_recall": 0.9361719253058596
+        },
+        "schema_version": 1,
+        "utility": {
+          "clean_negative_document_rate": 0.9063097514340345,
+          "over_redaction_rate": 0.0055490597291240375
+        }
+      },
+      "second": {
+        "by_family": {
+          "sensitive_belief": {
+            "character_recall": 0.9300474103229269,
+            "confidence_interval": {
+              "high_95": 0.9451789554464783,
+              "low_95": 0.9139435595732669,
+              "rounds": 1000
+            },
+            "entities": 1076,
+            "full_cluster_protection_interval": {
+              "high_95": 0.852944987128997,
+              "low_95": 0.8032813012077048,
+              "method": "wilson-independent-cluster",
+              "successes": 730,
+              "trials": 880
+            },
+            "gold_chars": 11179,
+            "independent_clusters": 880
+          },
+          "sensitive_personal": {
+            "character_recall": 0.9911646586345382,
+            "confidence_interval": {
+              "high_95": 0.9975050298995795,
+              "low_95": 0.9837156481506721,
+              "rounds": 1000
+            },
+            "entities": 155,
+            "full_cluster_protection_interval": {
+              "high_95": 0.9802124588924483,
+              "low_95": 0.9096561579126599,
+              "method": "wilson-independent-cluster",
+              "successes": 134,
+              "trials": 140
+            },
+            "gold_chars": 1245,
+            "independent_clusters": 140
+          }
+        },
+        "by_label": {
+          "FINANCIAL_HARDSHIP": {
+            "character_recall": null,
+            "family": "sensitive_financial",
+            "full_entity_protection_rate": null,
+            "gold_entities": 0,
+            "independent_clusters": 0,
+            "predicted_entities": 5
+          },
+          "INCOME": {
+            "character_recall": null,
+            "family": "sensitive_financial",
+            "full_entity_protection_rate": null,
+            "gold_entities": 0,
+            "independent_clusters": 0,
+            "predicted_entities": 3
+          },
+          "POLITICAL_AFFILIATION": {
+            "character_recall": 0.9286533608625832,
+            "family": "sensitive_belief",
+            "full_entity_protection_rate": 0.8436482084690554,
+            "gold_entities": 307,
+            "independent_clusters": 282,
+            "predicted_entities": 507
+          },
+          "RACE_ETHNICITY": {
+            "character_recall": 0.9338235294117647,
+            "family": "sensitive_belief",
+            "full_entity_protection_rate": 0.8920086393088553,
+            "gold_entities": 463,
+            "independent_clusters": 428,
+            "predicted_entities": 718
+          },
+          "RELIGION": {
+            "character_recall": 0.9284940411700975,
+            "family": "sensitive_belief",
+            "full_entity_protection_rate": 0.7745098039215687,
+            "gold_entities": 306,
+            "independent_clusters": 282,
+            "predicted_entities": 403
+          },
+          "SEXUAL_ORIENTATION": {
+            "character_recall": 0.9911646586345382,
+            "family": "sensitive_personal",
+            "full_entity_protection_rate": 0.9612903225806452,
+            "gold_entities": 155,
+            "independent_clusters": 140,
+            "predicted_entities": 181
+          },
+          "TRADE_UNION": {
+            "character_recall": null,
+            "family": "sensitive_belief",
+            "full_entity_protection_rate": null,
+            "gold_entities": 0,
+            "independent_clusters": 0,
+            "predicted_entities": 1
+          }
+        },
+        "by_slice": {
+          "domain:Access Control Systems": {
+            "character_recall": 0.9166666666666666,
+            "full_protection_rate": 0.8888888888888888,
+            "gold_entities": 21,
+            "over_redaction_rate": 0.0006187267977450845,
+            "records": 39
+          },
+          "domain:Advertising": {
+            "character_recall": 0.9316770186335404,
+            "full_protection_rate": 0.8461538461538461,
+            "gold_entities": 62,
+            "over_redaction_rate": 0.002220207010850871,
+            "records": 73
+          },
+          "domain:Automobile": {
+            "character_recall": 0.9916666666666667,
+            "full_protection_rate": 0.9,
+            "gold_entities": 10,
+            "over_redaction_rate": 0.0038065698576060904,
+            "records": 21
+          },
+          "domain:Banking": {
+            "character_recall": 0.9904761904761905,
+            "full_protection_rate": 0.875,
+            "gold_entities": 18,
+            "over_redaction_rate": 0.005045009397566525,
+            "records": 27
+          },
+          "domain:Brokerage": {
+            "character_recall": 0.8761329305135952,
+            "full_protection_rate": 0.8076923076923077,
+            "gold_entities": 29,
+            "over_redaction_rate": 0.0038692538692538694,
+            "records": 42
+          },
+          "domain:Casualty": {
+            "character_recall": 0.9910979228486647,
+            "full_protection_rate": 0.90625,
+            "gold_entities": 37,
+            "over_redaction_rate": 0.006164567140176896,
+            "records": 59
+          },
+          "domain:Consulting": {
+            "character_recall": 0.8363095238095238,
+            "full_protection_rate": 0.75,
+            "gold_entities": 39,
+            "over_redaction_rate": 0.0010744985673352436,
+            "records": 56
+          },
+          "domain:Credit": {
+            "character_recall": 0.8732394366197183,
+            "full_protection_rate": 0.8888888888888888,
+            "gold_entities": 9,
+            "over_redaction_rate": 0.0013277428371767995,
+            "records": 37
+          },
+          "domain:Disability": {
+            "character_recall": 0.9517684887459807,
+            "full_protection_rate": 0.875,
+            "gold_entities": 32,
+            "over_redaction_rate": 0.0053470640657490845,
+            "records": 53
+          },
+          "domain:Elections": {
+            "character_recall": 0.9491228070175438,
+            "full_protection_rate": 0.8717948717948718,
+            "gold_entities": 97,
+            "over_redaction_rate": 0.023264147302847378,
+            "records": 93
+          },
+          "domain:Environmental": {
+            "character_recall": 0.9173553719008265,
+            "full_protection_rate": 0.78125,
+            "gold_entities": 35,
+            "over_redaction_rate": 0.0020698686267055294,
+            "records": 47
+          },
+          "domain:Fitness": {
+            "character_recall": 0.9352331606217616,
+            "full_protection_rate": 0.7333333333333333,
+            "gold_entities": 35,
+            "over_redaction_rate": 0.005216756220981793,
+            "records": 50
+          },
+          "domain:Health": {
+            "character_recall": 0.9285714285714286,
+            "full_protection_rate": 0.8367346938775511,
+            "gold_entities": 54,
+            "over_redaction_rate": 0.0032026465826705147,
+            "records": 63
+          },
+          "domain:Healthcare Providers": {
+            "character_recall": 0.9915611814345991,
+            "full_protection_rate": 0.9130434782608695,
+            "gold_entities": 25,
+            "over_redaction_rate": 0.006633825944170771,
+            "records": 44
+          },
+          "domain:Human Resources": {
+            "character_recall": 0.9880668257756563,
+            "full_protection_rate": 0.8947368421052632,
+            "gold_entities": 42,
+            "over_redaction_rate": 0.003936460890103274,
+            "records": 52
+          },
+          "domain:Information Technology": {
+            "character_recall": 0.9896907216494846,
+            "full_protection_rate": 0.875,
+            "gold_entities": 8,
+            "over_redaction_rate": 0.0005174835514156871,
+            "records": 34
+          },
+          "domain:Insurance": {
+            "character_recall": 0.9953051643192489,
+            "full_protection_rate": 0.9523809523809523,
+            "gold_entities": 22,
+            "over_redaction_rate": 0.0057293962097840455,
+            "records": 35
+          },
+          "domain:Investment": {
+            "character_recall": 0.9703389830508474,
+            "full_protection_rate": 0.8857142857142857,
+            "gold_entities": 42,
+            "over_redaction_rate": 0.00437368789363191,
+            "records": 59
+          },
+          "domain:Life": {
+            "character_recall": 0.9441176470588235,
+            "full_protection_rate": 0.8125,
+            "gold_entities": 37,
+            "over_redaction_rate": 0.0050222504767959315,
+            "records": 46
+          },
+          "domain:Marketing": {
+            "character_recall": 0.8877805486284289,
+            "full_protection_rate": 0.7647058823529411,
+            "gold_entities": 38,
+            "over_redaction_rate": 0.002339446079541167,
+            "records": 59
+          },
+          "domain:Mortgage": {
+            "character_recall": 0.9433962264150944,
+            "full_protection_rate": 0.8947368421052632,
+            "gold_entities": 21,
+            "over_redaction_rate": 0.005915992900808519,
+            "records": 44
+          },
+          "domain:Product": {
+            "character_recall": 0.967741935483871,
+            "full_protection_rate": 0.92,
+            "gold_entities": 27,
+            "over_redaction_rate": 0.004414199006805224,
+            "records": 40
+          },
+          "domain:Property": {
+            "character_recall": 0.9951690821256038,
+            "full_protection_rate": 0.9545454545454546,
+            "gold_entities": 25,
+            "over_redaction_rate": 0.002662856400597519,
+            "records": 40
+          },
+          "domain:Public Safety": {
+            "character_recall": 0.8559782608695652,
+            "full_protection_rate": 0.75,
+            "gold_entities": 32,
+            "over_redaction_rate": 0.005362374923986953,
+            "records": 49
+          },
+          "domain:Services": {
+            "character_recall": 0.8977777777777778,
+            "full_protection_rate": 0.8846153846153846,
+            "gold_entities": 26,
+            "over_redaction_rate": 0.0007276255154014067,
+            "records": 43
+          },
+          "domain:Social Science": {
+            "character_recall": 0.9311348205625606,
+            "full_protection_rate": 0.8072289156626506,
+            "gold_entities": 321,
+            "over_redaction_rate": 0.009336024799942326,
+            "records": 173
+          },
+          "domain:Sports": {
+            "character_recall": 0.9130434782608695,
+            "full_protection_rate": 0.75,
+            "gold_entities": 42,
+            "over_redaction_rate": 0.003629095881765108,
+            "records": 48
+          },
+          "domain:Travel": {
+            "character_recall": 0.9889196675900277,
+            "full_protection_rate": 0.9375,
+            "gold_entities": 33,
+            "over_redaction_rate": 0.004785792538776452,
+            "records": 46
+          },
+          "domain:User Account and Transaction Services": {
+            "character_recall": 0.860655737704918,
+            "full_protection_rate": 0.75,
+            "gold_entities": 12,
+            "over_redaction_rate": 0.004075067024128686,
+            "records": 28
+          },
+          "external": {
+            "character_recall": 0.9361719253058596,
+            "full_protection_rate": 0.8413510747185261,
+            "gold_entities": 1231,
+            "over_redaction_rate": 0.0055490597291240375,
+            "records": 1500
+          },
+          "negative": {
+            "character_recall": 1,
+            "full_protection_rate": 1,
+            "gold_entities": 0,
+            "over_redaction_rate": 0.0015371182216724574,
+            "records": 523
+          },
+          "psi": {
+            "character_recall": 0.9361719253058596,
+            "full_protection_rate": 0.8413510747185261,
+            "gold_entities": 1231,
+            "over_redaction_rate": 0.007777452208705493,
+            "records": 977
+          },
+          "source:test": {
+            "character_recall": 0.9361719253058596,
+            "full_protection_rate": 0.8413510747185261,
+            "gold_entities": 1231,
+            "over_redaction_rate": 0.0055490597291240375,
+            "records": 1500
+          }
+        },
+        "cluster_guardrails": {
+          "clean_negative": {
+            "high_95": 0.9282667898001244,
+            "low_95": 0.8780598945790528,
+            "method": "wilson-independent-cluster",
+            "successes": 473,
+            "trials": 522
+          },
+          "full_protection": {
+            "high_95": 0.8607544917326767,
+            "low_95": 0.8143045400012695,
+            "method": "wilson-independent-cluster",
+            "successes": 807,
+            "trials": 962
+          }
+        },
+        "confidence_intervals": {
+          "character_recall": {
+            "high_95": 0.9498712514651853,
+            "low_95": 0.9213104542812902,
+            "rounds": 1000
+          },
+          "clean_negative_document_rate": {
+            "high_95": 0.9302810999714873,
+            "low_95": 0.8810481997241876,
+            "rounds": 1000
+          },
+          "document_full_protection_rate": {
+            "high_95": 0.8636974476730271,
+            "low_95": 0.8176096023356165,
+            "rounds": 1000
+          },
+          "over_redaction_rate": {
+            "high_95": 0.006349546677362214,
+            "low_95": 0.004809245163359438,
+            "rounds": 1000
+          },
+          "weighted_recall": {
+            "high_95": 0.9498712514651853,
+            "low_95": 0.9213104542812902,
+            "rounds": 1000
+          }
+        },
+        "counts": {
+          "captured_weight": 58155,
+          "clean_negative_docs": 474,
+          "exact_matches": 990,
+          "fn_chars": 793,
+          "fp_chars": 3417,
+          "fully_protected_docs": 822,
+          "gold_chars": 12424,
+          "gold_entities": 1231,
+          "gold_weight": 62120,
+          "negative_docs": 523,
+          "non_pii_chars": 615780,
+          "overlap_matches": 1185,
+          "positive_docs": 977,
+          "pred_chars": 15048,
+          "predicted_entities": 1818,
+          "tp_chars": 11631,
+          "typed_exact_matches": 982,
+          "typed_overlap_matches": 1170
+        },
+        "entities": {
+          "exact": {
+            "f1": 0.6493932436864547,
+            "precision": 0.5445544554455446,
+            "recall": 0.8042242079610074
+          },
+          "overlap": {
+            "f1": 0.777304034109544,
+            "precision": 0.6518151815181518,
+            "recall": 0.9626320064987814
+          },
+          "typed_exact": {
+            "f1": 0.6441456215152509,
+            "precision": 0.5401540154015402,
+            "recall": 0.7977254264825345
+          },
+          "typed_overlap": {
+            "f1": 0.7674647425385371,
+            "precision": 0.6435643564356436,
+            "recall": 0.950446791226645
+          }
+        },
+        "evaluation": {
+          "bootstrap_sampling_unit": "source-document-or-normalized-text-cluster",
+          "independent_bootstrap_clusters": 1482,
+          "minimum_score": 0.1,
+          "partition": "all",
+          "partition_scheme": "sha256-normalized-text-v2",
+          "records": 1500
+        },
+        "performance": {
+          "characters_per_second": 92144.71079675529,
+          "latency_by_character_length": {
+            "1-256": {
+              "p50_ms": 2.4623750000000655,
+              "p95_ms": 4.479724999999599,
+              "p99_ms": 5.898556920000151,
+              "records": 225
+            },
+            "257-1000": {
+              "p50_ms": 4.786041999999725,
+              "p95_ms": 6.2158954000000435,
+              "p99_ms": 8.973572660000135,
+              "records": 1275
+            }
+          },
+          "latency_ms_max": 29.680291000000125,
+          "latency_ms_mean": 4.545053785999989,
+          "latency_ms_p50": 4.667021000000432,
+          "latency_ms_p95": 6.116174399999772,
+          "latency_ms_p99": 8.93243741000011,
+          "latency_ms_per_1000_characters_p95": 17.542244127702247,
+          "records": 1500
+        },
+        "run": {
+          "adapter": "wasm-research",
+          "artifact_mb": 4.51672,
+          "artifact_sha256": "fb652b52829c0d2149b6c64065a242118d865a24cb3448c405b6ed03dd71ecc2",
+          "candidate_id": "llss-psi-1f1c4755-int8-wasm-model.basic.ort-custom-minimal-default",
+          "cold_start_ms": 40.55366600000001,
+          "dataset_sha256": "0d120dca04050752ac3475472f9156f8f7067ee1bfa55f582c2f84ef2a2410db",
+          "final_memory_mb": {
+            "arrayBuffers": 5.134280204772949,
+            "external": 8.026518821716309,
+            "heapTotal": 16.140625,
+            "heapUsed": 6.885627746582031,
+            "rss": 100.203125
+          },
+          "frame_generator_sha256": "13d597aa4ad8f15a1ebf27fd18a534be0efdc787c5af983326a649b121a474a0",
+          "frames_sha256": "0bb19bb1bded8efa600b00530a5d1b364bec799fa73247398bbed81825db4a4c",
+          "measurement_scope": "browser WASM backend under Node; tokenizer windows prepared in Python",
+          "memory_policy": "default",
+          "model_format": "model.basic.ort",
+          "peak_rss_mb": 100.1875,
+          "prediction_elapsed_ms": 6848.49375,
+          "prediction_records": 1500,
+          "release_eligible": false,
+          "runtime": {
+            "common": "1.30.0",
+            "web": "1.30.0"
+          },
+          "runtime_artifact": {
+            "build": {
+              "build_type": "MinSizeRel",
+              "cmake_cache_sha256": "fd0b5885d6f589f5b37104d9d23d38a36539b9b511b15e9e1bae3f866c9b372d",
+              "compiler_flags": {
+                "CMAKE_CXX_FLAGS_MINSIZEREL": "-Os -DNDEBUG",
+                "CMAKE_C_FLAGS_MINSIZEREL": "-Os -DNDEBUG"
+              },
+              "files": {
+                "ort-wasm-simd-threaded.mjs": {
+                  "bytes": 27544,
+                  "sha256": "dca17c592301105e30bda770ae47e26333b685193bc20e552f16457125a0cf1f"
+                },
+                "ort-wasm-simd-threaded.wasm": {
+                  "bytes": 1855932,
+                  "sha256": "2ac981b2080cbb54c3b18e180608ad647372c6fea647f65c4f5e143fdaf606cb"
+                }
+              },
+              "generated_registration_sha256": {
+                "onnxruntime/contrib_ops/cpu/cpu_contrib_kernels.cc": "d5b5c40867c77f53fa6ba3502a5bbe06da770ddf2ca1dfa7ec94493c87f4f2a7",
+                "onnxruntime/core/providers/cpu/cpu_execution_provider.cc": "338f49679d43a683d26b94027f88b8d75a0c8a51db995e06434ff10388f3f138",
+                "onnxruntime/core/providers/op_kernel_type_control_overrides.inc": "24d32d70ba869622a894409ca7be78569174591800cb1b5f09d468f81a0d8dc4",
+                "orttraining/orttraining/training_ops/cpu/cpu_training_kernels.cc": "15df63198e2be5c5661b1626fb255adfec25dab7f6032844643bd5b2ccbc6c79"
+              },
+              "limitations": "Research-only compiled artifacts; settings are not privacy certification. Same-version WASM parity and exact-package browser tests still required.",
+              "minimal_build": true,
+              "node_package_scope_override_sha256": "a51bff776fdd53226e2e67d8f654d17dadfe3decc8bf8bf869cba3aff9813826",
+              "release_eligible": false,
+              "runtime_version": "1.30.0",
+              "schema_version": 1,
+              "sdk_revision": "c0bb220cb6e6f4e0fabb6f6db9efd53390ef5e56",
+              "source_revision": "f2c39fe2f838cf35ce7da92824f5a5e3ee6e88a7",
+              "supplied_operator_config_sha256": "b02a50214bbf57a9cb2a44a4478d2c297ce883e464cfb0e6c557b3066d20af7e",
+              "telemetry_disabled": true,
+              "upstream_dependency_manifest_sha256": "880edacbd7954c32b8bff34959e6fc5bbae0dc402f8f99861c1c3f057b976c0d",
+              "verified_cmake_flags": {
+                "onnxruntime_ENABLE_WEBASSEMBLY_PROFILING": "OFF",
+                "onnxruntime_ENABLE_WEBASSEMBLY_SIMD": "ON",
+                "onnxruntime_ENABLE_WEBASSEMBLY_THREADS": "ON",
+                "onnxruntime_MINIMAL_BUILD": "ON",
+                "onnxruntime_MINIMAL_BUILD_CUSTOM_OPS": "OFF",
+                "onnxruntime_REDUCED_OPS_BUILD": "ON",
+                "onnxruntime_USE_TELEMETRY": "OFF"
+              }
+            },
+            "files": {
+              "ort-wasm-simd-threaded.mjs": {
+                "bytes": 27544,
+                "sha256": "dca17c592301105e30bda770ae47e26333b685193bc20e552f16457125a0cf1f"
+              },
+              "ort-wasm-simd-threaded.wasm": {
+                "bytes": 1855932,
+                "sha256": "2ac981b2080cbb54c3b18e180608ad647372c6fea647f65c4f5e143fdaf606cb"
+              },
+              "wrapper": {
+                "bytes": 73054,
+                "sha256": "11e64bd8ffe11bd1a2a2f0d6275fdfbbba7262f0b76b99b53d228a8a22ef3d90"
+              }
+            },
+            "kind": "custom-minimal",
+            "release_eligible": false,
+            "runtime_version": "1.30.0",
+            "source_revision": "f2c39fe2f838cf35ce7da92824f5a5e3ee6e88a7",
+            "total_bytes": 1956530
+          },
+          "source_onnx_sha256": "9fb9a8357bc0ce4634f5f4f30165019fb859595baece0ef0d04c90e1561f4718",
+          "tokenizer": "pinned Python/Rust tokenizer; JavaScript tokenizer parity remains separate",
+          "tokenizer_sha256": "4f19d8d450d3a71601776a7d109773edda099a25bed57b51e65e27f7ef0fead6",
+          "weights_sha256": "1f1c47553b0a6edbb14aaa41159a9ad6bf5a3952c4e90ea0e4270d02d72ced40"
+        },
+        "safety": {
+          "character": {
+            "f1": 0.846753057658707,
+            "precision": 0.77292663476874,
+            "recall": 0.9361719253058596
+          },
+          "document_escape_rate": 0.1586489252814739,
+          "document_full_protection_rate": 0.8413510747185261,
+          "weighted_leak_rate": 0.06382807469414042,
+          "weighted_recall": 0.9361719253058596
+        },
+        "schema_version": 1,
+        "utility": {
+          "clean_negative_document_rate": 0.9063097514340345,
+          "over_redaction_rate": 0.0055490597291240375
+        }
+      }
+    },
+    "span_parity": {
+      "differing_records_at_thresholds": {
+        "0.1": 0,
+        "0.3": 0,
+        "0.5": 0,
+        "0.7": 0,
+        "0.9": 0,
+        "0.95": 0,
+        "0.99": 0
+      },
+      "exact_span_and_score_match_records": 1414,
+      "maximum_aligned_score_difference": 0.0014681246060964659,
+      "records": 1500,
+      "same_ids": true,
+      "same_span_boundaries_and_labels_all_records": true
+    }
+  },
+  "conversion": {
+    "artifact_file": "model.basic.ort",
+    "bytes": 4516720,
+    "cases": [
+      {
+        "batch": 1,
+        "maximum_logit_error": 0,
+        "padded_mask": false,
+        "tokens": 1
+      },
+      {
+        "batch": 1,
+        "maximum_logit_error": 0,
+        "padded_mask": true,
+        "tokens": 16
+      },
+      {
+        "batch": 2,
+        "maximum_logit_error": 0,
+        "padded_mask": true,
+        "tokens": 37
+      },
+      {
+        "batch": 1,
+        "maximum_logit_error": 0,
+        "padded_mask": true,
+        "tokens": 128
+      },
+      {
+        "batch": 1,
+        "maximum_logit_error": 0,
+        "padded_mask": true,
+        "tokens": 256
+      }
+    ],
+    "limitations": "Native same-version format parity only; WASM output/span and exact-package browser tests still required",
+    "maximum_native_logit_error": 0,
+    "operator_config_sha256": "221446f19c9eeccca9907bf877f496b8e72efcaf4800b7b4fc998e33f9a9bc88",
+    "optimization": "basic-fixed, no platform-specific target",
+    "release_eligible": false,
+    "runtime_source_revision": "f2c39fe2f838cf35ce7da92824f5a5e3ee6e88a7",
+    "runtime_version": "1.30.0",
+    "schema_version": 1,
+    "sdk_revision": "c0bb220cb6e6f4e0fabb6f6db9efd53390ef5e56",
+    "sha256": "fb652b52829c0d2149b6c64065a242118d865a24cb3448c405b6ed03dd71ecc2",
+    "source_onnx_sha256": "9fb9a8357bc0ce4634f5f4f30165019fb859595baece0ef0d04c90e1561f4718",
+    "tokenizer_sha256": "4f19d8d450d3a71601776a7d109773edda099a25bed57b51e65e27f7ef0fead6",
+    "weights_sha256": "1f1c47553b0a6edbb14aaa41159a9ad6bf5a3952c4e90ea0e4270d02d72ced40"
+  },
+  "runtime": {
+    "build_type": "MinSizeRel",
+    "cmake_cache_sha256": "fd0b5885d6f589f5b37104d9d23d38a36539b9b511b15e9e1bae3f866c9b372d",
+    "compiler_flags": {
+      "CMAKE_CXX_FLAGS_MINSIZEREL": "-Os -DNDEBUG",
+      "CMAKE_C_FLAGS_MINSIZEREL": "-Os -DNDEBUG"
+    },
+    "files": {
+      "ort-wasm-simd-threaded.mjs": {
+        "bytes": 27544,
+        "sha256": "dca17c592301105e30bda770ae47e26333b685193bc20e552f16457125a0cf1f"
+      },
+      "ort-wasm-simd-threaded.wasm": {
+        "bytes": 1855932,
+        "sha256": "2ac981b2080cbb54c3b18e180608ad647372c6fea647f65c4f5e143fdaf606cb"
+      }
+    },
+    "generated_registration_sha256": {
+      "onnxruntime/contrib_ops/cpu/cpu_contrib_kernels.cc": "d5b5c40867c77f53fa6ba3502a5bbe06da770ddf2ca1dfa7ec94493c87f4f2a7",
+      "onnxruntime/core/providers/cpu/cpu_execution_provider.cc": "338f49679d43a683d26b94027f88b8d75a0c8a51db995e06434ff10388f3f138",
+      "onnxruntime/core/providers/op_kernel_type_control_overrides.inc": "24d32d70ba869622a894409ca7be78569174591800cb1b5f09d468f81a0d8dc4",
+      "orttraining/orttraining/training_ops/cpu/cpu_training_kernels.cc": "15df63198e2be5c5661b1626fb255adfec25dab7f6032844643bd5b2ccbc6c79"
+    },
+    "limitations": "Research-only compiled artifacts; settings are not privacy certification. Same-version WASM parity and exact-package browser tests still required.",
+    "minimal_build": true,
+    "node_package_scope_override_sha256": "a51bff776fdd53226e2e67d8f654d17dadfe3decc8bf8bf869cba3aff9813826",
+    "release_eligible": false,
+    "runtime_version": "1.30.0",
+    "schema_version": 1,
+    "sdk_revision": "c0bb220cb6e6f4e0fabb6f6db9efd53390ef5e56",
+    "source_revision": "f2c39fe2f838cf35ce7da92824f5a5e3ee6e88a7",
+    "supplied_operator_config_sha256": "b02a50214bbf57a9cb2a44a4478d2c297ce883e464cfb0e6c557b3066d20af7e",
+    "telemetry_disabled": true,
+    "upstream_dependency_manifest_sha256": "880edacbd7954c32b8bff34959e6fc5bbae0dc402f8f99861c1c3f057b976c0d",
+    "verified_cmake_flags": {
+      "onnxruntime_ENABLE_WEBASSEMBLY_PROFILING": "OFF",
+      "onnxruntime_ENABLE_WEBASSEMBLY_SIMD": "ON",
+      "onnxruntime_ENABLE_WEBASSEMBLY_THREADS": "ON",
+      "onnxruntime_MINIMAL_BUILD": "ON",
+      "onnxruntime_MINIMAL_BUILD_CUSTOM_OPS": "OFF",
+      "onnxruntime_REDUCED_OPS_BUILD": "ON",
+      "onnxruntime_USE_TELEMETRY": "OFF"
+    }
+  },
+  "python_build_audit": {
+    "dependencies": [
+      {
+        "name": "boolean-py",
+        "version": "5.0",
+        "vulns": []
+      },
+      {
+        "name": "cachecontrol",
+        "version": "0.14.4",
+        "vulns": []
+      },
+      {
+        "name": "certifi",
+        "version": "2026.7.22",
+        "vulns": []
+      },
+      {
+        "name": "charset-normalizer",
+        "version": "3.5.2",
+        "vulns": []
+      },
+      {
+        "name": "cmake",
+        "version": "3.31.10",
+        "vulns": []
+      },
+      {
+        "name": "cyclonedx-python-lib",
+        "version": "11.12.0",
+        "vulns": []
+      },
+      {
+        "name": "defusedxml",
+        "version": "0.7.1",
+        "vulns": []
+      },
+      {
+        "name": "filelock",
+        "version": "4.2.0",
+        "vulns": []
+      },
+      {
+        "name": "flatbuffers",
+        "version": "25.12.19",
+        "vulns": []
+      },
+      {
+        "name": "idna",
+        "version": "3.20",
+        "vulns": []
+      },
+      {
+        "name": "license-expression",
+        "version": "30.4.4",
+        "vulns": []
+      },
+      {
+        "name": "markdown-it-py",
+        "version": "4.2.0",
+        "vulns": []
+      },
+      {
+        "name": "mdurl",
+        "version": "0.1.2",
+        "vulns": []
+      },
+      {
+        "name": "ml-dtypes",
+        "version": "0.6.0",
+        "vulns": []
+      },
+      {
+        "name": "msgpack",
+        "version": "1.2.3",
+        "vulns": []
+      },
+      {
+        "name": "numpy",
+        "version": "2.4.6",
+        "vulns": []
+      },
+      {
+        "name": "onnx",
+        "version": "1.23.2",
+        "vulns": []
+      },
+      {
+        "name": "onnxruntime",
+        "version": "1.30.0",
+        "vulns": []
+      },
+      {
+        "name": "packageurl-python",
+        "version": "0.17.6",
+        "vulns": []
+      },
+      {
+        "name": "packaging",
+        "version": "26.3",
+        "vulns": []
+      },
+      {
+        "name": "pip",
+        "version": "26.2.1",
+        "vulns": []
+      },
+      {
+        "name": "pip-api",
+        "version": "0.0.35",
+        "vulns": []
+      },
+      {
+        "name": "pip-audit",
+        "version": "2.10.1",
+        "vulns": []
+      },
+      {
+        "name": "pip-requirements-parser",
+        "version": "32.0.1",
+        "vulns": []
+      },
+      {
+        "name": "platformdirs",
+        "version": "4.13.3",
+        "vulns": []
+      },
+      {
+        "name": "protobuf",
+        "version": "7.36.2",
+        "vulns": []
+      },
+      {
+        "name": "py-serializable",
+        "version": "2.1.0",
+        "vulns": []
+      },
+      {
+        "name": "pygments",
+        "version": "2.21.0",
+        "vulns": []
+      },
+      {
+        "name": "pyparsing",
+        "version": "3.3.3",
+        "vulns": []
+      },
+      {
+        "name": "requests",
+        "version": "2.34.2",
+        "vulns": []
+      },
+      {
+        "name": "rich",
+        "version": "15.0.0",
+        "vulns": []
+      },
+      {
+        "name": "sortedcontainers",
+        "version": "2.4.0",
+        "vulns": []
+      },
+      {
+        "name": "tomli",
+        "version": "2.5.0",
+        "vulns": []
+      },
+      {
+        "name": "tomli-w",
+        "version": "1.2.0",
+        "vulns": []
+      },
+      {
+        "name": "typing-extensions",
+        "version": "4.16.0",
+        "vulns": []
+      },
+      {
+        "name": "urllib3",
+        "version": "2.8.0",
+        "vulns": []
+      }
+    ],
+    "fixes": []
+  }
+}

@@ -234,6 +234,8 @@ def prepare_wasm(model_dir: Path, dataset: Path, output: Path):
     tokenizer = Tokenizer.from_file(str(model_dir / "tokenizer.json"))
     tokenizer.enable_truncation(max_length=256, stride=64)
     metadata = {"dataset_sha256": hashlib.sha256(dataset.read_bytes()).hexdigest(),
+                "tokenizer_sha256": hashlib.sha256((model_dir / "tokenizer.json").read_bytes()).hexdigest(),
+                "frame_generator_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                 "tokenizer": "pinned Python/Rust tokenizer; JavaScript tokenizer parity remains separate"}
     output.parent.mkdir(parents=True, exist_ok=True)
     count = 0

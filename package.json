@@ -18,7 +18,18 @@
     "test:coverage": "jest --coverage"
   },
   "jest": {
-    "watchman": false
+    "watchman": false,
+    "modulePathIgnorePatterns": [
+      "<rootDir>/benchmarks/pii-models/\\.cache/",
+      "<rootDir>/benchmarks/pii-models/\\.venv/",
+      "<rootDir>/benchmarks/pii-models/generated/"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/benchmarks/pii-models/\\.cache/",
+      "/benchmarks/pii-models/\\.venv/",
+      "/benchmarks/pii-models/generated/"
+    ]
   },
   "overrides": {
     "@istanbuljs/load-nyc-config": {

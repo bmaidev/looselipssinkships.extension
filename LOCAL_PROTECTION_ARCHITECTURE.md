@@ -80,9 +80,12 @@ Delivery order:
 2. Train contextual improvements against diverse person/public counterfactuals;
    reserve new source/grammar holdouts before tuning. Expand health, legal,
    safeguarding and child coverage beyond the four externally labelled classes.
-3. Reduce and verify the browser inference runtime. The current tiny model's
-   Node/WASM RSS remains above budget; investigate operator-reduced builds and
-   exact Chrome/Edge measurements. Browser flags are not an end-user remedy.
+3. Reduce and verify the browser inference runtime. A research-only reduced build
+   now achieves roughly 97–100 MiB Node/WASM process RSS with unchanged evaluated
+   detections, but slower inference. This does not pass whole-extension memory
+   gates: finish build hygiene and exact Chrome/Edge measurements. See the
+   [runtime study](benchmarks/pii-models/evidence/minimal-runtime-study-2026-10-17.md).
+   Browser flags are not an end-user remedy.
 4. Implement the shared local runtime and explicit coverage/failure contract,
    initially behind a non-default research switch with no production claims.
 5. Exercise the exact packaged architecture on low-spec devices in both browsers:

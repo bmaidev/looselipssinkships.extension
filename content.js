@@ -2103,7 +2103,7 @@
                      tier === "cloud" ? "\u{2601}\u{FE0F}" : "";
 
     const status = LLSS_ScanStatus.describe(coverage);
-    badge.textContent = `${tierIcon} ${engineLabel} \u00B7 ${matchCount || 0} found · ${status.label}`;
+    badge.textContent = `${status.label} · ${matchCount || 0} found · ${tierIcon} ${engineLabel}`;
     badge.classList.toggle('llss-badge-limited', status.limited);
     badge.setAttribute('role', 'status');
     badge.setAttribute('aria-live', 'polite');

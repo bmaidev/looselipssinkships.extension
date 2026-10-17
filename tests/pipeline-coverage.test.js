@@ -57,6 +57,17 @@ describe('Text processing coverage is not a safety verdict', () => {
     expect(result.coverage.contextual.status).toBe('unverified');
   });
 
+  test('rejected cloud output cannot overwrite the original deterministic result', async () => {
+    const registry = new ProviderRegistry();
+    registry.register(provider('regex', 'local'));
+    registry.register(provider('cloud', 'cloud', async () => ({ engine: 'cloud', redacted: 'unverified rewrite',
+      matches: [{ index: 999, original: 'missing', token: '[MASK]' }] })));
+    const result = await redactText('public text', { registry, piiTypes: [], settings: {} });
+    expect(result.redacted).toBe('public text');
+    expect(result.engine).toBe('regex');
+    expect(result.coverage.contextual.status).toBe('failed');
+  });
+
   test('regex-only mode never implies contextual coverage', async () => {
     const registry = new ProviderRegistry();
     registry.register(provider('regex', 'local'));

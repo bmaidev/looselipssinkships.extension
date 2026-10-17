@@ -108,7 +108,16 @@
   border-color: #d97706;
 }
 
+.llss-badge {
+  max-width: calc(100% - 48px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .llss-result-coverage {
+  flex-basis: 100%;
+  min-width: 0;
   color: #713f12;
   background: #fffbeb;
   border-left: 3px solid #d97706;
@@ -186,6 +195,9 @@
   color: #fff;
   border-radius: 13px 13px 0 0;
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  overflow-wrap: anywhere;
   justify-content: space-between;
   align-items: center;
   font-size: 13px;

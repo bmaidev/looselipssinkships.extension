@@ -98,7 +98,8 @@ def _bootstrap(per_doc: list[dict], rounds: int, seed: int) -> dict:
     if rounds <= 0 or not per_doc:
         return {}
     rng = random.Random(seed)
-    names = ("character_recall", "weighted_recall", "document_full_protection_rate", "over_redaction_rate")
+    names = ("character_recall", "weighted_recall", "document_full_protection_rate", "over_redaction_rate",
+             "clean_negative_document_rate")
     samples: dict[str, list[float]] = {name: [] for name in names}
     count = len(per_doc)
     for _ in range(rounds):
@@ -113,14 +114,47 @@ def _bootstrap(per_doc: list[dict], rounds: int, seed: int) -> dict:
         samples["over_redaction_rate"].append(
             totals["fp_chars"] / totals["non_pii_chars"] if totals["non_pii_chars"] else 0.0
         )
+        # A resample without negatives contains no evidence about utility.
+        if totals["negative_docs"]:
+            samples["clean_negative_document_rate"].append(totals["clean_negative_docs"] / totals["negative_docs"])
     return {
         name: {
             "low_95": _percentile(values, 0.025),
             "high_95": _percentile(values, 0.975),
             "rounds": rounds,
         }
-        for name, values in samples.items()
+        for name, values in samples.items() if values
     }
+
+
+def _ratio_bootstrap(clusters: list[tuple[int, int]], rounds: int, seed: int) -> dict:
+    """Resample source clusters, not characters or entities as independent trials."""
+    if rounds <= 0 or not clusters:
+        return {}
+    rng = random.Random(seed)
+    samples = []
+    for _ in range(rounds):
+        numerator = denominator = 0
+        for _ in clusters:
+            captured, gold = clusters[rng.randrange(len(clusters))]
+            numerator += captured
+            denominator += gold
+        if denominator:
+            samples.append(numerator / denominator)
+    return {"low_95": _percentile(samples, 0.025), "high_95": _percentile(samples, 0.975), "rounds": rounds}
+
+
+def _wilson_interval(successes: int, trials: int) -> dict:
+    """Non-degenerate 95% interval for independent all-or-nothing cluster outcomes."""
+    if not trials:
+        return {}
+    z = 1.959963984540054
+    proportion = successes / trials
+    scale = 1 + z * z / trials
+    middle = (proportion + z * z / (2 * trials)) / scale
+    radius = z * math.sqrt(proportion * (1 - proportion) / trials + z * z / (4 * trials * trials)) / scale
+    return {"low_95": max(0.0, middle - radius), "high_95": min(1.0, middle + radius),
+            "trials": trials, "successes": successes, "method": "wilson-independent-cluster"}
 
 
 def score_predictions(
@@ -157,6 +191,8 @@ def score_predictions(
     by_label: dict[str, Counter] = defaultdict(Counter)
     by_slice: dict[str, Counter] = defaultdict(Counter)
     by_family: dict[str, Counter] = defaultdict(Counter)
+    family_clusters: dict[str, dict[str, Counter]] = defaultdict(lambda: defaultdict(Counter))
+    label_clusters: dict[str, set[str]] = defaultdict(set)
     seen_predictions: set[str] = set()
     total_characters = 0
 
@@ -234,6 +270,8 @@ def score_predictions(
             if source_uid else "text:" + " ".join(record["text"].casefold().split())
         )
         bootstrap_clusters[cluster_key].update(doc_stats)
+        for entity in gold:
+            label_clusters[entity["label"]].add(cluster_key)
         if _collect_document_statistics:
             document_statistics.append({"id": record_id,
                                         "cluster": hashlib.sha256(cluster_key.encode()).hexdigest(),
@@ -247,6 +285,7 @@ def score_predictions(
                 sum(predicted_mask[entity["start"] : entity["end"]]) for entity in family_gold
             )
             by_family[family].update(gold_chars=family_chars, captured_chars=captured_chars, entities=len(family_gold))
+            family_clusters[family][cluster_key].update(gold_chars=family_chars, captured_chars=captured_chars)
         if "latency_ms" in prediction:
             elapsed = float(prediction["latency_ms"])
             latency_ms.append(elapsed)
@@ -341,11 +380,20 @@ def score_predictions(
         "confidence_intervals": _bootstrap(list(bootstrap_clusters.values()), bootstrap_rounds, bootstrap_seed),
     }
     elapsed_ms = sum(latency_ms)
+    negative_clusters = [stats for stats in bootstrap_clusters.values() if stats["negative_docs"]]
+    positive_clusters = [stats for stats in bootstrap_clusters.values() if stats["positive_docs"]]
+    result["cluster_guardrails"] = {
+        "clean_negative": _wilson_interval(
+            sum(stats["negative_docs"] == stats["clean_negative_docs"] for stats in negative_clusters), len(negative_clusters)),
+        "full_protection": _wilson_interval(
+            sum(stats["positive_docs"] == stats["fully_protected_docs"] for stats in positive_clusters), len(positive_clusters)),
+    }
     result["performance"]["characters_per_second"] = total_characters / (elapsed_ms / 1000) if elapsed_ms else 0.0
     for label, stats in sorted(by_label.items()):
         result["by_label"][label] = {
             "family": family_for(label),
             "gold_entities": stats["gold_entities"],
+            "independent_clusters": len(label_clusters[label]),
             "predicted_entities": stats["predicted_entities"],
             "character_recall": stats["captured_chars"] / stats["gold_chars"] if stats["gold_chars"] else None,
             "full_entity_protection_rate": (
@@ -355,7 +403,15 @@ def score_predictions(
     for family, stats in sorted(by_family.items()):
         result["by_family"][family] = {
             "entities": stats["entities"],
+            "gold_chars": stats["gold_chars"],
+            "independent_clusters": len(family_clusters[family]),
             "character_recall": stats["captured_chars"] / stats["gold_chars"] if stats["gold_chars"] else 1.0,
+            "confidence_interval": _ratio_bootstrap(
+                [(item["captured_chars"], item["gold_chars"]) for item in family_clusters[family].values()],
+                bootstrap_rounds, bootstrap_seed),
+            "full_cluster_protection_interval": _wilson_interval(
+                sum(item["captured_chars"] == item["gold_chars"] for item in family_clusters[family].values()),
+                len(family_clusters[family])),
         }
     if _collect_document_statistics:
         result["_document_statistics"] = document_statistics
@@ -412,11 +468,12 @@ def calibrate_threshold(
     *,
     thresholds: Iterable[float],
     max_over_redaction: float = 0.02,
+    min_clean_negative_rate: float = 0.98,
     bootstrap_seed: int = 20261017,
     calibration_partition: str = "calibration",
     partition_scheme: str = PARTITION_SCHEME,
 ) -> dict:
-    """Select a threshold on calibration records only, under an over-redaction constraint."""
+    """Select on calibration only; never describe an infeasible fallback as a selection."""
     if calibration_partition not in {"all", "calibration"}:
         raise ValueError("Threshold tuning is restricted to calibration or a separately supplied calibration file")
     unique_thresholds = sorted({float(value) for value in thresholds})
@@ -424,6 +481,8 @@ def calibrate_threshold(
         raise ValueError("At least one threshold is required")
     if not 0.0 <= max_over_redaction <= 1.0:
         raise ValueError("max_over_redaction must be between 0 and 1")
+    if not 0.0 <= min_clean_negative_rate <= 1.0:
+        raise ValueError("min_clean_negative_rate must be between 0 and 1")
     scored: list[dict] = []
     for threshold in unique_thresholds:
         result = score_predictions(
@@ -443,9 +502,12 @@ def calibrate_threshold(
                 "character_precision": result["safety"]["character"]["precision"],
                 "over_redaction_rate": result["utility"]["over_redaction_rate"],
                 "clean_negative_document_rate": result["utility"]["clean_negative_document_rate"],
+                "negative_documents": result["counts"].get("negative_docs", 0),
             }
         )
-    feasible = [item for item in scored if item["over_redaction_rate"] <= max_over_redaction]
+    feasible = [item for item in scored if item["over_redaction_rate"] <= max_over_redaction
+                and item["negative_documents"] > 0
+                and item["clean_negative_document_rate"] >= min_clean_negative_rate]
     if feasible:
         selected = max(
             feasible,
@@ -456,9 +518,9 @@ def calibrate_threshold(
                 item["threshold"],
             ),
         )
-        selection_reason = "maximum weighted recall subject to the over-redaction constraint"
+        selection_reason = "maximum weighted recall subject to both character and clean-document utility constraints"
     else:
-        selected = min(
+        diagnostic = min(
             scored,
             key=lambda item: (
                 item["over_redaction_rate"],
@@ -467,16 +529,21 @@ def calibrate_threshold(
                 -item["threshold"],
             ),
         )
-        selection_reason = "no threshold met the over-redaction constraint; selected minimum over-redaction"
+        selected = None
+        selection_reason = "no threshold met both utility constraints; no deployable threshold selected"
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "partition": calibration_partition,
         "partition_scheme": partition_scheme,
         "objective": {
             "primary": "weighted_recall",
-            "constraint": {"over_redaction_rate_max": max_over_redaction},
+            "constraint": {"over_redaction_rate_max": max_over_redaction,
+                           "clean_negative_document_rate_min": min_clean_negative_rate,
+                           "negative_documents_required": True},
         },
         "selected": selected,
+        "feasible": bool(feasible),
+        "diagnostic_only": None if feasible else diagnostic,
         "selection_reason": selection_reason,
         "thresholds": scored,
     }
@@ -488,6 +555,7 @@ def calibrate_ensemble(
     *,
     threshold_grids: list[list[float]],
     max_over_redaction: float = 0.02,
+    min_clean_negative_rate: float = 0.98,
     strategy: str = "union",
     partition_scheme: str = PARTITION_SCHEME,
     calibration_partition: str = "calibration",
@@ -497,6 +565,8 @@ def calibrate_ensemble(
 
     if calibration_partition not in {"all", "calibration"}:
         raise ValueError("Ensemble tuning is restricted to calibration data")
+    if not 0.0 <= max_over_redaction <= 1.0 or not 0.0 <= min_clean_negative_rate <= 1.0:
+        raise ValueError("Utility constraints must be between 0 and 1")
 
     if len(prediction_paths) < 2:
         raise ValueError("Ensemble calibration requires at least two prediction files")
@@ -533,9 +603,12 @@ def calibrate_ensemble(
                     "character_precision": result["safety"]["character"]["precision"],
                     "over_redaction_rate": result["utility"]["over_redaction_rate"],
                     "clean_negative_document_rate": result["utility"]["clean_negative_document_rate"],
+                    "negative_documents": result["counts"].get("negative_docs", 0),
                 }
             )
-    feasible = [item for item in scored if item["over_redaction_rate"] <= max_over_redaction]
+    feasible = [item for item in scored if item["over_redaction_rate"] <= max_over_redaction
+                and item["negative_documents"] > 0
+                and item["clean_negative_document_rate"] >= min_clean_negative_rate]
     if feasible:
         selected = max(
             feasible,
@@ -546,9 +619,9 @@ def calibrate_ensemble(
                 tuple(item["thresholds"].values()),
             ),
         )
-        selection_reason = "maximum weighted recall subject to the over-redaction constraint"
+        selection_reason = "maximum weighted recall subject to both character and clean-document utility constraints"
     else:
-        selected = min(
+        diagnostic = min(
             scored,
             key=lambda item: (
                 item["over_redaction_rate"],
@@ -556,17 +629,22 @@ def calibrate_ensemble(
                 -item["character_precision"],
             ),
         )
-        selection_reason = "no combination met the over-redaction constraint; selected minimum over-redaction"
+        selected = None
+        selection_reason = "no combination met both utility constraints; no deployable combination selected"
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "partition": calibration_partition,
         "partition_scheme": partition_scheme,
         "strategy": strategy,
         "objective": {
             "primary": "weighted_recall",
-            "constraint": {"over_redaction_rate_max": max_over_redaction},
+            "constraint": {"over_redaction_rate_max": max_over_redaction,
+                           "clean_negative_document_rate_min": min_clean_negative_rate,
+                           "negative_documents_required": True},
         },
         "selected": selected,
+        "feasible": bool(feasible),
+        "diagnostic_only": None if feasible else diagnostic,
         "selection_reason": selection_reason,
         "combinations_evaluated": combinations,
         "grid_results": sorted(scored, key=lambda item: item["weighted_recall"], reverse=True),

@@ -62,6 +62,41 @@ PYTHONPATH=src .venv/bin/python -m pii_bench score \
 
 Cached predictions can be combined without rerunning inference. Member thresholds are applied before union or precedence composition. `calibrate-ensemble` performs a bounded grid search using calibration records only.
 
+Calibration now requires **both** at most 2% character over-redaction and at least
+98% clean negative documents. It must include negatives. Schema-v2 results return
+`selected: null` and `feasible: false` if nothing qualifies and the CLI exits 1; `diagnostic_only` is
+not a deployable selection. Do not read a threshold from it as a fallback. Historical
+schema-v1 selections used only the character constraint. Use
+`--min-clean-negative-rate 0` solely to replay that older objective; it does not
+relax release requirements. The score command above illustrates scoring a locked
+threshold, not evidence that 0.30 will qualify.
+
+## Release evidence
+
+The end deliverable is the [live local architecture](../../LOCAL_PROTECTION_ARCHITECTURE.md),
+not a research-only model. `release-check` enforces the [protocol](PROTOCOL.md):
+
+```bash
+PYTHONPATH=src python -m pii_bench release-check \
+  --metrics /path/to/independent-test.metrics.json \
+  --dossier /path/to/reviewed-release-dossier.json \
+  --output /tmp/release-decision.json
+```
+
+Exit status 1 means blocked; a pass means eligible for human release review, never
+automatic publication or a safety certification. Missing evidence, native-only
+timings, incomplete label coverage and Node/WASM timings cannot qualify. Dossier
+keys and required review names are defined in `src/pii_bench/release.py`. Browser
+runs bind the exact package and architecture artifact hashes and use decimal MB
+for download size and MiB for whole-extension memory. Only supply real reviewed
+attestations; passing unit-test fixtures are explicitly fabricated.
+
+The gate requires a scored `test` partition. For an externally split test-only
+file, the current scorer's `all` partition is deliberately not accepted as a
+release test declaration. Do not relabel historical scores to bypass this; a
+future explicit split-manifest workflow must verify training/calibration/test
+provenance. Supplied review hashes require human inspection of the actual files.
+
 ## Corpus
 
 The deterministic corpus contains 20,000 records, 55,706 exact-span entities, 44 labels, 28 domains, 3,200 hard-negative records, 7,956 sensitive-information records, and clean plus six corruption/noise modes. It includes plain text, logs, JSON, CSV, Markdown, long-window cases, multilingual names, and code-switching. There are 16,075 unique normalized texts; repeated examples and shared templates limit statistical independence. The default split groups identical normalized texts and confidence intervals resample document/text clusters. Historical smoke results remain exploratory.
@@ -122,6 +157,13 @@ PYTHONPATH=src .venv/bin/python -m pii_bench.tiny_finetune quantize \
 ```
 
 Use `specialist_external --exclude-evaluation /path/to/discovery-test.jsonl` to reserve a new external sample with no source IDs from the discovery sample. `compare` computes paired document-cluster bootstrap differences. `verify_tiny_wasm.mjs` checks strict native/WASM logit parity; `wasm_token_benchmark.mjs` measures actual backend transfer on prepared tokenizer windows. Float ONNX passes strict parity; INT8 has small backend differences and must be evaluated with actual spans. Current stable WASM tests reveal roughly 534 MB process RSS, so browser integration and memory reduction remain release blockers despite the small weights.
+
+`profile_wasm_memory.mjs MODEL_DIRECTORY [default|bounded] [OUTPUT_JSON]`
+isolates runtime import, session creation, fixed-shape inference and release.
+Compare normal Node with `node --liftoff-only` only as a V8 compiler diagnostic,
+not a deployment setting. Snapshots are process RSS samples, not measured browser
+extension memory or a continuous peak. See the
+[next-stage evidence](evidence/local-release-next-stage-2026-10-17.md).
 
 The augmented training set contains two values also present in the authored test (`biromantic` and `Seventh-day Adventist`). That test remains template/name-disjoint, but must not be described as entirely phrase-disjoint for augmented models. The authored-only first experiment has strict phrase separation.
 

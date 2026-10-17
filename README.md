@@ -161,6 +161,12 @@ The extension works without a browser language model: deterministic regex and ve
 
 Settings → Providers includes guided Local AI setup with consent-first download progress, browser-specific recovery guidance, a synthetic-data end-to-end readiness test, and a privacy-safe support report. See [Low-resource private PII model research](LOCAL_MODEL_RESEARCH.md) for the 22 MB CPU-oriented fallback candidate and its mandatory evaluation gates.
 
+The [local protection architecture delivery contract](LOCAL_PROTECTION_ARCHITECTURE.md)
+defines the target for a compact, offline PII/PSI engine in both live extensions.
+Research models are not shipped: the executable [release evidence gates](benchmarks/pii-models/PROTOCOL.md)
+require independent safety/utility evidence and exact-package browser verification.
+No current research candidate passes those gates.
+
 The separate [local PII/PSI model benchmark](benchmarks/pii-models/README.md) contains the governed 20-candidate matrix, deterministic 20,000-document Australian corpus, calibration/held-out protocol, model adapters, ensemble search, and reviewed evidence. Benchmark models and generated data are not bundled into the extension.
 
 ### Store Packages

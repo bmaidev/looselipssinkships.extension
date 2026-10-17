@@ -1,6 +1,6 @@
 # PII/PSI model evaluation protocol
 
-Version 1.0 — 17 October 2026
+Version 1.1 — 17 October 2026
 
 ## Decision question
 
@@ -70,9 +70,9 @@ Character spans are the safety unit because partially redacting an identifier ca
 
 ## Calibration objective
 
-The default threshold objective is maximum risk-weighted recall subject to no more than 2% non-PII character over-redaction on calibration data. Ties prefer whole-document protection, character precision, then the more conservative threshold. Ensemble grids are capped at 10,000 combinations.
+The default threshold objective is maximum risk-weighted recall subject to both no more than 2% non-PII character over-redaction and at least 98% clean negative documents on calibration data. Calibration must contain negative documents. Ties prefer whole-document protection, character precision, then the more conservative threshold. Ensemble grids are capped at 10,000 combinations. If no configuration meets both constraints, schema-v2 calibration results return `feasible: false` and `selected: null`; the least-over-redacting configuration is retained only as `diagnostic_only`, never as a deployable selection. The thresholds constrain calibration point estimates, not release confidence bounds.
 
-The 2% limit is an engineering starting point. Product research with community-sector users may tighten it, but a relaxed gate requires an explicit protocol revision before inspecting held-out results.
+Historical schema-v1 experiments selected only under the character-level constraint and remain exploratory. A user can explicitly reproduce that objective with `--min-clean-negative-rate 0`, but this cannot relax the release gate. Product research with community-sector users may tighten these limits; any relaxed gate requires an explicit protocol revision before inspecting a new held-out set.
 
 ## Release gates
 
@@ -81,12 +81,20 @@ Targets for a default, fail-safe local detector are deliberately demanding:
 - Risk-weighted recall lower 95% confidence bound at least 99.5%.
 - Each risk-5 family recall lower bound at least 99%.
 - Whole-document protection lower bound at least 98%.
-- Over-redaction upper 95% bound no more than 2% and hard-negative clean-document rate at least 98%.
+- Over-redaction upper 95% bound no more than 2% and hard-negative clean-document lower 95% bound at least 98%.
 - Warm p95 at most 50 ms per representative short document and cold start at most 2 seconds on the low-spec reference device.
-- Default downloaded artifact at most 100 MB and stable peak extension memory at most 512 MB; an optional enhanced pack may exceed these only with informed consent and graceful fallback.
+- Complete default download (model, tokenizer, runtime and metadata) at most 100 decimal MB and stable peak extension memory at most 512 MiB; an optional enhanced pack may exceed these only with informed consent and graceful fallback.
 - Offline inference, no input telemetry, no remote code, safe model serialization, immutable hashes, acceptable redistribution licence, and Chrome/Edge parity.
 
 No smoke-stage candidate currently satisfies these safety gates. Until one does, the extension must describe local detection as risk reduction, retain layered submission/upload controls, and avoid claims of guaranteed or defence-equivalent protection.
+
+### Executable evidence gate
+
+`pii-bench release-check` checks these requirements and exits nonzero when any requirement is absent or fails. Passing means **eligible for human release review**, not certified safe or permission to publish. Metrics must be from a test partition; the dossier must attest that it is independent of development. Re-scoring a previously viewed test as `test` cannot create independent evidence.
+
+To prevent a tiny or repeated corpus giving false confidence, require at least 100 independent source/text clusters for each of the 44 labels and 1,000 for every risk-5 family, positive-document protection, and negative-document cleanliness. Bootstrap intervals require at least 1,000 rounds. Family character-recall intervals resample source/text clusters. Additionally require Wilson lower bounds on **fully protected clusters** of 99% for each risk-5 family and 98% for positive and clean-negative clusters. These additional, more conservative cluster outcomes do not replace or purport to be character-recall intervals; they guard against degenerate bootstrap intervals on perfect but small samples. Source dependence beyond supplied IDs and shared generators remains a limitation requiring independent sources and human adjudication.
+
+Bind the test dataset, architecture artifact and exact extension package with SHA-256. Each of Chrome and Edge requires three distinct offline packaged-extension repetitions on the named low-spec reference device, with every repetition meeting cold/warm/memory budgets. Native and Node/WASM measurements do not qualify. Require referenced human/security/integration reviews for offline inference, no input telemetry, no remote code, safe serialization, redistribution, artifact integrity, tokenizer offsets, long-document coverage, submission/upload controls, cancellation/concurrency, worker restart, offline/cache recovery, accessible degraded states and identifier non-regression. A dossier validates supplied evidence structure, not attestation truth: reviewers must inspect the referenced evidence.
 
 ## Statistical reporting
 

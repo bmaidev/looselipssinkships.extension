@@ -9,6 +9,7 @@ from .catalog import candidate_by_id, load_catalog, runnable_candidates, validat
 from .dataset import LEGACY_PARTITION_SCHEME, PARTITION_SCHEME, audit_dataset, validate_dataset, write_dataset
 from .metrics import calibrate_ensemble, calibrate_threshold, compare_predictions, score_predictions, write_json
 from .report import load_results, render_markdown
+from .release import evaluate_release
 from .runner import combine_predictions, run_candidate
 
 
@@ -72,6 +73,7 @@ def _parser() -> argparse.ArgumentParser:
     calibrate.add_argument("--output", type=Path, required=True)
     calibrate.add_argument("--threshold", type=float, action="append", required=True)
     calibrate.add_argument("--max-over-redaction", type=float, default=0.02)
+    calibrate.add_argument("--min-clean-negative-rate", type=float, default=0.98)
     calibrate.add_argument("--bootstrap-seed", type=int, default=20261017)
     calibrate.add_argument("--calibration-partition", choices=("calibration", "all"), default="calibration",
                            help="Use all only for a separately supplied calibration-only file")
@@ -90,6 +92,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     calibrate_members.add_argument("--strategy", choices=("union", "precedence"), default="union")
     calibrate_members.add_argument("--max-over-redaction", type=float, default=0.02)
+    calibrate_members.add_argument("--min-clean-negative-rate", type=float, default=0.98)
     calibrate_members.add_argument("--output", type=Path, required=True)
     calibrate_members.add_argument("--partition-scheme", choices=(PARTITION_SCHEME, LEGACY_PARTITION_SCHEME), default=PARTITION_SCHEME)
     calibrate_members.add_argument("--calibration-partition", choices=("calibration", "all"), default="calibration")
@@ -103,6 +106,10 @@ def _parser() -> argparse.ArgumentParser:
     report = subparsers.add_parser("report", help="Render a comparable Markdown scorecard")
     report.add_argument("metrics", type=Path, nargs="+")
     report.add_argument("--output", type=Path, required=True)
+    release = subparsers.add_parser("release-check", help="Fail-closed evidence check; never authorises automatic publication")
+    release.add_argument("--metrics", type=Path, required=True)
+    release.add_argument("--dossier", type=Path, required=True)
+    release.add_argument("--output", type=Path, required=True)
     return parser
 
 
@@ -170,12 +177,15 @@ def main(argv: list[str] | None = None) -> None:
             args.predictions,
             thresholds=args.threshold,
             max_over_redaction=args.max_over_redaction,
+            min_clean_negative_rate=args.min_clean_negative_rate,
             bootstrap_seed=args.bootstrap_seed,
             calibration_partition=args.calibration_partition,
             partition_scheme=args.partition_scheme,
         )
         write_json(args.output, result)
         _print_json(result)
+        if not result["feasible"]:
+            raise SystemExit(1)
     elif args.command == "calibrate-ensemble":
         threshold_grids = [
             [float(value) for value in specification.split(",") if value.strip()]
@@ -186,12 +196,21 @@ def main(argv: list[str] | None = None) -> None:
             args.predictions,
             threshold_grids=threshold_grids,
             max_over_redaction=args.max_over_redaction,
+            min_clean_negative_rate=args.min_clean_negative_rate,
             strategy=args.strategy,
             partition_scheme=args.partition_scheme,
             calibration_partition=args.calibration_partition,
         )
         write_json(args.output, result)
         _print_json(result)
+        if not result["feasible"]:
+            raise SystemExit(1)
+    elif args.command == "release-check":
+        result = evaluate_release(json.loads(args.metrics.read_text()), json.loads(args.dossier.read_text()))
+        write_json(args.output, result)
+        _print_json(result)
+        if not result["eligible"]:
+            raise SystemExit(1)
     elif args.command == "ensemble":
         _print_json(
             combine_predictions(

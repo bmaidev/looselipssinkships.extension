@@ -202,6 +202,48 @@
         return true;
       }
 
+      case 'NANO_SELF_TEST': {
+        const startedAt = performance.now();
+        const syntheticText = 'Readiness test contact: Avery Sample at avery.sample@example.com.';
+        const testTypes = [{
+          id: 'email',
+          name: 'Email Address',
+          token: '[REDACTED_EMAIL]',
+          enabled: true,
+        }];
+
+        (async () => {
+          if (!nanoSession) throw new Error('The local model session is not available');
+          const availability = await nanoSession.checkAvailability();
+          if (!availability.available) {
+            throw new Error('The browser local model is not ready');
+          }
+          try {
+            const result = await withTimeout(
+              nanoSession.redact(syntheticText, testTypes),
+              50_000,
+              'The local model did not finish the readiness test in time'
+            );
+            const redacted = typeof result?.redacted === 'string' ? result.redacted : '';
+            const removedSyntheticEmail = !redacted.toLowerCase().includes('avery.sample@example.com');
+            const containsRedactionToken = /\[REDACTED(?:_[A-Z_]+)?\]/.test(redacted);
+            if (!removedSyntheticEmail || !containsRedactionToken) {
+              throw new Error('The local model responded but did not redact the synthetic test value');
+            }
+            return {
+              success: true,
+              elapsedMs: Math.round(performance.now() - startedAt),
+              structured: result?.metadata?.structured === true,
+            };
+          } finally {
+            nanoSession.destroy();
+          }
+        })().then(sendResponse).catch((err) => {
+          sendResponse({ success: false, error: err?.message || 'Local AI readiness test failed' });
+        });
+        return true;
+      }
+
       case 'NANO_DESTROY':
         if (nanoSession) nanoSession.destroy();
         sendResponse({ success: true });

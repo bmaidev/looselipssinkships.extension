@@ -4,6 +4,8 @@ const {
   normaliseAvailability,
   checkTextAvailability,
   createTextSession,
+  normaliseDownloadProgress,
+  setupTextModel,
   detectBrowser,
   providerName,
 } = require('../lib/browser-ai');
@@ -20,13 +22,26 @@ describe('browser built-in AI compatibility', () => {
 
   test.each([
     ['available', true],
-    ['downloadable', true],
+    ['downloadable', false],
     ['readily', true],
-    ['after-download', true],
+    ['after-download', false],
     ['downloading', false],
     ['unavailable', false],
   ])('normalises the %s availability state', (status, available) => {
     expect(normaliseAvailability(status).available).toBe(available);
+  });
+
+  test('distinguishes setup and in-progress states from readiness', () => {
+    expect(normaliseAvailability('downloadable')).toMatchObject({
+      available: false,
+      canDownload: true,
+      downloading: false,
+    });
+    expect(normaliseAvailability('downloading')).toMatchObject({
+      available: false,
+      canDownload: false,
+      downloading: true,
+    });
   });
 
   test('uses the portable no-argument availability call', async () => {
@@ -64,6 +79,34 @@ describe('browser built-in AI compatibility', () => {
     expect(result.options).toEqual({ initialPrompts });
     expect(result.options).not.toHaveProperty('expectedInputs');
     expect(result.options).not.toHaveProperty('expectedOutputs');
+  });
+
+  test('normalises fractional and total-based download progress', () => {
+    expect(normaliseDownloadProgress({ loaded: 0.25 })).toBe(0.25);
+    expect(normaliseDownloadProgress({ loaded: 50, total: 200 })).toBe(0.25);
+    expect(normaliseDownloadProgress({ loaded: 2 })).toBeNull();
+    expect(normaliseDownloadProgress({})).toBeNull();
+  });
+
+  test('sets up a model with progress and releases the verification session', async () => {
+    const destroy = jest.fn();
+    const progress = jest.fn();
+    const availability = jest.fn(async () => 'available');
+    const create = jest.fn(async ({ monitor }) => {
+      monitor({
+        addEventListener: (_type, handler) => handler({ loaded: 0.5 }),
+      });
+      return { destroy };
+    });
+
+    await expect(setupTextModel({ onProgress: progress }, {
+      LanguageModel: { availability, create },
+    })).resolves.toMatchObject({ available: true, status: 'available' });
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(progress).toHaveBeenCalledWith(0.5, expect.any(Object));
+    expect(progress).toHaveBeenLastCalledWith(1, null);
+    expect(destroy).toHaveBeenCalledTimes(1);
   });
 
   test('recognises Edge from both client hints and its user agent token', () => {

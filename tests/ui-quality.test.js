@@ -73,4 +73,23 @@ describe('user interface quality guardrails', () => {
     expect(source).toContain('resolve({ status: "unavailable" })');
     expect(background).toContain("sendToOffscreen('NANO_CHECK_AVAILABILITY', {}, LOCAL_AI_STATUS_TIMEOUT_MS)");
   });
+
+  test('local AI setup is guided, consent-driven and safely diagnosable', () => {
+    const html = read('options.html');
+    const source = read('options.js');
+    const popup = read('popup.js');
+    const background = read('background.js');
+
+    expect(html).toContain('id="btn-setup-local-ai"');
+    expect(html).toContain('id="btn-test-local-ai"');
+    expect(html).toContain('id="btn-copy-local-ai-report"');
+    expect(html).toMatch(/id="local-ai-progress"[^>]+role="progressbar"/);
+    expect(html).toContain('Protection never waits for AI.');
+    expect(source).toContain('LLSS_BrowserAI.setupTextModel');
+    expect(source).toContain('type: "TEST_LOCAL_AI"');
+    expect(source).toContain('no page text, URLs, settings, account data, extension ID or device identifier');
+    expect(popup).toContain('options.html?section=providers&focus=local-ai');
+    expect(background).toContain('"TEST_LOCAL_AI"');
+    expect(read('offscreen.js')).toContain("case 'NANO_SELF_TEST'");
+  });
 });

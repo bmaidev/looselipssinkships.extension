@@ -11,6 +11,9 @@ let modalReturnFocus = null;
 let settingsRetryTimer = null;
 let settingsRetryDelayMs = 1000;
 let settingsInitPromise = null;
+let lastLocalAiResult = null;
+
+const LOCAL_AI_STATUS_TIMEOUT_MS = 3000;
 
 const manifestVersion = chrome.runtime.getManifest().version;
 document.querySelectorAll("[data-app-version]").forEach((element) => {
@@ -427,17 +430,109 @@ function appendAdminBadge(container) {
  * The options page is a document context where LanguageModel may be exposed.
  */
 async function checkNanoDirectly() {
-  return LLSS_BrowserAI.checkTextAvailability();
+  let timeoutId;
+  try {
+    return await Promise.race([
+      LLSS_BrowserAI.checkTextAvailability(),
+      new Promise((resolve) => {
+        timeoutId = setTimeout(() => resolve({
+          available: false,
+          status: "unavailable",
+          detail: "The browser did not finish its local-model check",
+        }), LOCAL_AI_STATUS_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+function setLocalAiActionResult(message = "", type = "") {
+  const element = document.getElementById("local-ai-action-result");
+  element.textContent = message;
+  element.className = `local-ai-action-result${type ? ` ${type}` : ""}`;
+}
+
+function updateLocalAiProgress(fraction) {
+  const progress = document.getElementById("local-ai-progress");
+  const bar = document.getElementById("local-ai-progress-bar");
+  const percent = document.getElementById("local-ai-progress-percent");
+  const known = Number.isFinite(fraction);
+
+  progress.classList.toggle("indeterminate", !known);
+  if (known) {
+    const value = Math.round(Math.min(1, Math.max(0, fraction)) * 100);
+    progress.setAttribute("aria-valuenow", String(value));
+    bar.style.width = `${value}%`;
+    percent.textContent = `${value}%`;
+  } else {
+    progress.removeAttribute("aria-valuenow");
+    bar.style.width = "";
+    percent.textContent = "";
+  }
+}
+
+function renderLocalAiHelp(status) {
+  const browser = LLSS_BrowserAI.detectBrowser();
+  const help = document.getElementById("local-ai-help-text");
+  const browserName = browser === "edge" ? "Microsoft Edge" : browser === "chrome" ? "Google Chrome" : "this browser";
+  const previewNote = browser === "edge"
+    ? "Edge's Prompt API availability depends on the Edge release channel, browser policy and the on-device model selected by Microsoft."
+    : "Chrome decides eligibility from the operating system, available storage, memory or graphics hardware, browser policy and network conditions.";
+
+  help.innerHTML = `<p>${browserName} owns and updates its built-in model. Loose Lips Sink Ships cannot bypass the browser's eligibility decision.</p>
+    <ul>
+      <li>${previewNote}</li>
+      <li>Use an unmetered connection for first-time setup, keep this page open, and restart the browser if a completed download is not detected.</li>
+      <li>No Local AI option? Update the browser and ask your administrator whether on-device AI is allowed. The deterministic protection layer remains available.</li>
+      ${status === "unavailable" ? "<li>This device currently reports the model as unavailable; that can mean the API, policy, storage or hardware requirement is not met.</li>" : ""}
+    </ul>`;
+}
+
+function renderLocalAiSetup(result) {
+  const state = document.getElementById("local-ai-state");
+  const summary = document.getElementById("local-ai-summary");
+  const setupButton = document.getElementById("btn-setup-local-ai");
+  const testButton = document.getElementById("btn-test-local-ai");
+  const status = result?.status || "unavailable";
+  const ready = result?.available === true || status === "available" || status === "readily";
+  const canSetUp = result?.canDownload === true || status === "downloadable" || status === "after-download" || status === "downloading";
+
+  lastLocalAiResult = { ...result, status, available: ready };
+  state.className = "local-ai-state";
+  setupButton.classList.toggle("hidden", !canSetUp);
+  setupButton.disabled = false;
+  testButton.disabled = !ready;
+
+  if (ready) {
+    state.classList.add("ready");
+    state.textContent = "Ready";
+    summary.textContent = "The browser's on-device model is installed. Text sent to this model is processed on this device.";
+  } else if (status === "downloading") {
+    state.classList.add("action");
+    state.textContent = "Downloading";
+    summary.textContent = "The browser is downloading its private model. Choose Continue setup to monitor and verify it.";
+    setupButton.textContent = "Continue setup";
+  } else if (canSetUp) {
+    state.classList.add("action");
+    state.textContent = "Setup available";
+    summary.textContent = "This device is compatible. Setup may download a browser-managed model; inference content stays on this device.";
+    setupButton.textContent = "Set up Local AI";
+  } else {
+    state.classList.add("unavailable");
+    state.textContent = "Not available";
+    summary.textContent = "This browser or device is not currently offering its on-device model. Deterministic local protection remains active.";
+  }
+  renderLocalAiHelp(status);
 }
 
 async function loadProviderStatus() {
   // Run direct Nano check and background provider list in parallel
   const [nanoResult, bgResponse] = await Promise.all([
     checkNanoDirectly(),
-    new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type: "GET_PROVIDERS" }, resolve);
-    }),
+    sendRuntimeMessage({ type: "GET_PROVIDERS" }),
   ]);
+  renderLocalAiSetup(nanoResult);
 
   // Override local_ai status with our direct check (authoritative)
   const providers = (bgResponse?.providers || []).map(p => {
@@ -453,7 +548,8 @@ async function loadProviderStatus() {
     return;
   }
   container.innerHTML = providers.map(p => {
-    const dot = p.available ? "green" : (p.status === "disabled" ? "gray" : "red");
+    const needsSetup = p.id === "local_ai" && ["downloadable", "after-download", "downloading"].includes(p.status);
+    const dot = p.available ? "green" : (needsSetup ? "amber" : (p.status === "disabled" ? "gray" : "red"));
     const tierIcon = p.tier === "local" ? "🏠" : p.tier === "hosted" ? "🏢" : "☁️";
     return `<div class="provider-status-item">
       <span class="status-dot status-${dot}"></span>
@@ -462,6 +558,97 @@ async function loadProviderStatus() {
     </div>`;
   }).join("");
 }
+
+async function setupLocalAi() {
+  const button = document.getElementById("btn-setup-local-ai");
+  const testButton = document.getElementById("btn-test-local-ai");
+  const progressWrap = document.getElementById("local-ai-progress-wrap");
+  const progressText = document.getElementById("local-ai-progress-text");
+
+  button.disabled = true;
+  testButton.disabled = true;
+  progressWrap.classList.remove("hidden");
+  progressText.textContent = "Preparing browser model…";
+  updateLocalAiProgress(null);
+  setLocalAiActionResult("The browser may ask permission or begin a one-time download. No page content is used during setup.");
+
+  try {
+    const result = await LLSS_BrowserAI.setupTextModel({
+      onProgress(fraction) {
+        progressText.textContent = fraction === 1 ? "Verifying local model…" : "Downloading browser model…";
+        updateLocalAiProgress(fraction);
+      },
+    });
+    renderLocalAiSetup(result);
+    setLocalAiActionResult("Local AI is installed and ready. Run the readiness test to verify the complete extension path.", "success");
+    await loadProviderStatus();
+  } catch (err) {
+    const state = document.getElementById("local-ai-state");
+    state.className = "local-ai-state error";
+    state.textContent = "Setup needs attention";
+    setLocalAiActionResult(`Setup did not complete: ${err?.message || "the browser did not make the model available"}. Deterministic protection is still active.`, "error");
+    button.disabled = false;
+  } finally {
+    progressWrap.classList.add("hidden");
+  }
+}
+
+async function testLocalAi() {
+  const button = document.getElementById("btn-test-local-ai");
+  button.disabled = true;
+  setLocalAiActionResult("Testing the extension's private model path with synthetic data…");
+  const response = await sendRuntimeMessage({ type: "TEST_LOCAL_AI" }, 70_000);
+
+  if (response?.success) {
+    const elapsed = Number.isFinite(response.elapsedMs) ? ` in ${(response.elapsedMs / 1000).toFixed(1)} seconds` : "";
+    setLocalAiActionResult(`Readiness test passed${elapsed}. Synthetic PII was detected through the complete local path.`, "success");
+  } else {
+    setLocalAiActionResult(`Readiness test did not pass: ${response?.error || "the extension service did not respond"}. Deterministic protection remains active.`, "error");
+  }
+  button.disabled = !lastLocalAiResult?.available;
+}
+
+function browserVersionForReport() {
+  const ua = navigator.userAgent || "";
+  const match = ua.match(/Edg\/(\d+)/) || ua.match(/Chrom(?:e|ium)\/(\d+)/);
+  return match ? match[1] : "not exposed";
+}
+
+async function copyLocalAiSupportReport() {
+  const browser = LLSS_BrowserAI.detectBrowser();
+  const report = [
+    "Loose Lips Sink Ships — safe Local AI support report",
+    `Extension version: ${manifestVersion}`,
+    `Browser family: ${browser}`,
+    `Browser major version: ${browserVersionForReport()}`,
+    `Prompt API exposed: ${LLSS_BrowserAI.hasLanguageModel() ? "yes" : "no"}`,
+    `Local model state: ${lastLocalAiResult?.status || "not checked"}`,
+    `Generated: ${new Date().toISOString()}`,
+    "Privacy note: no page text, URLs, settings, account data, extension ID or device identifier is included.",
+  ].join("\n");
+
+  try {
+    await navigator.clipboard.writeText(report);
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = report;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    const copied = document.execCommand("copy");
+    textarea.remove();
+    if (!copied) throw new Error("Copy is not available in this browser");
+  }
+  setLocalAiActionResult("Safe support report copied. It contains no page content, URLs, settings or identifiers.", "success");
+}
+
+document.getElementById("btn-setup-local-ai").addEventListener("click", setupLocalAi);
+document.getElementById("btn-test-local-ai").addEventListener("click", testLocalAi);
+document.getElementById("btn-copy-local-ai-report").addEventListener("click", () => {
+  copyLocalAiSupportReport().catch((err) => setLocalAiActionResult(err.message, "error"));
+});
 
 // ── Hosted Providers ────────────────────────────────────────────────────────
 
@@ -1358,11 +1545,22 @@ function setupCategoryNav() {
   });
 
   let initial = "general";
+  let focusTarget = "";
   try {
-    const saved = localStorage.getItem("llss_settings_cat");
-    if (saved && CAT_TITLES[saved]) initial = saved;
+    const params = new URLSearchParams(window.location.search);
+    const requested = params.get("section");
+    focusTarget = params.get("focus") || "";
+    if (requested && CAT_TITLES[requested]) {
+      initial = requested;
+    } else {
+      const saved = localStorage.getItem("llss_settings_cat");
+      if (saved && CAT_TITLES[saved]) initial = saved;
+    }
   } catch { /* ignore */ }
   activate(initial);
+  if (focusTarget === "local-ai") {
+    requestAnimationFrame(() => document.getElementById("local-ai-setup-title")?.focus());
+  }
 }
 setupCategoryNav();
 

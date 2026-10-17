@@ -1,6 +1,6 @@
 # Security Assurance and Threat Model
 
-Status: engineering baseline for version 4.5.0, updated 16 October 2026.
+Status: engineering baseline for version 4.6.0, updated 17 October 2026.
 
 This document defines what Loose Lips Sink Ships protects, where its trust
 boundaries sit, and what must surround it in a high-assurance deployment. It is
@@ -48,6 +48,9 @@ Trust boundaries are:
   where the browser implements `storage.setAccessLevel`.
 - Browser AI output is followed by a mandatory deterministic scan. Malformed or
   unsafe model output cannot replace the deterministic result.
+- A browser-managed model is not treated as ready while it is merely downloadable
+  or downloading. Its first-time setup is user-initiated, exposes download
+  progress, creates no content prompt, and releases the verification session.
 - Submit and upload listeners register at `document_start` and begin in a
   fail-closed state while settings and site classification load.
 - Upload bypass is disabled, unsupported types are blocked, and the browser
@@ -98,7 +101,9 @@ Trust boundaries are:
 - User-facing workflows expose progress and failure states, prevent queue mutation
   during processing, restore focus after dialogs, trap keyboard focus in modal
   decisions, support reduced-motion preferences, and announce state changes to
-  assistive technology.
+  assistive technology. The Local AI readiness test uses a fixed synthetic value;
+  its copyable support report excludes page content, URLs, settings, account data,
+  extension identifiers, and device identifiers.
 
 These controls reduce avoidable latency, memory amplification, race conditions,
 and unsafe user recovery paths. They are not a substitute for load testing with

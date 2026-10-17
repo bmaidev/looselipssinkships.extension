@@ -40,7 +40,7 @@ const LOCAL_AI_STATUS_TIMEOUT_MS = 2500;
 
 const PRIVILEGED_MESSAGE_TYPES = new Set([
   "CHECK_STATUS", "GET_SETTINGS", "SAVE_SETTINGS", "GET_STATS", "RESET_STATS",
-  "TEST_REGEX", "GET_PROVIDERS", "CHECK_PROVIDER", "DESTROY_SESSION",
+  "TEST_REGEX", "TEST_LOCAL_AI", "GET_PROVIDERS", "CHECK_PROVIDER", "DESTROY_SESSION",
   "REFRESH_REMOTE_CONFIG", "AZURE_SIGN_IN", "AZURE_SIGN_OUT", "AZURE_AUTH_STATUS",
 ]);
 
@@ -610,6 +610,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       );
       sendResponse(result);
       return false;
+    }
+
+    case "TEST_LOCAL_AI": {
+      sendToOffscreen("NANO_SELF_TEST", {}, 60_000)
+        .then((result) => sendResponse(result))
+        .catch((err) => sendResponse({ success: false, error: err.message }));
+      return true;
     }
 
     case "GET_PROVIDERS": {

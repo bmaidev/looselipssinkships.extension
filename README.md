@@ -159,12 +159,14 @@ chmod +x vendor/setup.sh && ./vendor/setup.sh
 
 The extension works without a browser language model: deterministic regex and vector detection remain local and available. Chrome's Prompt API can use Gemini Nano. Microsoft Edge exposes its own Prompt API model in supported preview channels/devices; availability is detected at runtime and never assumed.
 
+Settings → Providers includes guided Local AI setup with consent-first download progress, browser-specific recovery guidance, a synthetic-data end-to-end readiness test, and a privacy-safe support report. See [Low-resource private PII model research](LOCAL_MODEL_RESEARCH.md) for the 22 MB CPU-oriented fallback candidate and its mandatory evaluation gates.
+
 ### Store Packages
 
 ```bash
 npm run build         # Chrome and Edge
-npm run build:chrome  # dist/loose-lips-sink-ships-v4.5.0.zip
-npm run build:edge    # dist/loose-lips-sink-ships-edge-v4.5.0.zip
+npm run build:chrome  # dist/loose-lips-sink-ships-v4.6.0.zip
+npm run build:edge    # dist/loose-lips-sink-ships-edge-v4.6.0.zip
 ```
 
 Every build validates manifest references, package contents, local-only scripts, and browser API compatibility before creating the ZIP.

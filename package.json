@@ -1,6 +1,6 @@
 {
   "name": "loose-lips-sink-ships",
-  "version": "4.5.0",
+  "version": "4.6.0",
   "description": "Local-first PII redaction extension for Chrome and Microsoft Edge",
   "private": true,
   "license": "FSL-1.1-MIT",

@@ -26,6 +26,7 @@ PII detection runs on your device by default — using Chrome's built-in on-devi
 • Classification Gate — reads Microsoft sensitivity labels (MSIP) and blocks PROTECTED/SECRET documents from uploading
 • Standalone Redaction Tool — batch process files via drag-and-drop without visiting any website
 • Layered detection — browser on-device AI, deterministic regex, heuristic names, Azure PII, and organisation-hosted models
+• Guided Local AI setup — visible download progress, browser-specific recovery help, and a synthetic-data readiness test
 
 **ENTERPRISE READY**
 • Managed configuration via GPO, Intune, or Google Workspace

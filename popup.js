@@ -11,6 +11,7 @@ const statRedactions = document.getElementById("stat-redactions");
 const statMatches = document.getElementById("stat-matches");
 const statDocs = document.getElementById("stat-docs");
 const resetStatsButton = document.getElementById("btn-reset-stats");
+const setupAiButton = document.getElementById("btn-setup-ai");
 const NANO_STATUS_TIMEOUT_MS = 2500;
 
 document.getElementById("popup-version").textContent = `v${chrome.runtime.getManifest().version}`;
@@ -50,12 +51,12 @@ function sendMessage(message, timeoutMs = 4000) {
 const STATUS_MAP = {
   // New Prompt API values
   available:    { dotClass: "ready",       label: "AI Model Ready",         detail: "The browser's local model is loaded and ready." },
-  downloadable: { dotClass: "downloading", label: "Downloading Model...",   detail: "The model is being downloaded. This is a one-time setup." },
+  downloadable: { dotClass: "downloading", label: "Local AI Setup Available", detail: "Choose Set up Local AI to start the browser-managed download." },
   downloading:  { dotClass: "downloading", label: "Downloading Model...",   detail: "The model is being downloaded. This is a one-time setup." },
   unavailable:  { dotClass: "unavailable", label: "Local AI Unavailable",   detail: "Using regex fallback and configured providers." },
   // Legacy values (older Chrome builds)
   readily:          { dotClass: "ready",       label: "AI Model Ready",       detail: "The browser's local model is loaded and ready." },
-  "after-download": { dotClass: "downloading", label: "Downloading Model...", detail: "The model is being downloaded. This is a one-time setup." },
+  "after-download": { dotClass: "downloading", label: "Local AI Setup Available", detail: "Choose Set up Local AI to start the browser-managed download." },
   no:               { dotClass: "unavailable", label: "Local AI Unavailable", detail: "Using regex fallback and configured providers." },
 };
 
@@ -103,8 +104,11 @@ async function checkNanoDirectly() {
   const status = nanoStatus || "no";
   const info = STATUS_MAP[status] || STATUS_MAP["no"];
 
-  const isNanoAvailable = status === "available" || status === "readily"
-                       || status === "downloadable" || status === "after-download";
+  const isNanoAvailable = status === "available" || status === "readily";
+  const canSetUpNano = status === "downloadable" || status === "after-download" || status === "downloading";
+
+  setupAiButton.classList.toggle("hidden", isNanoAvailable);
+  setupAiButton.textContent = canSetUpNano ? "Set up Local AI" : "Local AI help";
 
   if (!isNanoAvailable) {
     // Check if any other providers are available
@@ -197,6 +201,14 @@ document.getElementById("btn-redact").addEventListener("click", () => {
 // Open options page.
 document.getElementById("btn-options").addEventListener("click", () => {
   chrome.runtime.openOptionsPage();
+});
+
+// Open the guided setup directly. The user starts any browser-managed model
+// download from the explicit setup button on that page.
+setupAiButton.addEventListener("click", () => {
+  chrome.tabs.create({
+    url: chrome.runtime.getURL("options.html?section=providers&focus=local-ai"),
+  });
 });
 
 // Reset stats.

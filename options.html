@@ -103,6 +103,46 @@
             <span><strong>Browser On-Device AI</strong> — the browser's local model; model installation may use the network, while inference content stays on-device</span>
           </label>
         </div>
+        <div id="local-ai-setup" class="local-ai-setup" aria-labelledby="local-ai-setup-title">
+          <div class="local-ai-setup-head">
+            <div>
+              <div class="local-ai-eyebrow">Private local enhancement</div>
+              <h3 id="local-ai-setup-title" tabindex="-1">Set up Local AI</h3>
+            </div>
+            <span id="local-ai-state" class="local-ai-state checking">Checking…</span>
+          </div>
+          <p id="local-ai-summary" class="local-ai-summary" role="status" aria-live="polite">
+            Checking whether this browser has a private on-device model.
+          </p>
+
+          <div id="local-ai-progress-wrap" class="local-ai-progress-wrap hidden">
+            <div class="local-ai-progress-label">
+              <span id="local-ai-progress-text">Preparing browser model…</span>
+              <span id="local-ai-progress-percent"></span>
+            </div>
+            <div id="local-ai-progress" class="local-ai-progress" role="progressbar" aria-label="Local AI model download progress" aria-valuemin="0" aria-valuemax="100">
+              <span id="local-ai-progress-bar"></span>
+            </div>
+            <p class="local-ai-progress-note">Keep this page open. The browser controls the download and stores the model on this device.</p>
+          </div>
+
+          <div class="local-ai-actions">
+            <button id="btn-setup-local-ai" class="btn primary btn-sm hidden" type="button">Set up Local AI</button>
+            <button id="btn-test-local-ai" class="btn secondary btn-sm" type="button" disabled>Run readiness test</button>
+            <button id="btn-copy-local-ai-report" class="btn secondary btn-sm" type="button">Copy safe support report</button>
+          </div>
+          <div id="local-ai-action-result" class="local-ai-action-result" role="status" aria-live="polite"></div>
+
+          <div class="protection-floor">
+            <span class="protection-floor-icon" aria-hidden="true">✓</span>
+            <div><strong>Protection never waits for AI.</strong> Structured identifiers are checked locally by the built-in deterministic engine, with no model download or GPU required.</div>
+          </div>
+
+          <details class="local-ai-help">
+            <summary>Compatibility and troubleshooting</summary>
+            <div id="local-ai-help-text"></div>
+          </details>
+        </div>
         <div class="provider-item">
           <div class="provider-info-row">
             <span class="provider-always-on">Regex Engine — always active as fallback</span>

@@ -2,7 +2,7 @@
 
 ## Package
 
-Upload `dist/loose-lips-sink-ships-edge-v4.5.0.zip`.
+Upload `dist/loose-lips-sink-ships-edge-v4.6.0.zip`.
 
 ## Name
 
@@ -49,6 +49,8 @@ PRIVACY AND SECURITY
 • No product telemetry, analytics, advertising, or user tracking. Configured provider, OAuth, remote-policy, and browser model-download traffic are explicit exceptions.
 
 • No remote executable code. pdf.js, Tesseract.js, OCR language data, and WASM dependencies are bundled in the extension package.
+
+• Guided Local AI setup clearly separates model availability, download progress and readiness. A synthetic-data self-test verifies the full private model path without using page content.
 
 • Default processing is on-device. Original PII is processed in memory and is not written to extension storage.
 

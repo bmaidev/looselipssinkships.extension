@@ -8,7 +8,7 @@ This runbook covers the Microsoft Edge Add-ons submission and a managed rollout 
 npm ci
 npm test -- --runInBand
 npm run build:edge
-unzip -t dist/loose-lips-sink-ships-edge-v4.5.0.zip
+unzip -t dist/loose-lips-sink-ships-edge-v4.6.0.zip
 ```
 
 The Edge build uses the shared extension source and a store-specific description override. The packaging validator fails on unsupported Edge API namespaces, missing manifest resources, remote scripts, `update_url`, development files, unexpected manifest drift, and invalid package structure.
@@ -25,7 +25,7 @@ The Edge build uses the shared extension source and a store-specific description
 ## 3. Partner Center submission
 
 1. Register or use an organisation-owned Microsoft Edge extension developer account.
-2. Create a new extension in Partner Center and upload `dist/loose-lips-sink-ships-edge-v4.5.0.zip`.
+2. Create a new extension in Partner Center and upload `dist/loose-lips-sink-ships-edge-v4.6.0.zip`.
 3. Complete listing, privacy, permission justification, asset, and certification-note fields using `EDGE_STORE_LISTING.md`.
 4. Use `https://llss.blackmountainai.com.au/privacy` as the privacy policy and `https://llss.blackmountainai.com.au/support` for support.
 5. Submit for certification. Record the Edge Add-ons extension ID when assigned; it will differ from the Chrome Web Store ID.
@@ -47,7 +47,7 @@ The Edge build uses the shared extension source and a store-specific description
 | Broad | 200–250 | Help-desk volume and false-positive rate are acceptable; rollback policy is verified. |
 | Production | Remaining users | Edge Add-ons version, policy version, and minimum version are monitored. |
 
-Use Edge's `ExtensionSettings` policy with `installation_mode: force_installed`, the Edge Add-ons update URL, `minimum_version_required: 4.5.0`, and `toolbar_state: force_shown`. For Windows managed storage, write configuration beneath:
+Use Edge's `ExtensionSettings` policy with `installation_mode: force_installed`, the Edge Add-ons update URL, `minimum_version_required: 4.6.0`, and `toolbar_state: force_shown`. For Windows managed storage, write configuration beneath:
 
 ```text
 HKLM\SOFTWARE\Policies\Microsoft\Edge\3rdparty\extensions\<EDGE_EXTENSION_ID>\policy

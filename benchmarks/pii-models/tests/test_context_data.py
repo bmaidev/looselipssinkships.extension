@@ -20,6 +20,8 @@ class ContextDataTests(unittest.TestCase):
                 train(root, root)
             with self.assertRaises(ValueError):
                 train(root, root / "fresh", epochs=0)
+            with self.assertRaisesRegex(ValueError, 'immutable compact encoder'):
+                train(root, root / "fresh", encoder='unreviewed')
             self.assertFalse((root / "fresh").exists())
 
     def test_agnostic_head_preserves_bio_without_claiming_a_sensitive_category(self):

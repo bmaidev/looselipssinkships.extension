@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "release_eligible": false,
+  "scope": "Exploratory encoder-capacity comparison; previously viewed regression sets, not independent confirmation",
+  "hypothesis": "A deeper and wider compact pretrained encoder improves personal versus public-context discrimination and boundary transfer without abandoning CPU-only deployment",
+  "candidate": {
+    "repository": "google/bert_uncased_L-4_H-256_A-4",
+    "revision": "43ca9bbcdffc2f4220d09f6e4fc48c28bfffeede",
+    "revision_provenance": "Upstream safetensors conversion refs/pr/2; immutable commit verified through repository API",
+    "safe_serialization_required": true,
+    "trust_remote_code": false,
+    "licence_status": "Base repository declares Apache-2.0; derived weights and training corpus require redistribution review"
+  },
+  "training": {
+    "encoder": "mini",
+    "label_scheme": "typed",
+    "epochs": 4,
+    "seed": 20261018,
+    "cpu_threads": 2,
+    "batch_size": 64,
+    "learning_rate": 0.0003,
+    "checkpoint_selection": "Minimum calibration token loss, same as typed Tiny control",
+    "dataset": "psi-context-counterfactual-v2",
+    "train_sha256": "04a34c74d88fd2398a1865ec560fbd5657dfc354da43b190799651b3f349b73e",
+    "calibration_sha256": "6d433dde1a0cf50322e65afe176f47f7a2f78a7998f4bbb2641204595066083b"
+  },
+  "comparison": {
+    "baseline": "Previously trained typed Tiny v2, unchanged weights",
+    "thresholds": [0.1, 0.3, 0.5, 0.7, 0.9, 0.95, 0.99],
+    "primary_selection": "Maximum calibration weighted recall subject to <=2% character over-redaction AND >=98% clean negative documents; no feasible threshold means no primary candidate",
+    "diagnostic_threshold": 0.1,
+    "quantization": "Dynamic INT8, then recalibrate the exact quantized artifact",
+    "report": "All calibration rows, paired 1000-round cluster intervals, full-document protection, per-label failures, accuracy transfer and artifact size",
+    "prohibition": "No test-driven hyperparameter or decoder change represented as confirmatory; no promotion without full independent release evidence"
+  }
+}

@@ -456,6 +456,8 @@ def compare_predictions(dataset_path: Path, first_path: Path, second_path: Path,
     }
     return {"first": first["run"]["candidate_id"], "second": second["run"]["candidate_id"],
             "evaluation": first["evaluation"], "bootstrap_clusters": len(values), "rounds": rounds,
+            "minimum_scores": {"first": first_minimum_score, "second": second_minimum_score},
+            "bootstrap_seed": seed,
             "direction": "second-minus-first", "paired_differences": {
                 name: {"difference": point_differences[name], "low_95": _percentile(sample, 0.025),
                        "high_95": _percentile(sample, 0.975)}

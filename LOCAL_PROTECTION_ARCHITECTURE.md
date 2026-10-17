@@ -66,6 +66,12 @@ concurrent tabs before selecting its final lifecycle implementation.
 These are target requirements. The current auto pipeline still has short/long
 text AI exclusions and optional remote routing, so integration must address those
 behaviours rather than claiming that the research runner has fixed production.
+Live-source improvements now union overlapping detector spans, reject
+unlocatable model rewrites, report text scan coverage and explain limited scans
+in manual-result UI. These do not qualify the existing models or enforce every
+organisation's required coverage. The larger compact encoder experiment is also
+[retained as a failed candidate](benchmarks/pii-models/evidence/compact-capacity-study-2026-10-17.md),
+not promoted into either browser's engine.
 
 ## Evidence required to finish
 

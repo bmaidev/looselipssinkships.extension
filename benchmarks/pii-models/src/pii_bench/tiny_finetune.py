@@ -1,4 +1,4 @@
-"""Safetensors-only fine-tuning control: 4.4M-parameter pretrained BERT.
+"""Safetensors-only fine-tuning controls with pinned compact BERT encoders.
 
 The document-disjoint curriculum and calibration files are shared with the byte
 head. Test inputs never participate in training or checkpoint selection.
@@ -20,6 +20,12 @@ from .specialist import TAGS, predict_file
 
 REPOSITORY = "google/bert_uncased_L-2_H-128_A-2"
 REVISION = "30b0a37ccaaa32f332884b96992754e246e48c5f"
+ENCODERS = {
+    "tiny": (REPOSITORY, REVISION),
+    # Immutable safetensors conversion revision (upstream refs/pr/2), not a
+    # moving branch. Pickle artifacts in the same repository are never loaded.
+    "mini": ("google/bert_uncased_L-4_H-256_A-4", "43ca9bbcdffc2f4220d09f6e4fc48c28bfffeede"),
+}
 
 
 def training_tags(label_scheme: str) -> tuple[str, ...]:
@@ -30,8 +36,11 @@ def training_tags(label_scheme: str) -> tuple[str, ...]:
     raise ValueError("Label scheme must be typed or agnostic")
 
 
-def train(data_dir: Path, output_dir: Path, epochs: int = 4, label_scheme: str = "typed"):
+def train(data_dir: Path, output_dir: Path, epochs: int = 4, label_scheme: str = "typed", encoder: str = "tiny"):
     tags = training_tags(label_scheme)
+    if encoder not in ENCODERS:
+        raise ValueError("Use a reviewed, immutable compact encoder")
+    repository, revision = ENCODERS[encoder]
     if epochs < 1:
         raise ValueError("Training requires at least one epoch")
     if output_dir.exists() and (not output_dir.is_dir() or any(output_dir.iterdir())):
@@ -42,7 +51,7 @@ def train(data_dir: Path, output_dir: Path, epochs: int = 4, label_scheme: str =
     torch.set_num_threads(2)
     torch.manual_seed(20261018)
     rng = random.Random(20261018)
-    tokenizer = AutoTokenizer.from_pretrained(REPOSITORY, revision=REVISION)
+    tokenizer = AutoTokenizer.from_pretrained(repository, revision=revision, trust_remote_code=False)
     manifest = json.loads((data_dir / "manifest.json").read_text())
     examples = {}
     source_ids = {}
@@ -83,7 +92,7 @@ def train(data_dir: Path, output_dir: Path, epochs: int = 4, label_scheme: str =
     if normalized_texts["train"] & normalized_texts["calibration"]:
         raise ValueError("Normalized texts cross training/calibration")
     model = AutoModelForTokenClassification.from_pretrained(
-        REPOSITORY, revision=REVISION, use_safetensors=True, trust_remote_code=False,
+        repository, revision=revision, use_safetensors=True, trust_remote_code=False,
         num_labels=len(tags), id2label=dict(enumerate(tags)), label2id={label: index for index, label in enumerate(tags)},
         attn_implementation="eager",
     )
@@ -140,8 +149,8 @@ def train(data_dir: Path, output_dir: Path, epochs: int = 4, label_scheme: str =
             selected_epoch = epoch + 1
             model.save_pretrained(output_dir, safe_serialization=True)
             tokenizer.save_pretrained(output_dir)
-    metadata = {"architecture": "bert-tiny-psi-v1" if label_scheme == "typed" else "bert-tiny-psi-agnostic-v1",
-                "label_scheme": label_scheme, "repository": REPOSITORY, "revision": REVISION,
+    metadata = {"architecture": f"bert-{encoder}-psi-v1" if label_scheme == "typed" else f"bert-{encoder}-psi-agnostic-v1",
+                "label_scheme": label_scheme, "repository": repository, "revision": revision,
                 "parameters": sum(parameter.numel() for parameter in model.parameters()), "tags": tags,
                 "selected_epoch": selected_epoch, "history": history, "training_manifest": manifest,
                 "training_parameters": {"seed": 20261018, "cpu_threads": 2, "epochs_requested": epochs,
@@ -294,6 +303,7 @@ if __name__ == "__main__":
     training.add_argument("--output-dir", type=Path, required=True)
     training.add_argument("--epochs", type=int, default=4)
     training.add_argument("--label-scheme", choices=("typed", "agnostic"), default="typed")
+    training.add_argument("--encoder", choices=tuple(ENCODERS), default="tiny")
     exporting = commands.add_parser("export")
     exporting.add_argument("--model-dir", type=Path, required=True)
     quantization = commands.add_parser("quantize")
@@ -309,7 +319,7 @@ if __name__ == "__main__":
     prediction.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "train":
-        result = train(args.data_dir, args.output_dir, args.epochs, args.label_scheme)
+        result = train(args.data_dir, args.output_dir, args.epochs, args.label_scheme, args.encoder)
     elif args.command == "export":
         result = export(args.model_dir)
     elif args.command == "quantize":

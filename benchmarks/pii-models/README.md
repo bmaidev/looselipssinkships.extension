@@ -9,6 +9,12 @@ overlap-induced leaks in the shipped-source detector paths, verifies the full
 20,000-document rules regression and documents explicit scan coverage reporting.
 This is a correctness improvement, not a qualified PSI model or completed rollout.
 
+The [compact capacity study](evidence/compact-capacity-study-2026-10-17.md)
+trains and quantizes an 11.1M-parameter BERT-Mini against the typed Tiny control.
+It improves authored diagnostic recall but regresses external recall, and both
+models still fail the safety/utility combination. Retained failure evidence is
+not a recommendation to ship the larger model.
+
 The [specialist training study](evidence/specialist-study-2026-10-17.md) records the trained models, independent external confirmation, corrected full-corpus results, runtime findings, and release blockers. [Machine-readable evidence](evidence/specialist-results-2026-10-17.json) retains aggregate metrics, hashes, calibration selections, and paired comparisons.
 
 ## Quick start

@@ -82,7 +82,10 @@ class MetricTests(unittest.TestCase):
             write_dataset(dataset, 100, 99)
             _write_predictions(before, dataset, "empty")
             _write_predictions(after, dataset, "perfect")
-            result = compare_predictions(dataset, before, after, rounds=20)
+            result = compare_predictions(dataset, before, after, rounds=20,
+                                         first_minimum_score=.3, second_minimum_score=.9, seed=17)
+            self.assertEqual(result['minimum_scores'], {'first': .3, 'second': .9})
+            self.assertEqual(result['bootstrap_seed'], 17)
             self.assertEqual(result["paired_differences"]["weighted_recall"],
                              {"difference": 1.0, "low_95": 1.0, "high_95": 1.0})
 

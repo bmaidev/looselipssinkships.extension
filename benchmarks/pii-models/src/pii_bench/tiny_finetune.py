@@ -14,7 +14,7 @@ import random
 import shutil
 import time
 
-from .dataset import iter_jsonl
+from .dataset import iter_jsonl, validate_record
 from .specialist import TAGS, predict_file
 
 
@@ -22,7 +22,20 @@ REPOSITORY = "google/bert_uncased_L-2_H-128_A-2"
 REVISION = "30b0a37ccaaa32f332884b96992754e246e48c5f"
 
 
-def train(data_dir: Path, output_dir: Path, epochs: int = 4):
+def training_tags(label_scheme: str) -> tuple[str, ...]:
+    if label_scheme == "typed":
+        return tuple(TAGS)
+    if label_scheme == "agnostic":
+        return ("O", "B-OTHER_PII", "I-OTHER_PII")
+    raise ValueError("Label scheme must be typed or agnostic")
+
+
+def train(data_dir: Path, output_dir: Path, epochs: int = 4, label_scheme: str = "typed"):
+    tags = training_tags(label_scheme)
+    if epochs < 1:
+        raise ValueError("Training requires at least one epoch")
+    if output_dir.exists() and (not output_dir.is_dir() or any(output_dir.iterdir())):
+        raise FileExistsError("Refusing to overwrite a trained candidate; choose a fresh output directory")
     import torch
     from transformers import AutoModelForTokenClassification, AutoTokenizer
 
@@ -33,17 +46,21 @@ def train(data_dir: Path, output_dir: Path, epochs: int = 4):
     manifest = json.loads((data_dir / "manifest.json").read_text())
     examples = {}
     source_ids = {}
+    normalized_texts = {}
     for split in ("train", "calibration"):
         path = data_dir / f"{split}.jsonl"
         if hashlib.sha256(path.read_bytes()).hexdigest() != manifest["files"][split]["sha256"]:
             raise ValueError(f"{split} checksum mismatch")
         examples[split] = []
         source_ids[split] = set()
+        normalized_texts[split] = set()
         for record in iter_jsonl(path):
+            validate_record(record)
             metadata = record["metadata"]
             if metadata.get("split") != split or metadata.get("source_split") == "test":
                 raise ValueError("Refusing test data in training/calibration")
             source_ids[split].add(metadata.get("source_uid", record["id"]))
+            normalized_texts[split].add(" ".join(record["text"].casefold().split()))
             encoded = tokenizer(record["text"], truncation=True, max_length=256,
                                 stride=64, return_overflowing_tokens=True, return_offsets_mapping=True)
             for index, offsets in enumerate(encoded["offset_mapping"]):
@@ -55,20 +72,23 @@ def train(data_dir: Path, output_dir: Path, epochs: int = 4):
                     for entity in record["entities"]:
                         if start < entity["end"] and end > entity["start"]:
                             prefix = "B" if start <= entity["start"] else "I"
-                            labels[position] = TAGS.index(f"{prefix}-{entity['label']}")
+                            label = entity["label"] if label_scheme == "typed" else "OTHER_PII"
+                            labels[position] = tags.index(f"{prefix}-{label}")
                             break
                 examples[split].append({"input_ids": encoded["input_ids"][index],
                                          "attention_mask": encoded["attention_mask"][index],
                                          "labels": labels})
     if source_ids["train"] & source_ids["calibration"]:
         raise ValueError("Source documents cross training/calibration")
+    if normalized_texts["train"] & normalized_texts["calibration"]:
+        raise ValueError("Normalized texts cross training/calibration")
     model = AutoModelForTokenClassification.from_pretrained(
         REPOSITORY, revision=REVISION, use_safetensors=True, trust_remote_code=False,
-        num_labels=len(TAGS), id2label=dict(enumerate(TAGS)), label2id={label: index for index, label in enumerate(TAGS)},
+        num_labels=len(tags), id2label=dict(enumerate(tags)), label2id={label: index for index, label in enumerate(tags)},
         attn_implementation="eager",
     )
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.0003, weight_decay=0.01)
-    counts = torch.bincount(torch.tensor([label for item in examples["train"] for label in item["labels"] if label >= 0]), minlength=len(TAGS)).float()
+    counts = torch.bincount(torch.tensor([label for item in examples["train"] for label in item["labels"] if label >= 0]), minlength=len(tags)).float()
     weights = (counts.sum() / counts.clamp_min(1)).sqrt()
     weights = (weights / weights.mean()).clamp(0.25, 4)
     criterion = torch.nn.CrossEntropyLoss(weight=weights, ignore_index=-100)
@@ -99,7 +119,7 @@ def train(data_dir: Path, output_dir: Path, epochs: int = 4):
             ids, mask, targets = collate(items)
             optimizer.zero_grad(set_to_none=True)
             logits = model(input_ids=ids, attention_mask=mask).logits
-            loss = criterion(logits.reshape(-1, len(TAGS)), targets.reshape(-1))
+            loss = criterion(logits.reshape(-1, len(tags)), targets.reshape(-1))
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
             optimizer.step()
@@ -111,7 +131,7 @@ def train(data_dir: Path, output_dir: Path, epochs: int = 4):
                 items = examples["calibration"][offset:offset + 64]
                 ids, mask, targets = collate(items)
                 logits = model(input_ids=ids, attention_mask=mask).logits
-                validation += float(criterion(logits.reshape(-1, len(TAGS)), targets.reshape(-1))) * len(items)
+                validation += float(criterion(logits.reshape(-1, len(tags)), targets.reshape(-1))) * len(items)
         validation /= len(examples["calibration"])
         history.append({"epoch": epoch + 1, "train_loss": total / len(order), "calibration_loss": validation})
         print(json.dumps(history[-1]), flush=True)
@@ -120,12 +140,22 @@ def train(data_dir: Path, output_dir: Path, epochs: int = 4):
             selected_epoch = epoch + 1
             model.save_pretrained(output_dir, safe_serialization=True)
             tokenizer.save_pretrained(output_dir)
-    metadata = {"architecture": "bert-tiny-psi-v1", "repository": REPOSITORY, "revision": REVISION,
-                "parameters": sum(parameter.numel() for parameter in model.parameters()), "tags": TAGS,
+    metadata = {"architecture": "bert-tiny-psi-v1" if label_scheme == "typed" else "bert-tiny-psi-agnostic-v1",
+                "label_scheme": label_scheme, "repository": REPOSITORY, "revision": REVISION,
+                "parameters": sum(parameter.numel() for parameter in model.parameters()), "tags": tags,
                 "selected_epoch": selected_epoch, "history": history, "training_manifest": manifest,
+                "training_parameters": {"seed": 20261018, "cpu_threads": 2, "epochs_requested": epochs,
+                                        "batch_size": 64, "optimizer": "AdamW", "learning_rate": .0003,
+                                        "weight_decay": .01, "gradient_clip_norm": 1,
+                                        "class_weights": "inverse-sqrt token frequency, mean-normalized, clipped [0.25,4]",
+                                        "maximum_tokens": 256, "overflow_stride": 64,
+                                        "checkpoint_selection": "minimum calibration token loss"},
+                "trainer_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                "torch_version": torch.__version__,
                 "training_seconds": time.perf_counter() - started, "release_eligible": False,
                 "weights_sha256": hashlib.sha256((output_dir / "model.safetensors").read_bytes()).hexdigest()}
     (output_dir / "training.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+    shutil.copyfile(__file__, output_dir / "trainer_source.py")
     return metadata
 
 
@@ -240,7 +270,10 @@ class TinyPredictor:
         self.adapter.raw_tokenizer = True
         self.adapter.tokenizer = Tokenizer.from_file(str(model_dir / "tokenizer.json"))
         self.adapter.tokenizer.enable_truncation(max_length=256, stride=64)
-        self.adapter.id2label = dict(enumerate(TAGS))
+        tags = self.config.get("tags")
+        if tuple(tags or ()) not in (training_tags("typed"), training_tags("agnostic")):
+            raise ValueError("Unrecognised PSI head tag map")
+        self.adapter.id2label = dict(enumerate(tags))
         self.adapter.label_map = {}
         options = ort.SessionOptions()
         options.intra_op_num_threads = 1
@@ -258,6 +291,7 @@ if __name__ == "__main__":
     training.add_argument("--data-dir", type=Path, required=True)
     training.add_argument("--output-dir", type=Path, required=True)
     training.add_argument("--epochs", type=int, default=4)
+    training.add_argument("--label-scheme", choices=("typed", "agnostic"), default="typed")
     exporting = commands.add_parser("export")
     exporting.add_argument("--model-dir", type=Path, required=True)
     quantization = commands.add_parser("quantize")
@@ -273,7 +307,7 @@ if __name__ == "__main__":
     prediction.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "train":
-        result = train(args.data_dir, args.output_dir, args.epochs)
+        result = train(args.data_dir, args.output_dir, args.epochs, args.label_scheme)
     elif args.command == "export":
         result = export(args.model_dir)
     elif args.command == "quantize":

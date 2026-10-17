@@ -167,6 +167,55 @@ extension memory or a continuous peak. See the
 
 The augmented training set contains two values also present in the authored test (`biromantic` and `Seventh-day Adventist`). That test remains template/name-disjoint, but must not be described as entirely phrase-disjoint for augmented models. The authored-only first experiment has strict phrase separation.
 
+## Counterfactual context study
+
+The [v2 contextual study](evidence/context-study-2026-10-17.md) adds person/public
+counterfactual pairs and mixed-context documents, then compares the previous
+typed model with newly trained typed and category-agnostic BIO heads. It improves
+diagnostic transfer but **neither new model passes release gates**. Complete
+[machine evidence](evidence/context-results-2026-10-17.json) includes failures,
+locked calibration choices and paired cluster intervals. Test data viewed in
+this study is now exploratory/regression data for subsequent research.
+
+Use fresh output directories; corpus generation, training and study commands
+refuse to overwrite existing results. Generated corpora and weights stay ignored.
+Names are unscored: this curriculum evaluates 15 PSI categories, not all PII.
+
+```bash
+PYTHONPATH=src .venv/bin/python -m pii_bench.context_data \
+  --output generated/data/psi-context-v2 \
+  --external-parent generated/data/psi-external-v2
+PYTHONPATH=src .venv/bin/python -m pii_bench.tiny_finetune train \
+  --data-dir generated/data/psi-context-v2 \
+  --output-dir generated/models/psi-context-typed --epochs 4
+PYTHONPATH=src .venv/bin/python -m pii_bench.tiny_finetune train \
+  --data-dir generated/data/psi-context-v2 \
+  --output-dir generated/models/psi-context-agnostic --epochs 4 --label-scheme agnostic
+```
+
+Export and quantize each trained candidate using the existing commands, then
+evaluate the exact INT8 artifacts (the first named candidate is the control):
+
+```bash
+PYTHONPATH=src .venv/bin/python -m pii_bench.context_study \
+  --data generated/data/psi-context-v2 \
+  --candidate baseline=generated/models/psi-bert-tiny-int8 \
+  --candidate typed=generated/models/psi-context-typed-int8 \
+  --candidate agnostic=generated/models/psi-context-agnostic-int8 \
+  --regression generated/data/psi-external-confirm-v4/test.jsonl \
+  --output generated/evidence/context-transfer-study
+```
+
+The driver writes `locked-plan.json` with candidate/tokenizer/prediction hashes
+and selected thresholds **before** any test prediction or scoring. Its primary
+operating point uses both calibration utility constraints; a separately reported
+fixed 0.10 threshold is diagnostic only. If calibration is infeasible, no primary
+threshold is invented. Optional regression data must be labelled previously
+viewed, never fresh confirmation. Source-pair clusters keep counterfactual pairs
+together in bootstrap comparisons. Current native measurements do not establish
+browser performance, and the source grammar/value diversity remains insufficient
+for release assurance.
+
 ## Layout
 
 - `candidates.json` — pinned models, licences, deployment gates, and rationale.

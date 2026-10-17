@@ -302,13 +302,17 @@ def predict_file(model_dir: Path, dataset_path: Path, output_path: Path, runtime
     predictor = predictor_factory(model_dir) if predictor_factory else (
         SpecialistOnnxPredictor(model_dir) if runtime == "onnx" else SpecialistPredictor(model_dir))
     cold_ms = (time.perf_counter() - started) * 1000
+    artifact_path = model_dir / ("model.onnx" if runtime == "onnx" else "model.safetensors")
     metadata = {
         "candidate_id": f"llss-psi-{predictor.config['weights_sha256'][:8]}-{predictor.config.get('artifact_variant', runtime)}",
         "adapter": "specialist-research",
         "dataset_sha256": hashlib.sha256(dataset_path.read_bytes()).hexdigest(),
-        "artifact_mb": (model_dir / ("model.onnx" if runtime == "onnx" else "model.safetensors")).stat().st_size / 1_000_000,
+        "artifact_mb": artifact_path.stat().st_size / 1_000_000,
+        "artifact_sha256": hashlib.sha256(artifact_path.read_bytes()).hexdigest(),
+        "tokenizer_sha256": hashlib.sha256((model_dir / "tokenizer.json").read_bytes()).hexdigest()
+            if (model_dir / "tokenizer.json").exists() else None,
         "weights_sha256": predictor.config["weights_sha256"], "cold_start_ms": cold_ms,
-        "release_eligible": False, "license": "FSL-1.1-MIT",
+        "release_eligible": False, "license": predictor.config.get("license", "pending-derived-artifact-review"),
         "annotation_scope": "specialist PSI attributes; other gold labels count as misses",
     }
     output_path.parent.mkdir(parents=True, exist_ok=True)

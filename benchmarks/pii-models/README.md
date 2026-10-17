@@ -4,6 +4,11 @@ This is an isolated, reproducible harness for selecting local detection models f
 
 The benchmark is leak-focused. Aggregate F1 is reported, but selection prioritises risk-weighted recall, whole-document protection, hard-negative cleanliness, over-redaction, latency, memory, artifact size, licence, and offline deployability.
 
+The [live span-composition study](evidence/rules-union-study-2026-10-17.md) fixes
+overlap-induced leaks in the shipped-source detector paths, verifies the full
+20,000-document rules regression and documents explicit scan coverage reporting.
+This is a correctness improvement, not a qualified PSI model or completed rollout.
+
 The [specialist training study](evidence/specialist-study-2026-10-17.md) records the trained models, independent external confirmation, corrected full-corpus results, runtime findings, and release blockers. [Machine-readable evidence](evidence/specialist-results-2026-10-17.json) retains aggregate metrics, hashes, calibration selections, and paired comparisons.
 
 ## Quick start

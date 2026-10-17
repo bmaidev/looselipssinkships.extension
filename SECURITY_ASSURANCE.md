@@ -173,3 +173,16 @@ browser tests on managed Windows devices, store review, SAST/DAST, fuzzing,
 penetration testing, privacy impact assessment, or operational accreditation.
 
 Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
+
+### Dependency-alert reconciliation — 17 October 2026
+
+GitHub currently reports six open root npm alerts: three for js-yaml, and one
+each for baseline-browser-mapping, browserslist and brace-expansion. The current
+committed lockfile resolves js-yaml 5.5.0, baseline-browser-mapping 2.11.29,
+browserslist 4.29.3, and brace-expansion 5.0.12/2.1.7, outside the vulnerable
+ranges supplied by those alerts. `npm ls` agrees with the lock; a fresh registry
+`npm audit --json` reports zero known vulnerabilities (317 dependencies, all
+non-root packages development dependencies). No alerts were dismissed and no
+dependency versions were changed during this reconciliation. GitHub's open-alert
+state remains unresolved; these checks do not certify vendored code, Python,
+containers, model/runtime build dependencies or the absence of unknown flaws.

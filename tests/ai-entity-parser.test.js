@@ -102,14 +102,15 @@ describe("parseEntityResponse", () => {
     expect(result.matches[0].original).toBe("john@test.com");
   });
 
-  test("discards entities not found in input", () => {
+  test("unlocatable entities never become a valid clean result", () => {
     const json = JSON.stringify({
       entities: [
         { text: "nonexistent@fake.com", type: "Email Address", start: 0, end: 20 },
       ],
     });
     const result = parseEntityResponse(json, inputText, samplePiiTypes);
-    expect(result.valid).toBe(true);
+    expect(result.valid).toBe(false);
+    expect(result.invalidEntityCount).toBe(1);
     expect(result.matches).toHaveLength(0);
   });
 
@@ -139,7 +140,7 @@ describe("parseEntityResponse", () => {
     expect(result.matches).toHaveLength(1);
   });
 
-  test("skips entities with invalid types", () => {
+  test("partial entity validation is explicitly incomplete", () => {
     const json = JSON.stringify({
       entities: [
         { text: "john@test.com", type: "Email Address", start: 8, end: 21 },
@@ -148,7 +149,8 @@ describe("parseEntityResponse", () => {
       ],
     });
     const result = parseEntityResponse(json, inputText, samplePiiTypes);
-    expect(result.valid).toBe(true);
+    expect(result.valid).toBe(false);
+    expect(result.invalidEntityCount).toBe(2);
     expect(result.matches).toHaveLength(1);
   });
 
@@ -160,6 +162,26 @@ describe("parseEntityResponse", () => {
     });
     const result = parseEntityResponse(json, inputText, samplePiiTypes);
     expect(result.matches[0].token).toContain("REDACTED_");
+  });
+
+  test('rejects null, fractional, missing-type and excessive entities without quoting content', () => {
+    const invalid = [null, { text: 'john@test.com', type: 'Email', start: .5, end: 21 },
+      { text: 'john@test.com', type: null, start: 8, end: 21 }];
+    const parsed = parseEntityResponse(JSON.stringify({ entities: invalid }), inputText, samplePiiTypes);
+    expect(parsed.valid).toBe(false);
+    expect(parsed.invalidEntityCount).toBe(3);
+    expect(parseEntityResponse(JSON.stringify({ entities: Array(10001).fill(null) }), inputText, []).valid).toBe(false);
+    expect(parseEntityResponse('x'.repeat(2000001), inputText, []).valid).toBe(false);
+    const result = parseEntityResponse('PRIVATE_SECRET_not_json', inputText, []);
+    expect(result.error).not.toContain('PRIVATE_SECRET');
+  });
+
+  test('model type names cannot resolve inherited prototype properties', () => {
+    const result = parseEntityResponse(JSON.stringify({ entities: [
+      { text: 'john@test.com', type: 'constructor', start: 8, end: 21 },
+    ] }), inputText, samplePiiTypes);
+    expect(result.valid).toBe(true);
+    expect(result.matches[0].token).toBe('[REDACTED_CONSTRUCTOR]');
   });
 });
 
@@ -269,7 +291,7 @@ describe("deduplicateMatches", () => {
       { index: 5, original: "Smith Jones" }, // overlaps
       { index: 20, original: "test" },
     ];
-    const result = deduplicateMatches(matches);
+    const result = deduplicateMatches(matches, 'John Smith Jones    test');
     expect(result).toHaveLength(2);
     expect(result[0].index).toBe(0);
     expect(result[1].index).toBe(20);
@@ -281,7 +303,7 @@ describe("deduplicateMatches", () => {
       { index: 5, original: "def" },
       { index: 10, original: "ghi" },
     ];
-    expect(deduplicateMatches(matches)).toHaveLength(3);
+    expect(deduplicateMatches(matches, 'abc  def  ghi')).toHaveLength(3);
   });
 });
 

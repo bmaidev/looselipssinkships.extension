@@ -324,7 +324,7 @@
     const banner = document.createElement("div");
     banner.className = "llss-ai-banner";
     banner.innerHTML = '<span class="llss-ai-banner-icon">&#x1f6e1;</span>' +
-      '<span class="llss-ai-banner-text"><strong>Loose Lips Sink Ships</strong> — AI chat protection active. PII will be redacted before submission.</span>' +
+      '<span class="llss-ai-banner-text"><strong>Loose Lips Sink Ships</strong> — Submission checks active. Detection can miss sensitive information; review before sharing.</span>' +
       '<button class="llss-ai-banner-close" aria-label="Dismiss protection notice">&times;</button>';
 
     banner.querySelector(".llss-ai-banner-close").addEventListener("click", () => {
@@ -480,7 +480,7 @@
         });
         if (resp?.success && resp.redacted) {
           insertIntoComposer(el, resp.redacted);
-          showBadge(btn, resp.engine || "local_ai", resp.matchCount, resp.tier || "local");
+          showBadge(btn, resp.engine || "local_ai", resp.matchCount, resp.tier || "local", resp.coverage);
         } else if (resp?.success) {
           showToast(btn.parentNode || document.body, "No speech detected.");
         } else {
@@ -630,7 +630,7 @@
           } else {
             showResultOverlay(btn.parentNode || document.body, response, file.name);
           }
-          showBadge(btn, response.engine, response.matchCount, response.tier);
+          showBadge(btn, response.engine, response.matchCount, response.tier, response.coverage);
         } else {
           showToast(btn.parentNode || document.body, `Redaction failed: ${response?.error || "Unknown error"}`);
         }
@@ -671,6 +671,10 @@
     meta.className = "llss-result-meta";
     meta.textContent = `${response.engine || "unknown"} · ${response.matchCount || 0} items · ${response.tier || "local"}`;
     header.append(heading, meta);
+    const notice = document.createElement('p');
+    notice.className = 'llss-result-coverage';
+    notice.textContent = LLSS_ScanStatus.describe(response.coverage).detail;
+    header.appendChild(notice);
 
     const content = document.createElement("pre");
     content.className = "llss-result-content";
@@ -849,7 +853,7 @@
 
       if (response && response.success) {
         setText(response.redacted);
-        showBadge(btn, response.engine, response.matchCount, response.tier);
+        showBadge(btn, response.engine, response.matchCount, response.tier, response.coverage);
       } else {
         showToast(btn.parentNode, `Redaction failed: ${response?.error || "Unknown error"}`);
       }
@@ -2083,7 +2087,7 @@
 
   // ── Engine badge ─────────────────────────────────────────────────────────
 
-  function showBadge(btn, engine, matchCount, tier) {
+  function showBadge(btn, engine, matchCount, tier, coverage) {
     const badge = document.createElement("span");
     badge.className = "llss-badge";
 
@@ -2098,7 +2102,13 @@
                      tier === "hosted" ? "\u{1F3E2}" :
                      tier === "cloud" ? "\u{2601}\u{FE0F}" : "";
 
-    badge.textContent = `${tierIcon} ${engineLabel} \u00B7 ${matchCount || 0} found`;
+    const status = LLSS_ScanStatus.describe(coverage);
+    badge.textContent = `${tierIcon} ${engineLabel} \u00B7 ${matchCount || 0} found · ${status.label}`;
+    badge.classList.toggle('llss-badge-limited', status.limited);
+    badge.setAttribute('role', 'status');
+    badge.setAttribute('aria-live', 'polite');
+    badge.setAttribute('aria-label', `${matchCount || 0} items found. ${status.detail}`);
+    badge.title = status.detail;
     const parent = btn.parentNode || document.body;
     parent.appendChild(badge);
     setTimeout(() => badge.remove(), 3000);

@@ -10,6 +10,7 @@ const repoRoot = path.resolve(__dirname, "../..");
 const { DEFAULT_PII_TYPES } = require(path.join(repoRoot, "lib/pii-types"));
 const { regexRedact } = require(path.join(repoRoot, "lib/regex-engine"));
 const { vectorRedact } = require(path.join(repoRoot, "lib/vector-engine"));
+const { mergeMatches } = require(path.join(repoRoot, "lib/redaction-spans"));
 
 const modeIndex = process.argv.indexOf("--mode");
 const mode = modeIndex >= 0 ? process.argv[modeIndex + 1] : "hybrid";
@@ -32,14 +33,7 @@ function detect(text) {
   let matches = [...regexMatches];
   if (mode === "hybrid") {
     const vectorMatches = vectorRedact(text, "[REDACTED_NAME]", 0.45).matches;
-    const candidates = matches.concat(vectorMatches).sort((a, b) => a.index - b.index);
-    matches = [];
-    let lastEnd = -1;
-    for (const match of candidates) {
-      if (!Number.isInteger(match.index) || !match.original || match.index < lastEnd) continue;
-      matches.push(match);
-      lastEnd = match.index + match.original.length;
-    }
+    matches = mergeMatches(text, matches.concat(vectorMatches));
   }
   return matches.map((match) => asSpan(match, text));
 }

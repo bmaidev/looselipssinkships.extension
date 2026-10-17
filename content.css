@@ -102,6 +102,22 @@
   100%    { opacity: 0; }
 }
 
+.llss-badge-limited {
+  color: #713f12;
+  background: #fef3c7;
+  border-color: #d97706;
+}
+
+.llss-result-coverage {
+  color: #713f12;
+  background: #fffbeb;
+  border-left: 3px solid #d97706;
+  padding: 8px 12px;
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 /* Error toast */
 .llss-toast {
   position: absolute;

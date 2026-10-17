@@ -1,0 +1,2569 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-17",
+  "release_eligible": false,
+  "scope": "Exploratory production-rules regression on a previously viewed synthetic corpus, not independent confirmation or browser performance",
+  "baseline_commit": "ff92a52f013fd5583a1cc022609dd020f29c0a73",
+  "before": {
+    "by_family": {
+      "biometric": {
+        "character_recall": 0.09403019388458886,
+        "confidence_interval": {
+          "high_95": 0.10899774621743673,
+          "low_95": 0.07902020620459789,
+          "rounds": 1000
+        },
+        "entities": 720,
+        "full_cluster_protection_interval": {
+          "high_95": 0.005307044483128604,
+          "low_95": 0,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 720
+        },
+        "gold_chars": 13049,
+        "independent_clusters": 720
+      },
+      "contact": {
+        "character_recall": 0.7748839502115598,
+        "confidence_interval": {
+          "high_95": 0.7865726139377042,
+          "low_95": 0.762753386519764,
+          "rounds": 1000
+        },
+        "entities": 5694,
+        "full_cluster_protection_interval": {
+          "high_95": 0.6140108753908565,
+          "low_95": 0.5772250729721341,
+          "method": "wilson-independent-cluster",
+          "successes": 1627,
+          "trials": 2731
+        },
+        "gold_chars": 97372,
+        "independent_clusters": 2731
+      },
+      "digital": {
+        "character_recall": 0.347981345249478,
+        "confidence_interval": {
+          "high_95": 0.3547834195207987,
+          "low_95": 0.3408928695743062,
+          "rounds": 1000
+        },
+        "entities": 3564,
+        "full_cluster_protection_interval": {
+          "high_95": 0.002677270577232586,
+          "low_95": 2.168404344971009e-19,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 1431
+        },
+        "gold_chars": 51247,
+        "independent_clusters": 1431
+      },
+      "financial": {
+        "character_recall": 0.7056458449390849,
+        "confidence_interval": {
+          "high_95": 0.726537997303585,
+          "low_95": 0.6844498870439071,
+          "rounds": 1000
+        },
+        "entities": 3499,
+        "full_cluster_protection_interval": {
+          "high_95": 0.5526892990772376,
+          "low_95": 0.5005459315659466,
+          "method": "wilson-independent-cluster",
+          "successes": 740,
+          "trials": 1405
+        },
+        "gold_chars": 41287,
+        "independent_clusters": 1405
+      },
+      "government_id": {
+        "character_recall": 0.7555038308602463,
+        "confidence_interval": {
+          "high_95": 0.7880985803363613,
+          "low_95": 0.7255364676945837,
+          "rounds": 1000
+        },
+        "entities": 2175,
+        "full_cluster_protection_interval": {
+          "high_95": 0.750134561858491,
+          "low_95": 0.6848022768237151,
+          "method": "wilson-independent-cluster",
+          "successes": 521,
+          "trials": 725
+        },
+        "gold_chars": 20622,
+        "independent_clusters": 725
+      },
+      "health_id": {
+        "character_recall": 0.6360992945991061,
+        "confidence_interval": {
+          "high_95": 0.6563656698212674,
+          "low_95": 0.6152410580061118,
+          "rounds": 1000
+        },
+        "entities": 1402,
+        "full_cluster_protection_interval": {
+          "high_95": 0.39145409998712527,
+          "low_95": 0.34109042155841823,
+          "method": "wilson-independent-cluster",
+          "successes": 513,
+          "trials": 1402
+        },
+        "gold_chars": 18571,
+        "independent_clusters": 1402
+      },
+      "identity": {
+        "character_recall": 0.041926481489556536,
+        "confidence_interval": {
+          "high_95": 0.04505790831197907,
+          "low_95": 0.038705165179035925,
+          "rounds": 1000
+        },
+        "entities": 12059,
+        "full_cluster_protection_interval": {
+          "high_95": 0.0003824690818193354,
+          "low_95": 0,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 10040
+        },
+        "gold_chars": 137598,
+        "independent_clusters": 10040
+      },
+      "location": {
+        "character_recall": 0,
+        "confidence_interval": {
+          "high_95": 0,
+          "low_95": 0,
+          "rounds": 1000
+        },
+        "entities": 720,
+        "full_cluster_protection_interval": {
+          "high_95": 0.005307044483128604,
+          "low_95": 0,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 720
+        },
+        "gold_chars": 13055,
+        "independent_clusters": 720
+      },
+      "organisation_id": {
+        "character_recall": 0.19672131147540983,
+        "confidence_interval": {
+          "high_95": 0.2117166668562924,
+          "low_95": 0.18315214983998132,
+          "rounds": 1000
+        },
+        "entities": 2061,
+        "full_cluster_protection_interval": {
+          "high_95": 0.0027679377902129904,
+          "low_95": 0,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 1384
+        },
+        "gold_chars": 23668,
+        "independent_clusters": 1384
+      },
+      "secret": {
+        "character_recall": 0.11830558875834524,
+        "confidence_interval": {
+          "high_95": 0.12640379381909123,
+          "low_95": 0.11008560490846347,
+          "rounds": 1000
+        },
+        "entities": 1422,
+        "full_cluster_protection_interval": {
+          "high_95": 0.005373861257336069,
+          "low_95": 0,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 711
+        },
+        "gold_chars": 34301,
+        "independent_clusters": 711
+      },
+      "sensitive_belief": {
+        "character_recall": 0,
+        "confidence_interval": {
+          "high_95": 0,
+          "low_95": 0,
+          "rounds": 1000
+        },
+        "entities": 2852,
+        "full_cluster_protection_interval": {
+          "high_95": 0.003058872434663426,
+          "low_95": 0,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 1252
+        },
+        "gold_chars": 43324,
+        "independent_clusters": 1252
+      },
+      "sensitive_financial": {
+        "character_recall": 0,
+        "confidence_interval": {
+          "high_95": 0,
+          "low_95": 0,
+          "rounds": 1000
+        },
+        "entities": 1364,
+        "full_cluster_protection_interval": {
+          "high_95": 0.0056588453324103605,
+          "low_95": 4.336808689942018e-19,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 675
+        },
+        "gold_chars": 27969,
+        "independent_clusters": 675
+      },
+      "sensitive_health": {
+        "character_recall": 0,
+        "confidence_interval": {
+          "high_95": 0,
+          "low_95": 0,
+          "rounds": 1000
+        },
+        "entities": 4284,
+        "full_cluster_protection_interval": {
+          "high_95": 0.0014382953387245664,
+          "low_95": 0,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 2667
+        },
+        "gold_chars": 72646,
+        "independent_clusters": 2667
+      },
+      "sensitive_legal": {
+        "character_recall": 0,
+        "confidence_interval": {
+          "high_95": 0,
+          "low_95": 0,
+          "rounds": 1000
+        },
+        "entities": 698,
+        "full_cluster_protection_interval": {
+          "high_95": 0.006247885150852211,
+          "low_95": 0,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 611
+        },
+        "gold_chars": 16898,
+        "independent_clusters": 611
+      },
+      "sensitive_personal": {
+        "character_recall": 0,
+        "confidence_interval": {
+          "high_95": 0,
+          "low_95": 0,
+          "rounds": 1000
+        },
+        "entities": 698,
+        "full_cluster_protection_interval": {
+          "high_95": 0.006247885150852211,
+          "low_95": 0,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 611
+        },
+        "gold_chars": 5167,
+        "independent_clusters": 611
+      },
+      "sensitive_safety": {
+        "character_recall": 0,
+        "confidence_interval": {
+          "high_95": 0,
+          "low_95": 0,
+          "rounds": 1000
+        },
+        "entities": 1446,
+        "full_cluster_protection_interval": {
+          "high_95": 0.005427004554231994,
+          "low_95": 0,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 704
+        },
+        "gold_chars": 33229,
+        "independent_clusters": 704
+      }
+    },
+    "by_label": {
+      "ABN": {
+        "character_recall": 0.7566589606995678,
+        "family": "financial",
+        "full_entity_protection_rate": 0.7163323782234957,
+        "gold_entities": 698,
+        "independent_clusters": 698,
+        "predicted_entities": 508
+      },
+      "ACN": {
+        "character_recall": 0.7012008175779254,
+        "family": "financial",
+        "full_entity_protection_rate": 0.7148997134670487,
+        "gold_entities": 698,
+        "independent_clusters": 698,
+        "predicted_entities": 499
+      },
+      "AGE": {
+        "character_recall": 0,
+        "family": "identity",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 713,
+        "independent_clusters": 713,
+        "predicted_entities": 0
+      },
+      "API_KEY": {
+        "character_recall": 0.17772522226601847,
+        "family": "secret",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 711,
+        "independent_clusters": 711,
+        "predicted_entities": 0
+      },
+      "BANK_ACCOUNT": {
+        "character_recall": 0.8077496274217586,
+        "family": "financial",
+        "full_entity_protection_rate": 0.7808022922636103,
+        "gold_entities": 698,
+        "independent_clusters": 698,
+        "predicted_entities": 574
+      },
+      "BIOMETRIC_ID": {
+        "character_recall": 0.09403019388458886,
+        "family": "biometric",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 720,
+        "independent_clusters": 720,
+        "predicted_entities": 0
+      },
+      "BSB": {
+        "character_recall": 0.5413669064748201,
+        "family": "financial",
+        "full_entity_protection_rate": 0.5544412607449857,
+        "gold_entities": 698,
+        "independent_clusters": 698,
+        "predicted_entities": 387
+      },
+      "CHILD_STATUS": {
+        "character_recall": 0,
+        "family": "sensitive_safety",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 723,
+        "independent_clusters": 704,
+        "predicted_entities": 0
+      },
+      "COORDINATES": {
+        "character_recall": 0,
+        "family": "location",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 720,
+        "independent_clusters": 720,
+        "predicted_entities": 0
+      },
+      "CREDIT_CARD": {
+        "character_recall": 0.6905160602831482,
+        "family": "financial",
+        "full_entity_protection_rate": 0.49929278642149927,
+        "gold_entities": 707,
+        "independent_clusters": 707,
+        "predicted_entities": 561
+      },
+      "CRIMINAL_RECORD": {
+        "character_recall": 0,
+        "family": "sensitive_legal",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 698,
+        "independent_clusters": 611,
+        "predicted_entities": 0
+      },
+      "CUSTOMER_ID": {
+        "character_recall": 0.5017782088587133,
+        "family": "organisation_id",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 707,
+        "independent_clusters": 707,
+        "predicted_entities": 0
+      },
+      "DATE_OF_BIRTH": {
+        "character_recall": 0.7871101871101871,
+        "family": "identity",
+        "full_entity_protection_rate": 0.7685834502103787,
+        "gold_entities": 713,
+        "independent_clusters": 713,
+        "predicted_entities": 572
+      },
+      "DEVICE_ID": {
+        "character_recall": 0.41459262261856505,
+        "family": "digital",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 720,
+        "independent_clusters": 720,
+        "predicted_entities": 0
+      },
+      "DISABILITY": {
+        "character_recall": 0,
+        "family": "sensitive_health",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 725,
+        "independent_clusters": 596,
+        "predicted_entities": 0
+      },
+      "DRIVER_LICENCE": {
+        "character_recall": 0.8019717831038585,
+        "family": "government_id",
+        "full_entity_protection_rate": 0.776551724137931,
+        "gold_entities": 725,
+        "independent_clusters": 725,
+        "predicted_entities": 599
+      },
+      "EMAIL": {
+        "character_recall": 0.8376355937119322,
+        "family": "contact",
+        "full_entity_protection_rate": 0.782051282051282,
+        "gold_entities": 2106,
+        "independent_clusters": 2106,
+        "predicted_entities": 1806
+      },
+      "EMPLOYEE_ID": {
+        "character_recall": 0,
+        "family": "organisation_id",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 677,
+        "independent_clusters": 677,
+        "predicted_entities": 0
+      },
+      "FINANCIAL_HARDSHIP": {
+        "character_recall": 0,
+        "family": "sensitive_financial",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 682,
+        "independent_clusters": 675,
+        "predicted_entities": 0
+      },
+      "GENETIC_INFO": {
+        "character_recall": 0,
+        "family": "sensitive_health",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 720,
+        "independent_clusters": 720,
+        "predicted_entities": 0
+      },
+      "HEALTH_CONDITION": {
+        "character_recall": 0,
+        "family": "sensitive_health",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 1412,
+        "independent_clusters": 1351,
+        "predicted_entities": 0
+      },
+      "HEALTH_RECORD_ID": {
+        "character_recall": 0.535931790499391,
+        "family": "health_id",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 677,
+        "independent_clusters": 677,
+        "predicted_entities": 0
+      },
+      "INCOME": {
+        "character_recall": 0,
+        "family": "sensitive_financial",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 682,
+        "independent_clusters": 675,
+        "predicted_entities": 0
+      },
+      "IP_ADDRESS": {
+        "character_recall": 0.7612065354000838,
+        "family": "digital",
+        "full_entity_protection_rate": 0.3881856540084388,
+        "gold_entities": 1422,
+        "independent_clusters": 711,
+        "predicted_entities": 1485
+      },
+      "MAC_ADDRESS": {
+        "character_recall": 0,
+        "family": "digital",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 711,
+        "independent_clusters": 711,
+        "predicted_entities": 0
+      },
+      "MEDICARE": {
+        "character_recall": 0.7154714795869125,
+        "family": "health_id",
+        "full_entity_protection_rate": 0.7075862068965517,
+        "gold_entities": 725,
+        "independent_clusters": 725,
+        "predicted_entities": 742
+      },
+      "MEDICATION": {
+        "character_recall": 0,
+        "family": "sensitive_health",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 702,
+        "independent_clusters": 641,
+        "predicted_entities": 0
+      },
+      "MENTAL_HEALTH": {
+        "character_recall": 0,
+        "family": "sensitive_health",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 725,
+        "independent_clusters": 596,
+        "predicted_entities": 0
+      },
+      "PASSPORT": {
+        "character_recall": 0.7764830508474576,
+        "family": "government_id",
+        "full_entity_protection_rate": 0.776551724137931,
+        "gold_entities": 725,
+        "independent_clusters": 725,
+        "predicted_entities": 571
+      },
+      "PASSWORD": {
+        "character_recall": 0,
+        "family": "secret",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 711,
+        "independent_clusters": 711,
+        "predicted_entities": 0
+      },
+      "PERSON": {
+        "character_recall": 0,
+        "family": "identity",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 9913,
+        "independent_clusters": 9320,
+        "predicted_entities": 0
+      },
+      "PHONE": {
+        "character_recall": 0.7186935525491208,
+        "family": "contact",
+        "full_entity_protection_rate": 0.7236467236467237,
+        "gold_entities": 2106,
+        "independent_clusters": 2106,
+        "predicted_entities": 2038
+      },
+      "POLITICAL_AFFILIATION": {
+        "character_recall": 0,
+        "family": "sensitive_belief",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 711,
+        "independent_clusters": 586,
+        "predicted_entities": 0
+      },
+      "POSTCODE": {
+        "character_recall": 0.6454720616570327,
+        "family": "contact",
+        "full_entity_protection_rate": 0.6545209176788124,
+        "gold_entities": 741,
+        "independent_clusters": 625,
+        "predicted_entities": 485
+      },
+      "RACE_ETHNICITY": {
+        "character_recall": 0,
+        "family": "sensitive_belief",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 715,
+        "independent_clusters": 666,
+        "predicted_entities": 0
+      },
+      "RELIGION": {
+        "character_recall": 0,
+        "family": "sensitive_belief",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 715,
+        "independent_clusters": 666,
+        "predicted_entities": 0
+      },
+      "SEXUAL_ORIENTATION": {
+        "character_recall": 0,
+        "family": "sensitive_personal",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 698,
+        "independent_clusters": 611,
+        "predicted_entities": 0
+      },
+      "STREET_ADDRESS": {
+        "character_recall": 0.6982603947265777,
+        "family": "contact",
+        "full_entity_protection_rate": 0.6977058029689609,
+        "gold_entities": 741,
+        "independent_clusters": 625,
+        "predicted_entities": 525
+      },
+      "STUDENT_ID": {
+        "character_recall": 0,
+        "family": "organisation_id",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 677,
+        "independent_clusters": 677,
+        "predicted_entities": 0
+      },
+      "TFN": {
+        "character_recall": 0.7048333538310171,
+        "family": "government_id",
+        "full_entity_protection_rate": 0.7186206896551725,
+        "gold_entities": 725,
+        "independent_clusters": 725,
+        "predicted_entities": 2742
+      },
+      "TRADE_UNION": {
+        "character_recall": 0,
+        "family": "sensitive_belief",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 711,
+        "independent_clusters": 586,
+        "predicted_entities": 0
+      },
+      "USERNAME": {
+        "character_recall": 0,
+        "family": "digital",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 711,
+        "independent_clusters": 711,
+        "predicted_entities": 0
+      },
+      "VEHICLE_ID": {
+        "character_recall": 0.010426320667284522,
+        "family": "identity",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 720,
+        "independent_clusters": 720,
+        "predicted_entities": 0
+      },
+      "VICTIM_SAFEGUARDING": {
+        "character_recall": 0,
+        "family": "sensitive_safety",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 723,
+        "independent_clusters": 704,
+        "predicted_entities": 0
+      }
+    },
+    "by_slice": {
+      "address": {
+        "character_recall": 0.4576271186440678,
+        "full_protection_rate": 0,
+        "gold_entities": 2223,
+        "over_redaction_rate": 0,
+        "records": 741
+      },
+      "association": {
+        "character_recall": 0,
+        "full_protection_rate": 0,
+        "gold_entities": 2133,
+        "over_redaction_rate": 0,
+        "records": 711
+      },
+      "belief": {
+        "character_recall": 0,
+        "full_protection_rate": 0,
+        "gold_entities": 2145,
+        "over_redaction_rate": 0,
+        "records": 715
+      },
+      "biometric": {
+        "character_recall": 0.031366634286006445,
+        "full_protection_rate": 0,
+        "gold_entities": 2160,
+        "over_redaction_rate": 0,
+        "records": 720
+      },
+      "case": {
+        "character_recall": 0.31936960264251824,
+        "full_protection_rate": 0.1078167115902965,
+        "gold_entities": 4913,
+        "over_redaction_rate": 0.006066559812488151,
+        "records": 1484
+      },
+      "clean": {
+        "character_recall": 0.32830781714147145,
+        "full_protection_rate": 0.10338680926916222,
+        "gold_entities": 14872,
+        "over_redaction_rate": 0.005811189838008417,
+        "records": 4488
+      },
+      "code_switch": {
+        "character_recall": 0.6250733615911314,
+        "full_protection_rate": 0,
+        "gold_entities": 2121,
+        "over_redaction_rate": 0,
+        "records": 707
+      },
+      "confusable": {
+        "character_recall": 0.24093778178539224,
+        "full_protection_rate": 0.10711909514304724,
+        "gold_entities": 4986,
+        "over_redaction_rate": 0.006119873937468862,
+        "records": 1503
+      },
+      "contact": {
+        "character_recall": 0.6053949465058047,
+        "full_protection_rate": 0,
+        "gold_entities": 2067,
+        "over_redaction_rate": 0,
+        "records": 689
+      },
+      "contextual": {
+        "character_recall": 0.40812461003654515,
+        "full_protection_rate": 0,
+        "gold_entities": 4362,
+        "over_redaction_rate": 0.03469400133438467,
+        "records": 1454
+      },
+      "csv": {
+        "character_recall": 0.2634388591724534,
+        "full_protection_rate": 0.06875320677270395,
+        "gold_entities": 6454,
+        "over_redaction_rate": 0.004650834059737441,
+        "records": 1949
+      },
+      "digital": {
+        "character_recall": 0.15295984950914115,
+        "full_protection_rate": 0,
+        "gold_entities": 2160,
+        "over_redaction_rate": 0,
+        "records": 720
+      },
+      "domain:calendar": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0,
+        "records": 200
+      },
+      "domain:case_management": {
+        "character_recall": 0.14180282961100907,
+        "full_protection_rate": 0,
+        "gold_entities": 2708,
+        "over_redaction_rate": 0,
+        "records": 677
+      },
+      "domain:catalogue": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0,
+        "records": 200
+      },
+      "domain:commerce": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0.47368421052631576,
+        "records": 200
+      },
+      "domain:community_services": {
+        "character_recall": 0.3906864005288479,
+        "full_protection_rate": 0,
+        "gold_entities": 4212,
+        "over_redaction_rate": 0,
+        "records": 1404
+      },
+      "domain:customer_support": {
+        "character_recall": 0.4576271186440678,
+        "full_protection_rate": 0,
+        "gold_entities": 2223,
+        "over_redaction_rate": 0,
+        "records": 941
+      },
+      "domain:cybersecurity": {
+        "character_recall": 0.2291532924480625,
+        "full_protection_rate": 0,
+        "gold_entities": 4266,
+        "over_redaction_rate": 0.000040584415584415584,
+        "records": 711
+      },
+      "domain:disability_services": {
+        "character_recall": 0,
+        "full_protection_rate": 0,
+        "gold_entities": 2175,
+        "over_redaction_rate": 0,
+        "records": 725
+      },
+      "domain:documentation": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0.0743801652892562,
+        "records": 400
+      },
+      "domain:finance": {
+        "character_recall": 0.6682355733101293,
+        "full_protection_rate": 0.2754448398576512,
+        "gold_entities": 4206,
+        "over_redaction_rate": 0.08308314441517065,
+        "records": 1405
+      },
+      "domain:financial_counselling": {
+        "character_recall": 0,
+        "full_protection_rate": 0,
+        "gold_entities": 2046,
+        "over_redaction_rate": 0,
+        "records": 682
+      },
+      "domain:geography": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0,
+        "records": 200
+      },
+      "domain:government_form": {
+        "character_recall": 0.7421166446115611,
+        "full_protection_rate": 0.6868965517241379,
+        "gold_entities": 2900,
+        "over_redaction_rate": 0.2149107523134704,
+        "records": 725
+      },
+      "domain:health": {
+        "character_recall": 0,
+        "full_protection_rate": 0,
+        "gold_entities": 2106,
+        "over_redaction_rate": 0,
+        "records": 702
+      },
+      "domain:health_research": {
+        "character_recall": 0.031366634286006445,
+        "full_protection_rate": 0,
+        "gold_entities": 2160,
+        "over_redaction_rate": 0,
+        "records": 720
+      },
+      "domain:human_resources": {
+        "character_recall": 0,
+        "full_protection_rate": 0,
+        "gold_entities": 2133,
+        "over_redaction_rate": 0,
+        "records": 711
+      },
+      "domain:intake": {
+        "character_recall": 0.3289504170528267,
+        "full_protection_rate": 0,
+        "gold_entities": 2139,
+        "over_redaction_rate": 0.11150097465886939,
+        "records": 713
+      },
+      "domain:legal_aid": {
+        "character_recall": 0,
+        "full_protection_rate": 0,
+        "gold_entities": 2094,
+        "over_redaction_rate": 0,
+        "records": 698
+      },
+      "domain:long_form_casework": {
+        "character_recall": 0.5038516983512028,
+        "full_protection_rate": 0,
+        "gold_entities": 2840,
+        "over_redaction_rate": 0,
+        "records": 710
+      },
+      "domain:multicultural_support": {
+        "character_recall": 0.6250733615911314,
+        "full_protection_rate": 0,
+        "gold_entities": 2121,
+        "over_redaction_rate": 0,
+        "records": 707
+      },
+      "domain:policy": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0,
+        "records": 200
+      },
+      "domain:public_health": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0,
+        "records": 200
+      },
+      "domain:recruitment": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0,
+        "records": 200
+      },
+      "domain:safeguarding": {
+        "character_recall": 0.06819105025224399,
+        "full_protection_rate": 0,
+        "gold_entities": 4329,
+        "over_redaction_rate": 0,
+        "records": 1443
+      },
+      "domain:software_release": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0.16071428571428573,
+        "records": 200
+      },
+      "domain:source_code": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0,
+        "records": 400
+      },
+      "domain:statistics": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0,
+        "records": 200
+      },
+      "financial": {
+        "character_recall": 0.3106726957383548,
+        "full_protection_rate": 0.28043478260869564,
+        "gold_entities": 4838,
+        "over_redaction_rate": 0.12303969754253308,
+        "records": 1380
+      },
+      "government_id": {
+        "character_recall": 0.7421166446115611,
+        "full_protection_rate": 0.6868965517241379,
+        "gold_entities": 2900,
+        "over_redaction_rate": 0.2149107523134704,
+        "records": 725
+      },
+      "hard_negative": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0.05344418052256532,
+        "records": 2800
+      },
+      "health": {
+        "character_recall": 0,
+        "full_protection_rate": 0,
+        "gold_entities": 4281,
+        "over_redaction_rate": 0,
+        "records": 1427
+      },
+      "high_risk": {
+        "character_recall": 0,
+        "full_protection_rate": 0,
+        "gold_entities": 2169,
+        "over_redaction_rate": 0,
+        "records": 723
+      },
+      "identity": {
+        "character_recall": 0.514329873301786,
+        "full_protection_rate": 0,
+        "gold_entities": 4206,
+        "over_redaction_rate": 0.052347396357646195,
+        "records": 1402
+      },
+      "json": {
+        "character_recall": 0.23033737789093545,
+        "full_protection_rate": 0.05861182519280206,
+        "gold_entities": 6432,
+        "over_redaction_rate": 0.004622210626340671,
+        "records": 1945
+      },
+      "legal": {
+        "character_recall": 0,
+        "full_protection_rate": 0,
+        "gold_entities": 2094,
+        "over_redaction_rate": 0,
+        "records": 698
+      },
+      "linebreak": {
+        "character_recall": 0.2924156611672002,
+        "full_protection_rate": 0.046235138705416116,
+        "gold_entities": 5026,
+        "over_redaction_rate": 0.005029858055396604,
+        "records": 1514
+      },
+      "location": {
+        "character_recall": 0.15295984950914115,
+        "full_protection_rate": 0,
+        "gold_entities": 2160,
+        "over_redaction_rate": 0,
+        "records": 720
+      },
+      "log": {
+        "character_recall": 0.24836994042292054,
+        "full_protection_rate": 0.05238467552775606,
+        "gold_entities": 10106,
+        "over_redaction_rate": 0.004096131918252785,
+        "records": 2558
+      },
+      "long_document": {
+        "character_recall": 0.5038516983512028,
+        "full_protection_rate": 0,
+        "gold_entities": 2840,
+        "over_redaction_rate": 0,
+        "records": 710
+      },
+      "markdown": {
+        "character_recall": 0.258093267897621,
+        "full_protection_rate": 0.06532129580456718,
+        "gold_entities": 6255,
+        "over_redaction_rate": 0.004177970173973614,
+        "records": 1883
+      },
+      "mixed_entities": {
+        "character_recall": 0.14180282961100907,
+        "full_protection_rate": 0,
+        "gold_entities": 2708,
+        "over_redaction_rate": 0,
+        "records": 677
+      },
+      "multilingual": {
+        "character_recall": 0.6250733615911314,
+        "full_protection_rate": 0,
+        "gold_entities": 2121,
+        "over_redaction_rate": 0,
+        "records": 707
+      },
+      "negative": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0.05344418052256532,
+        "records": 2800
+      },
+      "ocr": {
+        "character_recall": 0.11715522468028707,
+        "full_protection_rate": 0,
+        "gold_entities": 4952,
+        "over_redaction_rate": 0.0008509446562829876,
+        "records": 1492
+      },
+      "organisation_id": {
+        "character_recall": 0.14180282961100907,
+        "full_protection_rate": 0,
+        "gold_entities": 2708,
+        "over_redaction_rate": 0,
+        "records": 677
+      },
+      "payment": {
+        "character_recall": 0.6123923807824418,
+        "full_protection_rate": 0,
+        "gold_entities": 1414,
+        "over_redaction_rate": 0,
+        "records": 707
+      },
+      "plain": {
+        "character_recall": 0.2567614893870522,
+        "full_protection_rate": 0.06616750827093854,
+        "gold_entities": 19035,
+        "over_redaction_rate": 0.0048529463723446485,
+        "records": 5743
+      },
+      "positive": {
+        "character_recall": 0.2546480554705132,
+        "full_protection_rate": 0.06568205432685172,
+        "gold_entities": 44658,
+        "over_redaction_rate": 0.004601271382565556,
+        "records": 13474
+      },
+      "psi": {
+        "character_recall": 0.0738528951486698,
+        "full_protection_rate": 0,
+        "gold_entities": 19868,
+        "over_redaction_rate": 0,
+        "records": 6386
+      },
+      "secrets": {
+        "character_recall": 0.2291532924480625,
+        "full_protection_rate": 0,
+        "gold_entities": 4266,
+        "over_redaction_rate": 0.000040584415584415584,
+        "records": 711
+      },
+      "spacing": {
+        "character_recall": 0.27331015299026423,
+        "full_protection_rate": 0.02004008016032064,
+        "gold_entities": 4947,
+        "over_redaction_rate": 0.0052080116922950245,
+        "records": 1497
+      },
+      "structured": {
+        "character_recall": 0.4753104767320143,
+        "full_protection_rate": 0.3115100316789863,
+        "gold_entities": 11372,
+        "over_redaction_rate": 0.09674645479231621,
+        "records": 2841
+      },
+      "window_boundary": {
+        "character_recall": 0.5038516983512028,
+        "full_protection_rate": 0,
+        "gold_entities": 2840,
+        "over_redaction_rate": 0,
+        "records": 710
+      },
+      "zero_width": {
+        "character_recall": 0.07356361104176794,
+        "full_protection_rate": 0,
+        "gold_entities": 4962,
+        "over_redaction_rate": 0.0006472013535297442,
+        "records": 1496
+      }
+    },
+    "cluster_guardrails": {
+      "clean_negative": {
+        "high_95": 0.9242861328730683,
+        "low_95": 0.524107694133997,
+        "method": "wilson-independent-cluster",
+        "successes": 11,
+        "trials": 14
+      },
+      "full_protection": {
+        "high_95": 0.07320398342565847,
+        "low_95": 0.06446487842955355,
+        "method": "wilson-independent-cluster",
+        "successes": 885,
+        "trials": 12881
+      }
+    },
+    "confidence_intervals": {
+      "character_recall": {
+        "high_95": 0.25994507129426675,
+        "low_95": 0.24955655188148193,
+        "rounds": 1000
+      },
+      "clean_negative_document_rate": {
+        "high_95": 1,
+        "low_95": 0.5454545454545454,
+        "rounds": 1000
+      },
+      "document_full_protection_rate": {
+        "high_95": 0.07007711103927253,
+        "low_95": 0.061873682059547505,
+        "rounds": 1000
+      },
+      "over_redaction_rate": {
+        "high_95": 0.009258573758874785,
+        "low_95": 0.004449881362121821,
+        "rounds": 1000
+      },
+      "weighted_recall": {
+        "high_95": 0.24632366546163215,
+        "low_95": 0.23589376275652246,
+        "rounds": 1000
+      }
+    },
+    "counts": {
+      "captured_weight": 665208,
+      "clean_negative_docs": 2200,
+      "exact_matches": 6612,
+      "fn_chars": 484481,
+      "fp_chars": 31099,
+      "fully_protected_docs": 885,
+      "gold_chars": 650003,
+      "gold_entities": 44658,
+      "gold_weight": 2760731,
+      "negative_docs": 2800,
+      "non_pii_chars": 4971203,
+      "overlap_matches": 13278,
+      "positive_docs": 13474,
+      "pred_chars": 196621,
+      "predicted_entities": 14094,
+      "tp_chars": 165522,
+      "typed_exact_matches": 6612,
+      "typed_overlap_matches": 10733
+    },
+    "entities": {
+      "exact": {
+        "f1": 0.22508169934640523,
+        "precision": 0.4691358024691358,
+        "recall": 0.14805857853016258
+      },
+      "overlap": {
+        "f1": 0.4520016339869281,
+        "precision": 0.9421030225627927,
+        "recall": 0.2973263469031305
+      },
+      "typed_exact": {
+        "f1": 0.22508169934640523,
+        "precision": 0.4691358024691358,
+        "recall": 0.14805857853016258
+      },
+      "typed_overlap": {
+        "f1": 0.3653662854030501,
+        "precision": 0.7615297289626791,
+        "recall": 0.24033767745980564
+      }
+    },
+    "evaluation": {
+      "bootstrap_sampling_unit": "source-document-or-normalized-text-cluster",
+      "independent_bootstrap_clusters": 12895,
+      "minimum_score": 0,
+      "partition": "test",
+      "partition_scheme": "sha256-normalized-text-v2",
+      "records": 16274
+    },
+    "performance": {
+      "characters_per_second": 17648330.120848957,
+      "latency_by_character_length": {
+        "1-256": {
+          "p50_ms": 0.012707999999975073,
+          "p95_ms": 0.01954200000000128,
+          "p99_ms": 0.05454199999997997,
+          "records": 15564
+        },
+        "4001+": {
+          "p50_ms": 0.11495899999999892,
+          "p95_ms": 0.16088560000001156,
+          "p99_ms": 0.25462500000002763,
+          "records": 710
+        }
+      },
+      "latency_ms_max": 1.6805410000000052,
+      "latency_ms_mean": 0.01957183611896283,
+      "latency_ms_p50": 0.012833000000000538,
+      "latency_ms_p95": 0.0674744499999915,
+      "latency_ms_p99": 0.13081440999999022,
+      "latency_ms_per_1000_characters_p95": 0.24011858345078038,
+      "records": 16274
+    },
+    "run": {
+      "artifact_sha256": "755d2c32a8c0e8aaa03561440605640c141416ab98ebe1787884926424d6f544",
+      "candidate_id": "rules-union-before",
+      "comparison_code_sha256": "6da63207c0dc0fb519dc6447ad35034e8b5d640eef7886c414ef60259fedb68a",
+      "dataset_sha256": "58d9d81c9c9a0b42c322426bb77638af61b51a023cfb81101588951d0fbbabe6",
+      "measurement_scope": "Exploratory rules regression under Node, not packaged browser performance",
+      "node": "v25.2.1",
+      "prediction_records": 20000,
+      "release_eligible": false,
+      "source": {
+        "baseline_commit": "ff92a52f013fd5583a1cc022609dd020f29c0a73",
+        "engine_sha256": "329d5fab1592e0e2f198ffb4d7173debccd7696b8bdbed3003423962f635ca48"
+      }
+    },
+    "safety": {
+      "character": {
+        "f1": 0.39101655516498474,
+        "precision": 0.8418327645571938,
+        "recall": 0.2546480554705132
+      },
+      "document_escape_rate": 0.9343179456731483,
+      "document_full_protection_rate": 0.06568205432685172,
+      "weighted_leak_rate": 0.7590464264718294,
+      "weighted_recall": 0.24095357352817062
+    },
+    "schema_version": 1,
+    "utility": {
+      "clean_negative_document_rate": 0.7857142857142857,
+      "over_redaction_rate": 0.006255829826301602
+    }
+  },
+  "after": {
+    "by_family": {
+      "biometric": {
+        "character_recall": 0.09403019388458886,
+        "confidence_interval": {
+          "high_95": 0.10899774621743673,
+          "low_95": 0.07902020620459789,
+          "rounds": 1000
+        },
+        "entities": 720,
+        "full_cluster_protection_interval": {
+          "high_95": 0.005307044483128604,
+          "low_95": 0,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 720
+        },
+        "gold_chars": 13049,
+        "independent_clusters": 720
+      },
+      "contact": {
+        "character_recall": 0.7748839502115598,
+        "confidence_interval": {
+          "high_95": 0.7865726139377042,
+          "low_95": 0.762753386519764,
+          "rounds": 1000
+        },
+        "entities": 5694,
+        "full_cluster_protection_interval": {
+          "high_95": 0.6140108753908565,
+          "low_95": 0.5772250729721341,
+          "method": "wilson-independent-cluster",
+          "successes": 1627,
+          "trials": 2731
+        },
+        "gold_chars": 97372,
+        "independent_clusters": 2731
+      },
+      "digital": {
+        "character_recall": 0.34817647862313894,
+        "confidence_interval": {
+          "high_95": 0.35507576565058563,
+          "low_95": 0.34104937566260746,
+          "rounds": 1000
+        },
+        "entities": 3564,
+        "full_cluster_protection_interval": {
+          "high_95": 0.002677270577232586,
+          "low_95": 2.168404344971009e-19,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 1431
+        },
+        "gold_chars": 51247,
+        "independent_clusters": 1431
+      },
+      "financial": {
+        "character_recall": 0.7057669484341318,
+        "confidence_interval": {
+          "high_95": 0.7266831754877795,
+          "low_95": 0.6845722391179055,
+          "rounds": 1000
+        },
+        "entities": 3499,
+        "full_cluster_protection_interval": {
+          "high_95": 0.5526892990772376,
+          "low_95": 0.5005459315659466,
+          "method": "wilson-independent-cluster",
+          "successes": 740,
+          "trials": 1405
+        },
+        "gold_chars": 41287,
+        "independent_clusters": 1405
+      },
+      "government_id": {
+        "character_recall": 0.7555038308602463,
+        "confidence_interval": {
+          "high_95": 0.7880985803363613,
+          "low_95": 0.7255364676945837,
+          "rounds": 1000
+        },
+        "entities": 2175,
+        "full_cluster_protection_interval": {
+          "high_95": 0.750134561858491,
+          "low_95": 0.6848022768237151,
+          "method": "wilson-independent-cluster",
+          "successes": 521,
+          "trials": 725
+        },
+        "gold_chars": 20622,
+        "independent_clusters": 725
+      },
+      "health_id": {
+        "character_recall": 0.6360992945991061,
+        "confidence_interval": {
+          "high_95": 0.6563656698212674,
+          "low_95": 0.6152410580061118,
+          "rounds": 1000
+        },
+        "entities": 1402,
+        "full_cluster_protection_interval": {
+          "high_95": 0.39145409998712527,
+          "low_95": 0.34109042155841823,
+          "method": "wilson-independent-cluster",
+          "successes": 513,
+          "trials": 1402
+        },
+        "gold_chars": 18571,
+        "independent_clusters": 1402
+      },
+      "identity": {
+        "character_recall": 0.041926481489556536,
+        "confidence_interval": {
+          "high_95": 0.04505790831197907,
+          "low_95": 0.038705165179035925,
+          "rounds": 1000
+        },
+        "entities": 12059,
+        "full_cluster_protection_interval": {
+          "high_95": 0.0003824690818193354,
+          "low_95": 0,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 10040
+        },
+        "gold_chars": 137598,
+        "independent_clusters": 10040
+      },
+      "location": {
+        "character_recall": 0,
+        "confidence_interval": {
+          "high_95": 0,
+          "low_95": 0,
+          "rounds": 1000
+        },
+        "entities": 720,
+        "full_cluster_protection_interval": {
+          "high_95": 0.005307044483128604,
+          "low_95": 0,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 720
+        },
+        "gold_chars": 13055,
+        "independent_clusters": 720
+      },
+      "organisation_id": {
+        "character_recall": 0.19672131147540983,
+        "confidence_interval": {
+          "high_95": 0.2117166668562924,
+          "low_95": 0.18315214983998132,
+          "rounds": 1000
+        },
+        "entities": 2061,
+        "full_cluster_protection_interval": {
+          "high_95": 0.0027679377902129904,
+          "low_95": 0,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 1384
+        },
+        "gold_chars": 23668,
+        "independent_clusters": 1384
+      },
+      "secret": {
+        "character_recall": 0.11830558875834524,
+        "confidence_interval": {
+          "high_95": 0.12640379381909123,
+          "low_95": 0.11008560490846347,
+          "rounds": 1000
+        },
+        "entities": 1422,
+        "full_cluster_protection_interval": {
+          "high_95": 0.005373861257336069,
+          "low_95": 0,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 711
+        },
+        "gold_chars": 34301,
+        "independent_clusters": 711
+      },
+      "sensitive_belief": {
+        "character_recall": 0,
+        "confidence_interval": {
+          "high_95": 0,
+          "low_95": 0,
+          "rounds": 1000
+        },
+        "entities": 2852,
+        "full_cluster_protection_interval": {
+          "high_95": 0.003058872434663426,
+          "low_95": 0,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 1252
+        },
+        "gold_chars": 43324,
+        "independent_clusters": 1252
+      },
+      "sensitive_financial": {
+        "character_recall": 0,
+        "confidence_interval": {
+          "high_95": 0,
+          "low_95": 0,
+          "rounds": 1000
+        },
+        "entities": 1364,
+        "full_cluster_protection_interval": {
+          "high_95": 0.0056588453324103605,
+          "low_95": 4.336808689942018e-19,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 675
+        },
+        "gold_chars": 27969,
+        "independent_clusters": 675
+      },
+      "sensitive_health": {
+        "character_recall": 0,
+        "confidence_interval": {
+          "high_95": 0,
+          "low_95": 0,
+          "rounds": 1000
+        },
+        "entities": 4284,
+        "full_cluster_protection_interval": {
+          "high_95": 0.0014382953387245664,
+          "low_95": 0,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 2667
+        },
+        "gold_chars": 72646,
+        "independent_clusters": 2667
+      },
+      "sensitive_legal": {
+        "character_recall": 0,
+        "confidence_interval": {
+          "high_95": 0,
+          "low_95": 0,
+          "rounds": 1000
+        },
+        "entities": 698,
+        "full_cluster_protection_interval": {
+          "high_95": 0.006247885150852211,
+          "low_95": 0,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 611
+        },
+        "gold_chars": 16898,
+        "independent_clusters": 611
+      },
+      "sensitive_personal": {
+        "character_recall": 0,
+        "confidence_interval": {
+          "high_95": 0,
+          "low_95": 0,
+          "rounds": 1000
+        },
+        "entities": 698,
+        "full_cluster_protection_interval": {
+          "high_95": 0.006247885150852211,
+          "low_95": 0,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 611
+        },
+        "gold_chars": 5167,
+        "independent_clusters": 611
+      },
+      "sensitive_safety": {
+        "character_recall": 0,
+        "confidence_interval": {
+          "high_95": 0,
+          "low_95": 0,
+          "rounds": 1000
+        },
+        "entities": 1446,
+        "full_cluster_protection_interval": {
+          "high_95": 0.005427004554231994,
+          "low_95": 0,
+          "method": "wilson-independent-cluster",
+          "successes": 0,
+          "trials": 704
+        },
+        "gold_chars": 33229,
+        "independent_clusters": 704
+      }
+    },
+    "by_label": {
+      "ABN": {
+        "character_recall": 0.7566589606995678,
+        "family": "financial",
+        "full_entity_protection_rate": 0.7163323782234957,
+        "gold_entities": 698,
+        "independent_clusters": 698,
+        "predicted_entities": 508
+      },
+      "ACN": {
+        "character_recall": 0.7012008175779254,
+        "family": "financial",
+        "full_entity_protection_rate": 0.7148997134670487,
+        "gold_entities": 698,
+        "independent_clusters": 698,
+        "predicted_entities": 499
+      },
+      "AGE": {
+        "character_recall": 0,
+        "family": "identity",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 713,
+        "independent_clusters": 713,
+        "predicted_entities": 0
+      },
+      "API_KEY": {
+        "character_recall": 0.17772522226601847,
+        "family": "secret",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 711,
+        "independent_clusters": 711,
+        "predicted_entities": 0
+      },
+      "BANK_ACCOUNT": {
+        "character_recall": 0.8077496274217586,
+        "family": "financial",
+        "full_entity_protection_rate": 0.7808022922636103,
+        "gold_entities": 698,
+        "independent_clusters": 698,
+        "predicted_entities": 574
+      },
+      "BIOMETRIC_ID": {
+        "character_recall": 0.09403019388458886,
+        "family": "biometric",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 720,
+        "independent_clusters": 720,
+        "predicted_entities": 0
+      },
+      "BSB": {
+        "character_recall": 0.5413669064748201,
+        "family": "financial",
+        "full_entity_protection_rate": 0.5544412607449857,
+        "gold_entities": 698,
+        "independent_clusters": 698,
+        "predicted_entities": 387
+      },
+      "CHILD_STATUS": {
+        "character_recall": 0,
+        "family": "sensitive_safety",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 723,
+        "independent_clusters": 704,
+        "predicted_entities": 0
+      },
+      "COORDINATES": {
+        "character_recall": 0,
+        "family": "location",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 720,
+        "independent_clusters": 720,
+        "predicted_entities": 0
+      },
+      "CREDIT_CARD": {
+        "character_recall": 0.6908966357131984,
+        "family": "financial",
+        "full_entity_protection_rate": 0.49929278642149927,
+        "gold_entities": 707,
+        "independent_clusters": 707,
+        "predicted_entities": 561
+      },
+      "CRIMINAL_RECORD": {
+        "character_recall": 0,
+        "family": "sensitive_legal",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 698,
+        "independent_clusters": 611,
+        "predicted_entities": 0
+      },
+      "CUSTOMER_ID": {
+        "character_recall": 0.5017782088587133,
+        "family": "organisation_id",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 707,
+        "independent_clusters": 707,
+        "predicted_entities": 0
+      },
+      "DATE_OF_BIRTH": {
+        "character_recall": 0.7871101871101871,
+        "family": "identity",
+        "full_entity_protection_rate": 0.7685834502103787,
+        "gold_entities": 713,
+        "independent_clusters": 713,
+        "predicted_entities": 572
+      },
+      "DEVICE_ID": {
+        "character_recall": 0.415403323875152,
+        "family": "digital",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 720,
+        "independent_clusters": 720,
+        "predicted_entities": 0
+      },
+      "DISABILITY": {
+        "character_recall": 0,
+        "family": "sensitive_health",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 725,
+        "independent_clusters": 596,
+        "predicted_entities": 0
+      },
+      "DRIVER_LICENCE": {
+        "character_recall": 0.8019717831038585,
+        "family": "government_id",
+        "full_entity_protection_rate": 0.776551724137931,
+        "gold_entities": 725,
+        "independent_clusters": 725,
+        "predicted_entities": 599
+      },
+      "EMAIL": {
+        "character_recall": 0.8376355937119322,
+        "family": "contact",
+        "full_entity_protection_rate": 0.782051282051282,
+        "gold_entities": 2106,
+        "independent_clusters": 2106,
+        "predicted_entities": 1806
+      },
+      "EMPLOYEE_ID": {
+        "character_recall": 0,
+        "family": "organisation_id",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 677,
+        "independent_clusters": 677,
+        "predicted_entities": 0
+      },
+      "FINANCIAL_HARDSHIP": {
+        "character_recall": 0,
+        "family": "sensitive_financial",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 682,
+        "independent_clusters": 675,
+        "predicted_entities": 0
+      },
+      "GENETIC_INFO": {
+        "character_recall": 0,
+        "family": "sensitive_health",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 720,
+        "independent_clusters": 720,
+        "predicted_entities": 0
+      },
+      "HEALTH_CONDITION": {
+        "character_recall": 0,
+        "family": "sensitive_health",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 1412,
+        "independent_clusters": 1351,
+        "predicted_entities": 0
+      },
+      "HEALTH_RECORD_ID": {
+        "character_recall": 0.535931790499391,
+        "family": "health_id",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 677,
+        "independent_clusters": 677,
+        "predicted_entities": 0
+      },
+      "INCOME": {
+        "character_recall": 0,
+        "family": "sensitive_financial",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 682,
+        "independent_clusters": 675,
+        "predicted_entities": 0
+      },
+      "IP_ADDRESS": {
+        "character_recall": 0.7612065354000838,
+        "family": "digital",
+        "full_entity_protection_rate": 0.3881856540084388,
+        "gold_entities": 1422,
+        "independent_clusters": 711,
+        "predicted_entities": 1485
+      },
+      "MAC_ADDRESS": {
+        "character_recall": 0,
+        "family": "digital",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 711,
+        "independent_clusters": 711,
+        "predicted_entities": 0
+      },
+      "MEDICARE": {
+        "character_recall": 0.7154714795869125,
+        "family": "health_id",
+        "full_entity_protection_rate": 0.7075862068965517,
+        "gold_entities": 725,
+        "independent_clusters": 725,
+        "predicted_entities": 740
+      },
+      "MEDICATION": {
+        "character_recall": 0,
+        "family": "sensitive_health",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 702,
+        "independent_clusters": 641,
+        "predicted_entities": 0
+      },
+      "MENTAL_HEALTH": {
+        "character_recall": 0,
+        "family": "sensitive_health",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 725,
+        "independent_clusters": 596,
+        "predicted_entities": 0
+      },
+      "OTHER_PII": {
+        "character_recall": null,
+        "family": "unknown",
+        "full_entity_protection_rate": null,
+        "gold_entities": 0,
+        "independent_clusters": 0,
+        "predicted_entities": 7
+      },
+      "PASSPORT": {
+        "character_recall": 0.7764830508474576,
+        "family": "government_id",
+        "full_entity_protection_rate": 0.776551724137931,
+        "gold_entities": 725,
+        "independent_clusters": 725,
+        "predicted_entities": 571
+      },
+      "PASSWORD": {
+        "character_recall": 0,
+        "family": "secret",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 711,
+        "independent_clusters": 711,
+        "predicted_entities": 0
+      },
+      "PERSON": {
+        "character_recall": 0,
+        "family": "identity",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 9913,
+        "independent_clusters": 9320,
+        "predicted_entities": 0
+      },
+      "PHONE": {
+        "character_recall": 0.7186935525491208,
+        "family": "contact",
+        "full_entity_protection_rate": 0.7236467236467237,
+        "gold_entities": 2106,
+        "independent_clusters": 2106,
+        "predicted_entities": 2033
+      },
+      "POLITICAL_AFFILIATION": {
+        "character_recall": 0,
+        "family": "sensitive_belief",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 711,
+        "independent_clusters": 586,
+        "predicted_entities": 0
+      },
+      "POSTCODE": {
+        "character_recall": 0.6454720616570327,
+        "family": "contact",
+        "full_entity_protection_rate": 0.6545209176788124,
+        "gold_entities": 741,
+        "independent_clusters": 625,
+        "predicted_entities": 485
+      },
+      "RACE_ETHNICITY": {
+        "character_recall": 0,
+        "family": "sensitive_belief",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 715,
+        "independent_clusters": 666,
+        "predicted_entities": 0
+      },
+      "RELIGION": {
+        "character_recall": 0,
+        "family": "sensitive_belief",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 715,
+        "independent_clusters": 666,
+        "predicted_entities": 0
+      },
+      "SEXUAL_ORIENTATION": {
+        "character_recall": 0,
+        "family": "sensitive_personal",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 698,
+        "independent_clusters": 611,
+        "predicted_entities": 0
+      },
+      "STREET_ADDRESS": {
+        "character_recall": 0.6982603947265777,
+        "family": "contact",
+        "full_entity_protection_rate": 0.6977058029689609,
+        "gold_entities": 741,
+        "independent_clusters": 625,
+        "predicted_entities": 525
+      },
+      "STUDENT_ID": {
+        "character_recall": 0,
+        "family": "organisation_id",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 677,
+        "independent_clusters": 677,
+        "predicted_entities": 0
+      },
+      "TFN": {
+        "character_recall": 0.7048333538310171,
+        "family": "government_id",
+        "full_entity_protection_rate": 0.7186206896551725,
+        "gold_entities": 725,
+        "independent_clusters": 725,
+        "predicted_entities": 2742
+      },
+      "TRADE_UNION": {
+        "character_recall": 0,
+        "family": "sensitive_belief",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 711,
+        "independent_clusters": 586,
+        "predicted_entities": 0
+      },
+      "USERNAME": {
+        "character_recall": 0,
+        "family": "digital",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 711,
+        "independent_clusters": 711,
+        "predicted_entities": 0
+      },
+      "VEHICLE_ID": {
+        "character_recall": 0.010426320667284522,
+        "family": "identity",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 720,
+        "independent_clusters": 720,
+        "predicted_entities": 0
+      },
+      "VICTIM_SAFEGUARDING": {
+        "character_recall": 0,
+        "family": "sensitive_safety",
+        "full_entity_protection_rate": 0,
+        "gold_entities": 723,
+        "independent_clusters": 704,
+        "predicted_entities": 0
+      }
+    },
+    "by_slice": {
+      "address": {
+        "character_recall": 0.4576271186440678,
+        "full_protection_rate": 0,
+        "gold_entities": 2223,
+        "over_redaction_rate": 0,
+        "records": 741
+      },
+      "association": {
+        "character_recall": 0,
+        "full_protection_rate": 0,
+        "gold_entities": 2133,
+        "over_redaction_rate": 0,
+        "records": 711
+      },
+      "belief": {
+        "character_recall": 0,
+        "full_protection_rate": 0,
+        "gold_entities": 2145,
+        "over_redaction_rate": 0,
+        "records": 715
+      },
+      "biometric": {
+        "character_recall": 0.031366634286006445,
+        "full_protection_rate": 0,
+        "gold_entities": 2160,
+        "over_redaction_rate": 0,
+        "records": 720
+      },
+      "case": {
+        "character_recall": 0.31939759542038154,
+        "full_protection_rate": 0.1078167115902965,
+        "gold_entities": 4913,
+        "over_redaction_rate": 0.006066559812488151,
+        "records": 1484
+      },
+      "clean": {
+        "character_recall": 0.3283264704647942,
+        "full_protection_rate": 0.10338680926916222,
+        "gold_entities": 14872,
+        "over_redaction_rate": 0.005811189838008417,
+        "records": 4488
+      },
+      "code_switch": {
+        "character_recall": 0.6250733615911314,
+        "full_protection_rate": 0,
+        "gold_entities": 2121,
+        "over_redaction_rate": 0,
+        "records": 707
+      },
+      "confusable": {
+        "character_recall": 0.24093778178539224,
+        "full_protection_rate": 0.10711909514304724,
+        "gold_entities": 4986,
+        "over_redaction_rate": 0.006119873937468862,
+        "records": 1503
+      },
+      "contact": {
+        "character_recall": 0.6053949465058047,
+        "full_protection_rate": 0,
+        "gold_entities": 2067,
+        "over_redaction_rate": 0,
+        "records": 689
+      },
+      "contextual": {
+        "character_recall": 0.40812461003654515,
+        "full_protection_rate": 0,
+        "gold_entities": 4362,
+        "over_redaction_rate": 0.03469400133438467,
+        "records": 1454
+      },
+      "csv": {
+        "character_recall": 0.263460127396663,
+        "full_protection_rate": 0.06875320677270395,
+        "gold_entities": 6454,
+        "over_redaction_rate": 0.004650834059737441,
+        "records": 1949
+      },
+      "digital": {
+        "character_recall": 0.15325377696784434,
+        "full_protection_rate": 0,
+        "gold_entities": 2160,
+        "over_redaction_rate": 0,
+        "records": 720
+      },
+      "domain:calendar": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0,
+        "records": 200
+      },
+      "domain:case_management": {
+        "character_recall": 0.14180282961100907,
+        "full_protection_rate": 0,
+        "gold_entities": 2708,
+        "over_redaction_rate": 0,
+        "records": 677
+      },
+      "domain:catalogue": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0,
+        "records": 200
+      },
+      "domain:commerce": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0.47368421052631576,
+        "records": 200
+      },
+      "domain:community_services": {
+        "character_recall": 0.3906864005288479,
+        "full_protection_rate": 0,
+        "gold_entities": 4212,
+        "over_redaction_rate": 0,
+        "records": 1404
+      },
+      "domain:customer_support": {
+        "character_recall": 0.4576271186440678,
+        "full_protection_rate": 0,
+        "gold_entities": 2223,
+        "over_redaction_rate": 0,
+        "records": 941
+      },
+      "domain:cybersecurity": {
+        "character_recall": 0.2291532924480625,
+        "full_protection_rate": 0,
+        "gold_entities": 4266,
+        "over_redaction_rate": 0.000040584415584415584,
+        "records": 711
+      },
+      "domain:disability_services": {
+        "character_recall": 0,
+        "full_protection_rate": 0,
+        "gold_entities": 2175,
+        "over_redaction_rate": 0,
+        "records": 725
+      },
+      "domain:documentation": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0.0743801652892562,
+        "records": 400
+      },
+      "domain:finance": {
+        "character_recall": 0.6683344539809358,
+        "full_protection_rate": 0.2754448398576512,
+        "gold_entities": 4206,
+        "over_redaction_rate": 0.08308314441517065,
+        "records": 1405
+      },
+      "domain:financial_counselling": {
+        "character_recall": 0,
+        "full_protection_rate": 0,
+        "gold_entities": 2046,
+        "over_redaction_rate": 0,
+        "records": 682
+      },
+      "domain:geography": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0,
+        "records": 200
+      },
+      "domain:government_form": {
+        "character_recall": 0.7421166446115611,
+        "full_protection_rate": 0.6868965517241379,
+        "gold_entities": 2900,
+        "over_redaction_rate": 0.2149107523134704,
+        "records": 725
+      },
+      "domain:health": {
+        "character_recall": 0,
+        "full_protection_rate": 0,
+        "gold_entities": 2106,
+        "over_redaction_rate": 0,
+        "records": 702
+      },
+      "domain:health_research": {
+        "character_recall": 0.031366634286006445,
+        "full_protection_rate": 0,
+        "gold_entities": 2160,
+        "over_redaction_rate": 0,
+        "records": 720
+      },
+      "domain:human_resources": {
+        "character_recall": 0,
+        "full_protection_rate": 0,
+        "gold_entities": 2133,
+        "over_redaction_rate": 0,
+        "records": 711
+      },
+      "domain:intake": {
+        "character_recall": 0.3289504170528267,
+        "full_protection_rate": 0,
+        "gold_entities": 2139,
+        "over_redaction_rate": 0.11150097465886939,
+        "records": 713
+      },
+      "domain:legal_aid": {
+        "character_recall": 0,
+        "full_protection_rate": 0,
+        "gold_entities": 2094,
+        "over_redaction_rate": 0,
+        "records": 698
+      },
+      "domain:long_form_casework": {
+        "character_recall": 0.5038516983512028,
+        "full_protection_rate": 0,
+        "gold_entities": 2840,
+        "over_redaction_rate": 0,
+        "records": 710
+      },
+      "domain:multicultural_support": {
+        "character_recall": 0.6250733615911314,
+        "full_protection_rate": 0,
+        "gold_entities": 2121,
+        "over_redaction_rate": 0,
+        "records": 707
+      },
+      "domain:policy": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0,
+        "records": 200
+      },
+      "domain:public_health": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0,
+        "records": 200
+      },
+      "domain:recruitment": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0,
+        "records": 200
+      },
+      "domain:safeguarding": {
+        "character_recall": 0.06832208609054577,
+        "full_protection_rate": 0,
+        "gold_entities": 4329,
+        "over_redaction_rate": 0,
+        "records": 1443
+      },
+      "domain:software_release": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0.16071428571428573,
+        "records": 200
+      },
+      "domain:source_code": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0,
+        "records": 400
+      },
+      "domain:statistics": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0,
+        "records": 200
+      },
+      "financial": {
+        "character_recall": 0.3106726957383548,
+        "full_protection_rate": 0.28043478260869564,
+        "gold_entities": 4838,
+        "over_redaction_rate": 0.12303969754253308,
+        "records": 1380
+      },
+      "government_id": {
+        "character_recall": 0.7421166446115611,
+        "full_protection_rate": 0.6868965517241379,
+        "gold_entities": 2900,
+        "over_redaction_rate": 0.2149107523134704,
+        "records": 725
+      },
+      "hard_negative": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0.05344418052256532,
+        "records": 2800
+      },
+      "health": {
+        "character_recall": 0,
+        "full_protection_rate": 0,
+        "gold_entities": 4281,
+        "over_redaction_rate": 0,
+        "records": 1427
+      },
+      "high_risk": {
+        "character_recall": 0,
+        "full_protection_rate": 0,
+        "gold_entities": 2169,
+        "over_redaction_rate": 0,
+        "records": 723
+      },
+      "identity": {
+        "character_recall": 0.514329873301786,
+        "full_protection_rate": 0,
+        "gold_entities": 4206,
+        "over_redaction_rate": 0.052347396357646195,
+        "records": 1402
+      },
+      "json": {
+        "character_recall": 0.23035868372553825,
+        "full_protection_rate": 0.05861182519280206,
+        "gold_entities": 6432,
+        "over_redaction_rate": 0.004622210626340671,
+        "records": 1945
+      },
+      "legal": {
+        "character_recall": 0,
+        "full_protection_rate": 0,
+        "gold_entities": 2094,
+        "over_redaction_rate": 0,
+        "records": 698
+      },
+      "linebreak": {
+        "character_recall": 0.29244302169690006,
+        "full_protection_rate": 0.046235138705416116,
+        "gold_entities": 5026,
+        "over_redaction_rate": 0.005029858055396604,
+        "records": 1514
+      },
+      "location": {
+        "character_recall": 0.15325377696784434,
+        "full_protection_rate": 0,
+        "gold_entities": 2160,
+        "over_redaction_rate": 0,
+        "records": 720
+      },
+      "log": {
+        "character_recall": 0.24838272520391727,
+        "full_protection_rate": 0.05238467552775606,
+        "gold_entities": 10106,
+        "over_redaction_rate": 0.004096131918252785,
+        "records": 2558
+      },
+      "long_document": {
+        "character_recall": 0.5038516983512028,
+        "full_protection_rate": 0,
+        "gold_entities": 2840,
+        "over_redaction_rate": 0,
+        "records": 710
+      },
+      "markdown": {
+        "character_recall": 0.25813728295076915,
+        "full_protection_rate": 0.06532129580456718,
+        "gold_entities": 6255,
+        "over_redaction_rate": 0.004177970173973614,
+        "records": 1883
+      },
+      "mixed_entities": {
+        "character_recall": 0.14180282961100907,
+        "full_protection_rate": 0,
+        "gold_entities": 2708,
+        "over_redaction_rate": 0,
+        "records": 677
+      },
+      "multilingual": {
+        "character_recall": 0.6250733615911314,
+        "full_protection_rate": 0,
+        "gold_entities": 2121,
+        "over_redaction_rate": 0,
+        "records": 707
+      },
+      "negative": {
+        "character_recall": 1,
+        "full_protection_rate": 1,
+        "gold_entities": 0,
+        "over_redaction_rate": 0.05344418052256532,
+        "records": 2800
+      },
+      "ocr": {
+        "character_recall": 0.11715522468028707,
+        "full_protection_rate": 0,
+        "gold_entities": 4952,
+        "over_redaction_rate": 0.0008509446562829876,
+        "records": 1492
+      },
+      "organisation_id": {
+        "character_recall": 0.14180282961100907,
+        "full_protection_rate": 0,
+        "gold_entities": 2708,
+        "over_redaction_rate": 0,
+        "records": 677
+      },
+      "payment": {
+        "character_recall": 0.612615425792925,
+        "full_protection_rate": 0,
+        "gold_entities": 1414,
+        "over_redaction_rate": 0,
+        "records": 707
+      },
+      "plain": {
+        "character_recall": 0.256779541688179,
+        "full_protection_rate": 0.06616750827093854,
+        "gold_entities": 19035,
+        "over_redaction_rate": 0.0048529463723446485,
+        "records": 5743
+      },
+      "positive": {
+        "character_recall": 0.25467113228708177,
+        "full_protection_rate": 0.06568205432685172,
+        "gold_entities": 44658,
+        "over_redaction_rate": 0.004601271382565556,
+        "records": 13474
+      },
+      "psi": {
+        "character_recall": 0.0738528951486698,
+        "full_protection_rate": 0,
+        "gold_entities": 19868,
+        "over_redaction_rate": 0,
+        "records": 6386
+      },
+      "secrets": {
+        "character_recall": 0.2291532924480625,
+        "full_protection_rate": 0,
+        "gold_entities": 4266,
+        "over_redaction_rate": 0.000040584415584415584,
+        "records": 711
+      },
+      "spacing": {
+        "character_recall": 0.27333796940194716,
+        "full_protection_rate": 0.02004008016032064,
+        "gold_entities": 4947,
+        "over_redaction_rate": 0.0052080116922950245,
+        "records": 1497
+      },
+      "structured": {
+        "character_recall": 0.4753427844044404,
+        "full_protection_rate": 0.3115100316789863,
+        "gold_entities": 11372,
+        "over_redaction_rate": 0.09674645479231621,
+        "records": 2841
+      },
+      "window_boundary": {
+        "character_recall": 0.5038516983512028,
+        "full_protection_rate": 0,
+        "gold_entities": 2840,
+        "over_redaction_rate": 0,
+        "records": 710
+      },
+      "zero_width": {
+        "character_recall": 0.07362930456832784,
+        "full_protection_rate": 0,
+        "gold_entities": 4962,
+        "over_redaction_rate": 0.0006472013535297442,
+        "records": 1496
+      }
+    },
+    "cluster_guardrails": {
+      "clean_negative": {
+        "high_95": 0.9242861328730683,
+        "low_95": 0.524107694133997,
+        "method": "wilson-independent-cluster",
+        "successes": 11,
+        "trials": 14
+      },
+      "full_protection": {
+        "high_95": 0.07320398342565847,
+        "low_95": 0.06446487842955355,
+        "method": "wilson-independent-cluster",
+        "successes": 885,
+        "trials": 12881
+      }
+    },
+    "confidence_intervals": {
+      "character_recall": {
+        "high_95": 0.2599590427036753,
+        "low_95": 0.24958819451688116,
+        "rounds": 1000
+      },
+      "clean_negative_document_rate": {
+        "high_95": 1,
+        "low_95": 0.5454545454545454,
+        "rounds": 1000
+      },
+      "document_full_protection_rate": {
+        "high_95": 0.07007711103927253,
+        "low_95": 0.061873682059547505,
+        "rounds": 1000
+      },
+      "over_redaction_rate": {
+        "high_95": 0.009258573758874785,
+        "low_95": 0.004449881362121821,
+        "rounds": 1000
+      },
+      "weighted_recall": {
+        "high_95": 0.24634599922022232,
+        "low_95": 0.23591894878063702,
+        "rounds": 1000
+      }
+    },
+    "counts": {
+      "captured_weight": 665263,
+      "clean_negative_docs": 2200,
+      "exact_matches": 6612,
+      "fn_chars": 484466,
+      "fp_chars": 31099,
+      "fully_protected_docs": 885,
+      "gold_chars": 650003,
+      "gold_entities": 44658,
+      "gold_weight": 2760731,
+      "negative_docs": 2800,
+      "non_pii_chars": 4971203,
+      "overlap_matches": 13278,
+      "positive_docs": 13474,
+      "pred_chars": 196636,
+      "predicted_entities": 14094,
+      "tp_chars": 165537,
+      "typed_exact_matches": 6612,
+      "typed_overlap_matches": 10733
+    },
+    "entities": {
+      "exact": {
+        "f1": 0.22508169934640523,
+        "precision": 0.4691358024691358,
+        "recall": 0.14805857853016258
+      },
+      "overlap": {
+        "f1": 0.4520016339869281,
+        "precision": 0.9421030225627927,
+        "recall": 0.2973263469031305
+      },
+      "typed_exact": {
+        "f1": 0.22508169934640523,
+        "precision": 0.4691358024691358,
+        "recall": 0.14805857853016258
+      },
+      "typed_overlap": {
+        "f1": 0.3653662854030501,
+        "precision": 0.7615297289626791,
+        "recall": 0.24033767745980564
+      }
+    },
+    "evaluation": {
+      "bootstrap_sampling_unit": "source-document-or-normalized-text-cluster",
+      "independent_bootstrap_clusters": 12895,
+      "minimum_score": 0,
+      "partition": "test",
+      "partition_scheme": "sha256-normalized-text-v2",
+      "records": 16274
+    },
+    "performance": {
+      "characters_per_second": 23373593.77756089,
+      "latency_by_character_length": {
+        "1-256": {
+          "p50_ms": 0.008874999999989086,
+          "p95_ms": 0.01495799999997871,
+          "p99_ms": 0.023999999999887223,
+          "records": 15564
+        },
+        "4001+": {
+          "p50_ms": 0.11102100000005066,
+          "p95_ms": 0.1384289500000591,
+          "p99_ms": 0.22149943999996785,
+          "records": 710
+        }
+      },
+      "latency_ms_max": 6.772125000000074,
+      "latency_ms_mean": 0.014777797038220622,
+      "latency_ms_p50": 0.009000000000014552,
+      "latency_ms_p95": 0.030267100000025707,
+      "latency_ms_p99": 0.1146249999999327,
+      "latency_ms_per_1000_characters_p95": 0.15094144927766553,
+      "records": 16274
+    },
+    "run": {
+      "artifact_sha256": "756035af83e9458e14bd4c65935a6abcfcd55ad88c464a42c9356a8d51e9c6ec",
+      "candidate_id": "rules-union-after",
+      "comparison_code_sha256": "6da63207c0dc0fb519dc6447ad35034e8b5d640eef7886c414ef60259fedb68a",
+      "dataset_sha256": "58d9d81c9c9a0b42c322426bb77638af61b51a023cfb81101588951d0fbbabe6",
+      "measurement_scope": "Exploratory rules regression under Node, not packaged browser performance",
+      "node": "v25.2.1",
+      "prediction_records": 20000,
+      "release_eligible": false,
+      "source": {
+        "lib/pii-types.js": "498800d83c46635124e1545669b2c055dc7d5d5bd255ab83e22b253712231058",
+        "lib/redaction-spans.js": "3d3a87768777034ee41c1155cec8995aad13e585b80704aea10d6abaa15596f5",
+        "lib/regex-engine.js": "5e9cc7c4b27557e550a5acfc40cefde52818d2f9bc37eb2a8f46940e91d6a6d0"
+      }
+    },
+    "safety": {
+      "character": {
+        "f1": 0.3910450617087094,
+        "precision": 0.8418448300412946,
+        "recall": 0.25467113228708177
+      },
+      "document_escape_rate": 0.9343179456731483,
+      "document_full_protection_rate": 0.06568205432685172,
+      "weighted_leak_rate": 0.759026504212109,
+      "weighted_recall": 0.24097349578789096
+    },
+    "schema_version": 1,
+    "utility": {
+      "clean_negative_document_rate": 0.7857142857142857,
+      "over_redaction_rate": 0.006255829826301602
+    }
+  },
+  "paired": {
+    "bootstrap_clusters": 12895,
+    "direction": "second-minus-first",
+    "evaluation": {
+      "bootstrap_sampling_unit": "source-document-or-normalized-text-cluster",
+      "independent_bootstrap_clusters": 12895,
+      "minimum_score": 0,
+      "partition": "test",
+      "partition_scheme": "sha256-normalized-text-v2",
+      "records": 16274
+    },
+    "first": "rules-union-before",
+    "paired_differences": {
+      "document_full_protection_rate": {
+        "difference": 0,
+        "high_95": 0,
+        "low_95": 0
+      },
+      "over_redaction_rate": {
+        "difference": 0,
+        "high_95": 0,
+        "low_95": 0
+      },
+      "weighted_recall": {
+        "difference": 0.000019922259720334123,
+        "high_95": 0.00003824426543161011,
+        "low_95": 0.00000650834720797811
+      }
+    },
+    "rounds": 1000,
+    "second": "rules-union-after"
+  },
+  "coverage": {
+    "records": 20000,
+    "lost_coverage_records": 0,
+    "added_coverage_records": 10,
+    "additional_sensitive_characters": 21,
+    "additional_non_sensitive_characters": 0
+  }
+}

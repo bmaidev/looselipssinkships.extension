@@ -238,6 +238,7 @@
 
     return `<div class="file-result">
       <div class="file-result-meta">${meta.map(m => `<span>${escapeHtml(m)}</span>`).join('')}</div>
+      <p class="result-note">${escapeHtml(LLSS_ScanStatus.describe(r.coverage).detail)}</p>
       ${r.redactedFileBase64 ? '<span class="result-ready">Redacted file ready</span>' : '<span class="result-note">Text-only redaction (no file modification for this format)</span>'}
       ${preview}
     </div>`;

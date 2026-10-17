@@ -8,6 +8,7 @@ importScripts(
   "lib/binary-transfer.js",
   "lib/browser-ai.js",
   "lib/pii-types.js",
+  "lib/redaction-spans.js",
   "lib/regex-engine.js",
   "lib/vector-engine.js",
   "lib/settings.js",
@@ -479,6 +480,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             matches: result.matches || [],
             pipelineSteps: result.pipelineSteps,
             escalated: result.escalated,
+            coverage: result.coverage,
           });
         })
         .catch((err) => {
@@ -521,6 +523,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             success: true,
             redacted: typeof result.redacted === "string" ? result.redacted.slice(0, 10_000) : "",
             redactedPreviewTruncated: typeof result.redacted === "string" && result.redacted.length > 10_000,
+            coverage: result.coverage,
             engine: result.engine,
             tier: result.tier,
             matchCount: result.matches?.length || 0,
@@ -708,6 +711,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             redacted: result.redacted,
             engine: result.engine,
             tier: result.tier,
+            coverage: result.coverage,
             matchCount: result.matches?.length || 0,
           });
         })

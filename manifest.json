@@ -42,7 +42,7 @@
     },
     {
       "matches": ["<all_urls>"],
-      "js": ["lib/binary-transfer.js", "lib/debug.js", "lib/token-vault.js", "content.js"],
+      "js": ["lib/binary-transfer.js", "lib/debug.js", "lib/token-vault.js", "lib/scan-status.js", "content.js"],
       "css": ["content.css"],
       "run_at": "document_start",
       "all_frames": true,

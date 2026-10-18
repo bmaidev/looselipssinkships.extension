@@ -4,6 +4,11 @@ This is an isolated, reproducible harness for selecting local detection models f
 
 The benchmark is leak-focused. Aggregate F1 is reported, but selection prioritises risk-weighted recall, whole-document protection, hard-negative cleanliness, over-redaction, latency, memory, artifact size, licence, and offline deployability.
 
+The [evidence dashboard](dashboard/README.md) provides an offline-capable,
+reproducible view of retained results, source hashes, uncertainty, per-label
+support and paired effects. It keeps datasets and operating points separate and
+does not manufacture missing measurements or declare a release-qualified winner.
+
 The [live span-composition study](evidence/rules-union-study-2026-10-17.md) fixes
 overlap-induced leaks in the shipped-source detector paths, verifies the full
 20,000-document rules regression and documents explicit scan coverage reporting.

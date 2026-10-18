@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-18",
+  "scope": "Evidence dashboard reporting and UI verification only; not model or extension qualification",
+  "release_eligible": false,
+  "site": {
+    "access": "owner-private",
+    "url": "https://llss-protection-evidence.black-mounta-4594.chatgpt.site",
+    "source_commit_sha": "14793e4a9199f9d2c71f62e19e1073ea3b2dfc1f",
+    "deployment_status": "succeeded"
+  },
+  "distribution_integrity_manifest_sha256": "6d6a46a7da4e48c455874066d02eb1a1029ee8f9d64efb62669f40bf31e7e723",
+  "raw_browser_qa_report_sha256": "10405256f52c0cd08100c63acf79e1fb97b311bf1fb6e98523c4e6e885846400",
+  "browser": "Chrome/155.0.8059.82",
+  "checks": {
+    "comparison_groups": 9,
+    "retained_result_rows": 32,
+    "cohort_operating_point_views_exercised": 13,
+    "source_download_hashes_verified": 5,
+    "catalog_entries": 20,
+    "required_label_rows_per_candidate": 44,
+    "primary_threshold_default": true,
+    "zero_recall_visible": true,
+    "csv_provenance_present": true,
+    "mobile_viewport_width": 390,
+    "mobile_document_width": 390,
+    "browser_runtime_exceptions": 0,
+    "desktop_and_mobile_screenshots_inspected": true
+  },
+  "automated_test_results": {
+    "extension_tests_passed": 487,
+    "benchmark_tests_passed_with_optional_dependencies": 60,
+    "dashboard_specific_export_tests": 5
+  },
+  "limitations": [
+    "Transparent and reproducible reporting does not independently validate the underlying studies",
+    "Retained research is exploratory, synthetic, partially reused and incomplete for release qualification",
+    "Historical missing intervals, thresholds and support counts remain unknown",
+    "No new detector inference or statistical experiments were performed for this dashboard",
+    "Browser checks exercise the dashboard, not packaged Chrome/Edge protection",
+    "Mobile viewport emulation is not physical-device testing or a comprehensive accessibility audit"
+  ]
+}

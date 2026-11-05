@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@huggingface/transformers": "4.3.1",
+    "@huggingface/transformers": "4.3.2",
     "onnxruntime-node": "1.30.0",
     "onnxruntime-web": "1.30.0"
   }
